@@ -29,6 +29,8 @@ export type { ChatBreakpoint } from './workspace/useChatBreakpoints';
 export { useChatBreakpoints } from './workspace/useChatBreakpoints';
 export type { ContextChipBarProps } from './knowledge/ContextChipBar';
 export { ContextChipBar } from './knowledge/ContextChipBar';
+export type { ThreadSidebarProps } from './workspace/ThreadSidebar';
+export { ThreadSidebar } from './workspace/ThreadSidebar';
 
 // re-export session SDK for chat repo convenience
 export {
@@ -48,4 +50,5 @@ export {
   deleteChatThread,
   appendThreadMessage,
   streamThreadMessage,
+  getClientId,
 } from '@acongm/agent-session-sdk';

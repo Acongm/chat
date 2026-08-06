@@ -20,4 +20,6 @@ export type DocChatContext = {
   defaultScope?: 'article' | 'module';
   /** x-call-source 前缀，如 portal / chat-site */
   callSourcePrefix?: string;
+  /** Threads API 会话 id；有则本地历史按 thread 隔离 */
+  threadId?: string;
 };

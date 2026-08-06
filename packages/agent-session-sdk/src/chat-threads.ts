@@ -36,10 +36,21 @@ export function resolveThreadsBaseUrl(configured?: string): string {
   return value || DEFAULT_THREADS_PROXY;
 }
 
-function threadHeaders(extra?: Record<string, string>): Record<string, string> {
+export type ThreadRequestOptions = {
+  baseUrl?: string;
+  /** Supabase / API JWT；登录后传入 */
+  accessToken?: string;
+  signal?: AbortSignal;
+};
+
+function threadHeaders(
+  extra?: Record<string, string>,
+  accessToken?: string,
+): Record<string, string> {
   return {
     'Content-Type': 'application/json',
     'x-client-id': getClientId(),
+    ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
     ...extra,
   };
 }
@@ -74,23 +85,26 @@ async function readJson<T>(response: Response): Promise<T> {
 
 export async function createChatThread(
   body: CreateChatThreadRequest = {},
-  options: { baseUrl?: string } = {},
+  options: ThreadRequestOptions = {},
 ): Promise<ChatThreadRecord> {
   const base = resolveThreadsBaseUrl(options.baseUrl);
   const response = await fetch(base, {
     method: 'POST',
-    headers: threadHeaders({ 'x-call-source': 'portal:chat' }),
+    headers: threadHeaders(
+      { 'x-call-source': 'chat-site' },
+      options.accessToken,
+    ),
     body: JSON.stringify(body),
   });
   return readJson<ChatThreadRecord>(response);
 }
 
 export async function listChatThreads(
-  options: { baseUrl?: string } = {},
+  options: ThreadRequestOptions = {},
 ): Promise<ChatThreadRecord[]> {
   const base = resolveThreadsBaseUrl(options.baseUrl);
   const response = await fetch(base, {
-    headers: threadHeaders(),
+    headers: threadHeaders(undefined, options.accessToken),
   });
   const data = await readJson<{ threads?: ChatThreadRecord[] } | ChatThreadRecord[]>(
     response,
@@ -100,23 +114,23 @@ export async function listChatThreads(
 
 export async function getChatThread(
   id: string,
-  options: { baseUrl?: string } = {},
+  options: ThreadRequestOptions = {},
 ): Promise<{ thread: ChatThreadRecord; messages: unknown[] }> {
   const base = resolveThreadsBaseUrl(options.baseUrl);
   const response = await fetch(`${base}/${encodeURIComponent(id)}`, {
-    headers: threadHeaders(),
+    headers: threadHeaders(undefined, options.accessToken),
   });
   return readJson(response);
 }
 
 export async function deleteChatThread(
   id: string,
-  options: { baseUrl?: string } = {},
+  options: ThreadRequestOptions = {},
 ): Promise<void> {
   const base = resolveThreadsBaseUrl(options.baseUrl);
   const response = await fetch(`${base}/${encodeURIComponent(id)}`, {
     method: 'DELETE',
-    headers: threadHeaders(),
+    headers: threadHeaders(undefined, options.accessToken),
   });
   await readJson(response);
 }
@@ -124,14 +138,14 @@ export async function deleteChatThread(
 export async function appendThreadMessage(
   id: string,
   body: CreateThreadMessageRequest,
-  options: { baseUrl?: string } = {},
+  options: ThreadRequestOptions = {},
 ): Promise<CreateThreadMessageResponse> {
   const base = resolveThreadsBaseUrl(options.baseUrl);
   const response = await fetch(
     `${base}/${encodeURIComponent(id)}/messages`,
     {
       method: 'POST',
-      headers: threadHeaders(),
+      headers: threadHeaders(undefined, options.accessToken),
       body: JSON.stringify(body),
     },
   );
@@ -141,7 +155,7 @@ export async function appendThreadMessage(
 export async function streamThreadMessage(
   id: string,
   body: CreateThreadMessageRequest,
-  options: { baseUrl?: string; signal?: AbortSignal } = {},
+  options: ThreadRequestOptions = {},
 ): Promise<AsyncGenerator<ChatV1StreamEvent>> {
   const base = resolveThreadsBaseUrl(options.baseUrl);
   const response = await fetch(
@@ -149,7 +163,7 @@ export async function streamThreadMessage(
     {
       method: 'POST',
       headers: {
-        ...threadHeaders(),
+        ...threadHeaders(undefined, options.accessToken),
         Accept: 'text/event-stream',
       },
       body: JSON.stringify(body),

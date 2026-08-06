@@ -25,6 +25,7 @@ export {
   deleteChatThread,
   appendThreadMessage,
   streamThreadMessage,
+  type ThreadRequestOptions,
 } from './chat-threads';
 
 export {

@@ -1123,3 +1123,87 @@
   cursor: pointer;
   font-size: 0.85rem;
 }
+
+/* —— Thread sidebar —— */
+
+.acongm-thread-sidebar__actions {
+  display: inline-flex;
+  gap: 0.35rem;
+}
+
+.acongm-thread-sidebar__auth {
+  padding: 0.15rem 0 0.35rem;
+}
+
+.acongm-thread-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  overflow: auto;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.acongm-thread-list > li {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: stretch;
+  gap: 0.15rem;
+}
+
+.acongm-thread-item {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.15rem;
+  width: 100%;
+  text-align: left;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  padding: 0.55rem 0.5rem;
+  border-radius: 0.55rem;
+  cursor: pointer;
+}
+
+.acongm-thread-item:hover,
+.acongm-thread-item.is-active {
+  background: color-mix(in srgb, currentColor 8%, transparent);
+}
+
+.acongm-thread-item__title {
+  font-size: 0.85rem;
+  font-weight: 550;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 100%;
+}
+
+.acongm-thread-item__meta {
+  font-size: 0.7rem;
+  opacity: 0.55;
+}
+
+.acongm-thread-item__delete {
+  border: 0;
+  background: transparent;
+  color: inherit;
+  opacity: 0.35;
+  cursor: pointer;
+  padding: 0 0.4rem;
+  border-radius: 0.4rem;
+  font-size: 1rem;
+  line-height: 1;
+}
+
+.acongm-thread-item__delete:hover {
+  opacity: 1;
+  background: color-mix(in srgb, currentColor 8%, transparent);
+}
+
+.workspace-panel__hint.is-error {
+  color: var(--acongm-danger, #c2410c);
+}
