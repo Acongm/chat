@@ -104,14 +104,21 @@ function fromThreadLike(messages: readonly ThreadMessageLike[]): ChatUiMessage[]
   });
 }
 
+function historyKey(context: DocChatContext): string {
+  return context.threadId ? `thread:${context.threadId}` : context.pagePath;
+}
+
 async function bootstrapMessages(
+  storageKey: string,
   pagePath: string,
   summariesUrl?: string,
+  skipSummary = false,
 ): Promise<ChatUiMessage[]> {
   let initial: ChatUiMessage[] = [];
   if (typeof sessionStorage !== 'undefined') {
-    initial = loadChatHistory(sessionStorage, pagePath);
+    initial = loadChatHistory(sessionStorage, storageKey);
   }
+  if (skipSummary) return initial;
   if (!initial.some((message) => message.isSummary)) {
     try {
       const result = await loadSummaryV1(pagePath, { url: summariesUrl });
@@ -142,6 +149,8 @@ async function bootstrapMessages(
 export type DocChatRuntimeProviderProps = {
   context: DocChatContext;
   active?: boolean;
+  /** 覆盖 bootstrap（如从 Threads API 恢复消息） */
+  seedMessages?: ChatUiMessage[] | null;
   children: ReactNode;
 };
 
@@ -199,8 +208,8 @@ function DocChatRuntimeInner({
         isError: message.status?.type === 'incomplete',
       };
     });
-    saveChatHistory(sessionStorage, context.pagePath, ui);
-  }, [context.pagePath, runtime]);
+    saveChatHistory(sessionStorage, historyKey(context), ui);
+  }, [context, runtime]);
 
   useEffect(() => {
     return runtime.thread.subscribe(() => {
@@ -214,14 +223,14 @@ function DocChatRuntimeInner({
       runtime.thread.cancelRun();
       const kept = fromThreadLike(initialMessages).filter((m) => m.isSummary);
       if (typeof sessionStorage !== 'undefined') {
-        clearChatHistory(sessionStorage, context.pagePath);
+        clearChatHistory(sessionStorage, historyKey(context));
       }
       runtime.thread.reset(kept.map(toThreadMessage));
-      saveChatHistory(sessionStorage, context.pagePath, kept);
+      saveChatHistory(sessionStorage, historyKey(context), kept);
     };
     window.addEventListener('acongm-chat-clear', onClear);
     return () => window.removeEventListener('acongm-chat-clear', onClear);
-  }, [context.pagePath, initialMessages, runtime]);
+  }, [context, initialMessages, runtime]);
 
   return (
     <AssistantRuntimeProvider runtime={runtime}>
@@ -237,9 +246,11 @@ function DocChatRuntimeInner({
 export function DocChatRuntimeProvider({
   context,
   active = true,
+  seedMessages = null,
   children,
 }: DocChatRuntimeProviderProps) {
-  const { pagePath, summariesUrl } = context;
+  const { pagePath, summariesUrl, threadId } = context;
+  const storageKey = historyKey(context);
   const [seed, setSeed] = useState<readonly ThreadMessageLike[] | null>(null);
 
   useEffect(() => {
@@ -247,10 +258,20 @@ export function DocChatRuntimeProvider({
     setSeed(null);
     if (!active) return;
 
-    void bootstrapMessages(pagePath, summariesUrl).then((messages) => {
+    const load = async () => {
+      if (seedMessages) {
+        return seedMessages;
+      }
+      // 通用对话 / 已有 thread：可跳过摘要卡
+      const skipSummary =
+        Boolean(threadId) || pagePath === '/' || context.moduleKey === '_general';
+      return bootstrapMessages(storageKey, pagePath, summariesUrl, skipSummary);
+    };
+
+    void load().then((messages) => {
       if (cancelled) return;
       if (typeof sessionStorage !== 'undefined') {
-        saveChatHistory(sessionStorage, pagePath, messages);
+        saveChatHistory(sessionStorage, storageKey, messages);
       }
       setSeed(messages.map(toThreadMessage));
     });
@@ -258,14 +279,22 @@ export function DocChatRuntimeProvider({
     return () => {
       cancelled = true;
     };
-  }, [active, pagePath, summariesUrl]);
+  }, [
+    active,
+    pagePath,
+    summariesUrl,
+    storageKey,
+    threadId,
+    context.moduleKey,
+    seedMessages,
+  ]);
 
   if (!active || !seed) return null;
 
-  // key=pagePath：换文重建 LocalRuntime，避免手写 ExternalStore 状态机
+  // key：换 thread / 文档重建 LocalRuntime
   return (
     <DocChatRuntimeInner
-      key={pagePath}
+      key={storageKey}
       context={context}
       initialMessages={seed}
     >
