@@ -34,3 +34,11 @@ export {
 } from './url';
 
 export { GENERAL_CONTEXT, resolveChatV1Context } from './resolve-context';
+
+export {
+  buildArticleIndex,
+  listArticlesForModule,
+  searchKnowledgeCatalog,
+  type KnowledgeSearchHit,
+  type ArticleIndexEntry,
+} from './search';

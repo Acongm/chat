@@ -6,17 +6,23 @@ import {
   ChatFullscreen,
   ChatUiProvider,
   ChatWorkspace,
+  KnowledgeMentionMenu,
+  KnowledgePanel,
+  KnowledgeUiProvider,
   ThreadSidebar,
+  useKnowledgeUi,
   type DocChatContext,
 } from '@acongm/chat-ui';
 import {
   listCatalogModules,
   resolveChatV1Context,
   resolveKnowledgeFromUrl,
+  searchKnowledgeCatalog,
   type DocModulesRegistry,
   type KnowledgeRef,
 } from '@acongm/kb-catalog';
 import { useChatThreads } from '@/lib/use-chat-threads';
+import { useArticleIndex } from '@/lib/use-article-index';
 import { ChatAuthSlot } from '@/components/chat-auth-slot';
 
 export type ChatWorkspaceAppProps = {
@@ -29,7 +35,6 @@ export type ChatWorkspaceAppProps = {
   emptyTitle: string;
   portalBase: string;
   apiBase: string;
-  /** 来自 /t/[threadId] */
   initialThreadId?: string | null;
 };
 
@@ -75,7 +80,7 @@ function chipsQuery(chips: KnowledgeRef[]): string {
   return qs ? `?${qs}` : '';
 }
 
-export function ChatWorkspaceApp({
+function WorkspaceInner({
   registry,
   isolation,
   summariesUrl,
@@ -87,6 +92,8 @@ export function ChatWorkspaceApp({
   const searchParams = useSearchParams();
   const router = useRouter();
   const [accessToken, setAccessToken] = useState<string | null>(null);
+  const { mention, closeMention } = useKnowledgeUi();
+  const articleIndex = useArticleIndex(summariesUrl);
 
   const initialChips = useMemo(
     () =>
@@ -110,6 +117,18 @@ export function ChatWorkspaceApp({
     initialThreadId,
   });
 
+  const mentionHits = useMemo(
+    () =>
+      searchKnowledgeCatalog({
+        registry,
+        isolation,
+        articles: articleIndex.articles,
+        query: mention.query,
+        limit: 16,
+      }),
+    [registry, isolation, articleIndex.articles, mention.query],
+  );
+
   const navigateWithChips = useCallback(
     (path: string, nextChips: KnowledgeRef[]) => {
       const qs = chipsQuery(nextChips);
@@ -129,38 +148,38 @@ export function ChatWorkspaceApp({
     [navigateWithChips, threads.activeThreadId],
   );
 
+  const toggleRef = useCallback(
+    (ref: KnowledgeRef) => {
+      if (chips.some((c) => c.id === ref.id)) {
+        syncUrl(chips.filter((c) => c.id !== ref.id));
+        return;
+      }
+      const withoutSame =
+        ref.level === 'article'
+          ? chips
+          : chips.filter(
+              (c) => !(c.level === 'module' && c.moduleKey === ref.moduleKey),
+            );
+      syncUrl([...withoutSame, ref]);
+    },
+    [chips, syncUrl],
+  );
+
   const context = useMemo(
     () => buildDocContext(chips, summariesUrl, threads.activeThreadId),
     [chips, summariesUrl, threads.activeThreadId],
   );
 
-  const toggleModule = (folder: string, title: string, domainId: string) => {
-    const id = `module:${folder}`;
-    if (chips.some((c) => c.id === id)) {
-      syncUrl(chips.filter((c) => c.id !== id));
-      return;
-    }
-    syncUrl([
-      ...chips.filter((c) => c.level !== 'module' || c.moduleKey !== folder),
-      {
-        id,
-        level: 'module' as const,
-        moduleKey: folder,
-        domainId,
-        title,
-        scope: 'module' as const,
-      },
-    ]);
-  };
-
   const handleNewThread = async () => {
-    const primary = chips.find((c) => c.moduleKey);
+    const primary =
+      chips.find((c) => c.level === 'article') ??
+      chips.find((c) => c.moduleKey);
     const thread = await threads.createThread({
       title: primary?.title || '新对话',
       moduleKey: primary?.moduleKey,
-      pagePath: primary?.pagePath || (primary?.moduleKey
-        ? `/${primary.moduleKey}/README.md`
-        : undefined),
+      pagePath:
+        primary?.pagePath ||
+        (primary?.moduleKey ? `/${primary.moduleKey}/README.md` : undefined),
     });
     navigateWithChips(`/t/${thread.id}`, chips);
   };
@@ -179,7 +198,7 @@ export function ChatWorkspaceApp({
   };
 
   return (
-    <ChatUiProvider defaultMode="fullscreen">
+    <>
       <ChatWorkspace
         preset="siteFull"
         emptyTitle={emptyTitle}
@@ -216,32 +235,13 @@ export function ChatWorkspaceApp({
           />
         }
         knowledgePanelContent={
-          <div className="workspace-panel">
-            <div className="workspace-panel__head">
-              <strong>知识目录</strong>
-            </div>
-            <ul className="workspace-kb-list">
-              {modules.map((mod) => {
-                const active = chips.some(
-                  (c) => c.moduleKey === mod.folder && c.level === 'module',
-                );
-                return (
-                  <li key={`${mod.domainId}-${mod.folder}`}>
-                    <button
-                      type="button"
-                      className={active ? 'is-active' : undefined}
-                      onClick={() =>
-                        toggleModule(mod.folder, mod.title, mod.domainId)
-                      }
-                    >
-                      <span>{mod.title}</span>
-                      <small>{mod.domainTitle}</small>
-                    </button>
-                  </li>
-                );
-              })}
-            </ul>
-          </div>
+          <KnowledgePanel
+            modules={modules}
+            articles={articleIndex.articles}
+            chips={chips}
+            loadingArticles={articleIndex.loading}
+            onToggle={toggleRef}
+          />
         }
         main={
           <div className="workspace-main-chat">
@@ -256,6 +256,26 @@ export function ChatWorkspaceApp({
           </div>
         }
       />
+      <KnowledgeMentionMenu
+        open={mention.open}
+        query={mention.query}
+        hits={mentionHits}
+        onClose={closeMention}
+        onSelect={(ref) => {
+          toggleRef(ref);
+          closeMention();
+        }}
+      />
+    </>
+  );
+}
+
+export function ChatWorkspaceApp(props: ChatWorkspaceAppProps) {
+  return (
+    <ChatUiProvider defaultMode="fullscreen">
+      <KnowledgeUiProvider>
+        <WorkspaceInner {...props} />
+      </KnowledgeUiProvider>
     </ChatUiProvider>
   );
 }

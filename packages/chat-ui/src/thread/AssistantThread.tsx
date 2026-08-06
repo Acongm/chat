@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, type FormEvent } from 'react';
 import {
   ActionBarPrimitive,
   ComposerPrimitive,
@@ -17,6 +17,7 @@ import {
   insertChatTag,
   type ChatTagKey,
 } from '@acongm/agent-session-sdk';
+import { useKnowledgeUi } from '../knowledge/KnowledgeUiContext';
 
 function AssistantMarkdown() {
   return (
@@ -102,16 +103,31 @@ function AssistantMessage() {
 
 function Composer() {
   const aui = useAui();
+  const { openMention, setMentionQuery, closeMention, mention } =
+    useKnowledgeUi();
 
   const applyTag = (key: ChatTagKey) => {
     const current = aui.composer().getState().text;
     aui.composer().setText(insertChatTag(current, key));
   };
 
+  const onInputChange = (event: FormEvent<HTMLTextAreaElement>) => {
+    const value = event.currentTarget.value;
+    const match = /(^|\s)@([^\s@]*)$/.exec(value);
+    if (match) {
+      setMentionQuery(match[2] ?? '');
+    } else if (mention.open) {
+      closeMention();
+    }
+  };
+
   return (
     <ComposerPrimitive.Root className="acongm-aui-composer">
       <div className="acongm-aui-composer__topline">
         <div className="acongm-chat-quick-tags" aria-label="提问快捷选项">
+          <button type="button" onClick={() => openMention('')}>
+            @ 引用
+          </button>
           {CHAT_V1_TAGS.map((tag) => (
             <button key={tag.key} type="button" onClick={() => applyTag(tag.key)}>
               {tag.label}
@@ -129,8 +145,9 @@ function Composer() {
       <div className="acongm-aui-composer__box">
         <ComposerPrimitive.Input
           rows={2}
-          placeholder="结合文档提问…"
+          placeholder="结合文档提问，输入 @ 引用知识…"
           className="acongm-aui-composer__input"
+          onChange={onInputChange}
         />
         <ThreadPrimitive.If running={false}>
           <ComposerPrimitive.Send className="acongm-aui-send" title="发送">
