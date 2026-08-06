@@ -7,14 +7,11 @@ import {
   ChatUiProvider,
   ChatWorkspace,
   KnowledgeMentionMenu,
-  KnowledgePanel,
-  KnowledgeUiProvider,
   ThreadSidebar,
   useKnowledgeUi,
   type DocChatContext,
 } from '@acongm/chat-ui';
 import {
-  listCatalogModules,
   resolveChatV1Context,
   resolveKnowledgeFromUrl,
   searchKnowledgeCatalog,
@@ -24,6 +21,7 @@ import {
 import { useChatThreads } from '@/lib/use-chat-threads';
 import { useArticleIndex } from '@/lib/use-article-index';
 import { ChatAuthSlot } from '@/components/chat-auth-slot';
+import { ChatSettingsSlot } from '@/components/chat-settings-slot';
 
 export type ChatWorkspaceAppProps = {
   registry: DocModulesRegistry;
@@ -80,6 +78,44 @@ function chipsQuery(chips: KnowledgeRef[]): string {
   return qs ? `?${qs}` : '';
 }
 
+function MentionOverlay({
+  registry,
+  isolation,
+  summariesUrl,
+}: {
+  registry: DocModulesRegistry;
+  isolation: ChatWorkspaceAppProps['isolation'];
+  summariesUrl: string;
+}) {
+  const { mention, closeMention, toggleChip } = useKnowledgeUi();
+  const articleIndex = useArticleIndex(summariesUrl);
+  const mentionHits = useMemo(
+    () =>
+      searchKnowledgeCatalog({
+        registry,
+        isolation,
+        articles: articleIndex.articles,
+        query: mention.query,
+        limit: 16,
+      }),
+    [registry, isolation, articleIndex.articles, mention.query],
+  );
+
+  return (
+    <KnowledgeMentionMenu
+      open={mention.open}
+      query={mention.query}
+      source={mention.source}
+      hits={mentionHits}
+      onClose={closeMention}
+      onSelect={(ref) => {
+        toggleChip(ref);
+        closeMention();
+      }}
+    />
+  );
+}
+
 function WorkspaceInner({
   registry,
   isolation,
@@ -92,8 +128,6 @@ function WorkspaceInner({
   const searchParams = useSearchParams();
   const router = useRouter();
   const [accessToken, setAccessToken] = useState<string | null>(null);
-  const { mention, closeMention } = useKnowledgeUi();
-  const articleIndex = useArticleIndex(summariesUrl);
 
   const initialChips = useMemo(
     () =>
@@ -107,27 +141,11 @@ function WorkspaceInner({
   );
 
   const [chips, setChips] = useState<KnowledgeRef[]>(initialChips);
-  const modules = useMemo(
-    () => listCatalogModules(registry, isolation),
-    [registry, isolation],
-  );
 
   const threads = useChatThreads({
     accessToken,
     initialThreadId,
   });
-
-  const mentionHits = useMemo(
-    () =>
-      searchKnowledgeCatalog({
-        registry,
-        isolation,
-        articles: articleIndex.articles,
-        query: mention.query,
-        limit: 16,
-      }),
-    [registry, isolation, articleIndex.articles, mention.query],
-  );
 
   const navigateWithChips = useCallback(
     (path: string, nextChips: KnowledgeRef[]) => {
@@ -146,23 +164,6 @@ function WorkspaceInner({
       navigateWithChips(path, next);
     },
     [navigateWithChips, threads.activeThreadId],
-  );
-
-  const toggleRef = useCallback(
-    (ref: KnowledgeRef) => {
-      if (chips.some((c) => c.id === ref.id)) {
-        syncUrl(chips.filter((c) => c.id !== ref.id));
-        return;
-      }
-      const withoutSame =
-        ref.level === 'article'
-          ? chips
-          : chips.filter(
-              (c) => !(c.level === 'module' && c.moduleKey === ref.moduleKey),
-            );
-      syncUrl([...withoutSame, ref]);
-    },
-    [chips, syncUrl],
   );
 
   const context = useMemo(
@@ -198,84 +199,65 @@ function WorkspaceInner({
   };
 
   return (
-    <>
-      <ChatWorkspace
-        preset="siteFull"
-        emptyTitle={emptyTitle}
-        contextChips={chips}
-        onContextChipsChange={syncUrl}
-        threadSidebarContent={
-          <ThreadSidebar
-            threads={threads.threads}
-            activeThreadId={threads.activeThreadId}
-            loading={threads.loading}
-            error={threads.error}
-            portalHref={portalBase}
-            authSlot={
-              <ChatAuthSlot
-                apiBase={apiBase}
-                onAccessTokenChange={setAccessToken}
-                onClaimed={() => {
-                  void threads.refresh();
-                }}
-              />
-            }
-            onNewThread={() => {
-              void handleNewThread();
-            }}
-            onSelectThread={(id) => {
-              void handleSelectThread(id);
-            }}
-            onDeleteThread={(id) => {
-              void handleDeleteThread(id);
-            }}
-            onRefresh={() => {
-              void threads.refresh();
-            }}
-          />
-        }
-        knowledgePanelContent={
-          <KnowledgePanel
-            modules={modules}
-            articles={articleIndex.articles}
-            chips={chips}
-            loadingArticles={articleIndex.loading}
-            onToggle={toggleRef}
-          />
-        }
-        main={
-          <div className="workspace-main-chat">
-            <ChatFullscreen
-              key={threads.activeThreadId || 'new'}
-              context={context}
-              forceOpen
-              seedMessages={
-                threads.activeThreadId ? threads.seedMessages : null
-              }
+    <ChatWorkspace
+      preset="siteFocus"
+      emptyTitle={emptyTitle}
+      contextChips={chips}
+      onContextChipsChange={syncUrl}
+      threadSidebarContent={
+        <ThreadSidebar
+          threads={threads.threads}
+          activeThreadId={threads.activeThreadId}
+          loading={threads.loading}
+          error={threads.error}
+          portalHref={portalBase}
+          authSlot={
+            <ChatAuthSlot
+              apiBase={apiBase}
+              onAccessTokenChange={setAccessToken}
+              onClaimed={() => {
+                void threads.refresh();
+              }}
             />
-          </div>
-        }
-      />
-      <KnowledgeMentionMenu
-        open={mention.open}
-        query={mention.query}
-        hits={mentionHits}
-        onClose={closeMention}
-        onSelect={(ref) => {
-          toggleRef(ref);
-          closeMention();
-        }}
-      />
-    </>
+          }
+          settingsSlot={<ChatSettingsSlot />}
+          onNewThread={() => {
+            void handleNewThread();
+          }}
+          onSelectThread={(id) => {
+            void handleSelectThread(id);
+          }}
+          onDeleteThread={(id) => {
+            void handleDeleteThread(id);
+          }}
+          onRefresh={() => {
+            void threads.refresh();
+          }}
+        />
+      }
+      main={
+        <ChatFullscreen
+          key={threads.activeThreadId || 'new'}
+          context={context}
+          forceOpen
+          seedMessages={threads.activeThreadId ? threads.seedMessages : null}
+        />
+      }
+      overlay={
+        <MentionOverlay
+          registry={registry}
+          isolation={isolation}
+          summariesUrl={summariesUrl}
+        />
+      }
+    />
   );
 }
 
 export function ChatWorkspaceApp(props: ChatWorkspaceAppProps) {
   return (
     <ChatUiProvider defaultMode="fullscreen">
-      <KnowledgeUiProvider>
-        <WorkspaceInner {...props} />
-      </KnowledgeUiProvider>
+      <WorkspaceInner {...props} />
     </ChatUiProvider>
   );
 }

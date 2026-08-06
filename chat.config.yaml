@@ -28,8 +28,8 @@ chat:
   maxContextChips: 5
 
 ui:
-  layoutPreset: siteFull
-  emptyStateTitle: "我们从哪开始？"
+  layoutPreset: siteFocus
+  emptyStateTitle: "有什么可以帮忙的？"
   defaultPanels:
     threadSidebar: true
-    knowledgePanel: auto
+    knowledgePanel: false
