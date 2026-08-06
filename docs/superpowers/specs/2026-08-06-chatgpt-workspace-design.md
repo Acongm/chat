@@ -1,402 +1,357 @@
 # Chat 站 ChatGPT 式工作台 — 设计规格
 
-> 状态：待评审  
+> 状态：待评审（v2 — portal 统一源码 + 可配置三栏 + 移动优先）  
 > 日期：2026-08-06  
-> 范围：`Acongm/chat` 入口与主界面重做
+> 范围：以 **portal 包为唯一实现源**，chat 仓为薄壳部署；主界面重做
+
+## 0. v2 修订要点（相对 v1）
+
+| 原则 | 说明 |
+| --- | --- |
+| **代码来自 portal** | 聊天 UI、知识目录、context 解析、移动端布局**全部在 portal `packages/` 实现**；chat 仓不再复制 packages |
+| **统一模块处理** | 新增 `@acongm/kb-catalog`，portal / chat / 未来 npm 消费方共用同一套 `doc-modules` + `KnowledgeRef` + resolver |
+| **三栏可配置** | `ChatWorkspace` 通过 preset / props 控制左（会话）、中（对话）、右（知识）是否挂载，适配多场景 |
+| **移动优先在包内** | 移动端 panel 策略（bottom sheet / fullscreen overlay）在 `@acongm/chat-ui` 统一实现，优于 portal 文档页内嵌 drawer；portal 后续可升级引用 |
+
+---
 
 ## 1. 背景与目标
 
 ### 现状
 
-- 首页 `/` 为**模块卡片目录**，必须先选模块才能进入 `/c/{moduleKey}/...` 聊天。
-- 聊天 UI 基于 `@acongm/chat-ui` 的 `ChatFullscreen`，带站点 header，与 ChatGPT 极简入口差异大。
-- Threads API、auth-client 已存在于平台，但 chat 站尚未接入登录与跨设备会话。
+- chat 首页为模块卡片目录，须先选模块再进入 `/c/{moduleKey}/...`。
+- **chat 仓从 portal 复制了整套 packages**，双份维护易漂移。
+- portal 移动端 Chat 为文档页内 **rc-drawer**（FAB + 侧栏/底部 sheet），受 Fumadocs 布局挤压。
+- Threads API、auth-client 已存在，chat 站尚未接入。
 
 ### 目标
 
-1. **入口与主界面**对齐 [chatgpt.com](https://chatgpt.com)：居中欢迎语 + 主输入框，无强制选模块。
-2. **知识上下文**为可选辅助（类 Cursor 项目目录）：领域 / 模块 / 文章三级均可独立挂载，可有可无。
-3. **知识选取方式**（组合 C）：
-   - 右侧可折叠知识树面板（浏览勾选）
-   - 输入框 `@` 快速检索（与树操作同步）
-   - 选中项统一显示为 **context chips**（可移除）
-4. **会话能力**（完整版 C）：
-   - 左侧栏：会话列表、新建对话、登录态
-   - 登录后 Threads 跨设备同步；匿名 `x-client-id` + OAuth 认领
+1. 入口对齐 ChatGPT：居中欢迎语 + 主输入框，无强制选模块。
+2. 知识上下文为可选辅助（类 Cursor 项目目录）：领域 / 模块 / 文章三级可选。
+3. 知识选取：右侧树 + 输入框 `@`，同步为 **context chips**。
+4. 完整会话：左侧历史 + 登录跨设备同步（Threads + OAuth claim）。
+5. **实现统一在 portal packages**，chat 仅部署与 BFF。
 
-### 非目标（本阶段不做）
+### 非目标
 
-- DocHub 编辑能力
-- 多模型切换 UI（沿用 API 默认 provider）
-- 语音输入（可预留按钮占位）
-- 替换 portal 内嵌 ChatDrawer（保持独立，仅深链协议对齐）
+- DocHub、多模型切换、语音输入
+- **在 chat 仓重复实现 packages**
 
 ---
 
-## 2. 方案对比
+## 2. 仓库与包边界（portal 为源）
 
-| 方案 | 描述 | 优点 | 缺点 |
+### 2.1 职责划分
+
+```
+portal/packages/              ← 唯一实现源（将来发 npm）
+├── kb-types/                 契约（已有）
+├── kb-catalog/               ★ 新建：doc-modules、KnowledgeRef、resolver、URL
+├── agent-session-sdk/        API 客户端（已有）
+├── chat-ui/                  工作台、三栏布局、移动 panel、Composer、知识树 UI
+├── ui-theme/                 tokens（已有）
+└── assistant-ui-theme/       assistant-ui 皮肤（已有）
+
+chat/apps/web/                ← 薄壳：路由、BFF、env、chat.config.yaml
+portal/apps/web/              ← DocsChatShell（embed preset）
+```
+
+### 2.2 chat 仓消费 portal 包
+
+**阶段 1**：pnpm git dependency 或 submodule 引用 portal packages（删除 chat 内 `packages/*`）。
+
+**阶段 2**：发布 `@acongm/chat-ui`、`@acongm/kb-catalog` 等到 npm，版本对齐。
+
+### 2.3 `@acongm/kb-catalog`（统一模块处理）
+
+| 导出 | 职责 |
+| --- | --- |
+| `loadDocModules(config?)` | registry + isolation 白名单 |
+| `KnowledgeRef` / `KnowledgeLevel` | 三级可选引用 |
+| `resolveKnowledgeFromUrl(query)` | URL → chips |
+| `buildChatSiteUrl(pagePath)` | portal 深链（从 portal `chat-site-link` 迁入） |
+| `resolveChatV1Context(refs[])` | 多 chip → `ChatV1Context` |
+| `searchKnowledgeCatalog(q)` | `@` 与树共用检索 |
+| `suggestKnowledgeFromText(text)` | P1 本地 summaries 匹配 |
+
+合并 portal `modules.registry.ts` 与 chat `module-catalog.ts`，**单一实现**。
+
+---
+
+## 3. 可配置三栏布局
+
+### 3.1 `ChatWorkspace` API（`@acongm/chat-ui`）
+
+```typescript
+type PanelMode = false | true | 'auto' | React.ReactNode;
+
+type ChatWorkspaceSlots = {
+  threadSidebar?: PanelMode;   // 左：会话 + 登录
+  knowledgePanel?: PanelMode;  // 右：知识树
+  main?: React.ReactNode;      // 中：对话区
+};
+
+type ChatWorkspaceMobile = {
+  threadSidebar: 'sheet' | 'fullscreen' | 'hidden';
+  knowledgePanel: 'sheet' | 'fullscreen' | 'hidden';
+  showPanelToggles?: boolean;  // 底部 [会话][知识] 图标
+};
+
+type ChatWorkspaceProps = {
+  preset?: ChatLayoutPreset;
+  slots?: ChatWorkspaceSlots;
+  mobile?: ChatWorkspaceMobile;
+  contextChips?: KnowledgeRef[];
+  onContextChipsChange?: (refs: KnowledgeRef[]) => void;
+  threadId?: string;
+  onThreadChange?: (id: string | null) => void;
+};
+```
+
+### 3.2 场景预设
+
+| Preset | threadSidebar | knowledgePanel | 使用方 |
 | --- | --- | --- | --- |
-| **A. 单页巨石组件** | 一个 `ChatWorkspace.tsx` 承载三栏 + 全部逻辑 | 上线快 | 难测、难复用、与 portal chat-ui 分叉 |
-| **B. App 层组装** | `chat-ui` 提供通用 Thread/Composer；`apps/web` 组装三栏与知识树 | 边界清晰、可测 | 需拆分现有 `ChatFullscreen` |
-| **C. 扩展 chat-ui 全家桶** | 在 `chat-ui` 内新建 `ChatWorkspace` 含知识树 | 包内一致 | 知识树与 `doc-modules.json` 强耦合 portal 域，不应进通用包 |
+| `embed` | `false` | `false` | portal 文档内 FAB + Drawer |
+| `embedWithContext` | `false` | `'auto'` | portal 跳转全屏（仅知识辅助） |
+| `siteFull` | `true` | `'auto'` | chat.acongm.com 默认 |
+| `siteFocus` | `true` | `false` | 对话 + 历史，知识仅 `@` |
+| `siteKbBrowse` | `false` | `true` | 知识浏览为主 |
+| `mainOnly` | `false` | `false` | 极简单栏 |
 
-**推荐：方案 B**
+`'auto'`：桌面显示列；移动降为 sheet（见 §4）。
 
-- `@acongm/chat-ui`：ChatGPT 式 **Thread 区 + Composer + chips 槽位**（与知识来源无关）
-- `apps/web`：**三栏布局、知识树、@ 检索、auth、threads BFF、URL 同步**
-- 与现有 `DocsChatShell`（portal 抽屉）共存，共享底层 `DocChatRuntimeProvider` / adapter
-
----
-
-## 3. 信息架构与路由
-
-### 3.1 布局（桌面）
+### 3.3 桌面布局（`siteFull`）
 
 ```
 ┌──────────────┬────────────────────────────────────┬──────────────┐
-│ 会话侧栏      │           主对话区                  │ 知识树（可折叠）│
-│              │                                    │              │
-│ [+ 新对话]    │      「我们从哪开始？」              │ ▼ 前端核心    │
-│              │                                    │   ▼ react    │
-│ · 会话标题 1  │      [chip] [chip]  （可选）        │     · react16│
-│ · 会话标题 2  │      ┌─────────────────────────┐   │   ▼ vue      │
-│ · …          │      │  输入消息…  @ 引用知识    │   │              │
-│              │      └─────────────────────────┘   │              │
-│ ─────────    │                                    │              │
-│ [登录/头像]   │                                    │              │
+│ 会话 [可关]   │           主对话区                  │ 知识树 [可关] │
+│ [+ 新对话]    │      「我们从哪开始？」              │ ▼ 领域→模块→文│
+│ · 会话…      │      [chip] [chip]                   │              │
+│ [登录]       │      ┌─────────────────────────┐   │              │
+│              │      │  输入…  @               │   │              │
 └──────────────┴────────────────────────────────────┴──────────────┘
 ```
 
-### 3.2 路由
-
-| 路径 | 行为 |
-| --- | --- |
-| `/` | 主工作台；无 `threadId` 时展示新对话空态 |
-| `/t/[threadId]` | 加载并恢复指定会话（消息 + 已保存的 context chips） |
-| `/c/[moduleKey]/[[...slug]]` | **301/客户端 redirect** → `/?module=…&slug=…`（兼容 portal 深链） |
-
-### 3.3 URL 查询参数（知识上下文，均可选）
-
-| 参数 | 含义 | 示例 |
-| --- | --- | --- |
-| `domain` | 领域 id（仅作分组/过滤提示，不单独发 API） | `domain=core` |
-| `module` | 模块 folder | `module=react` |
-| `slug` | 文章路径（不含扩展名） | `slug=react16` |
-| `title` | 展示标题 | `title=React%2016` |
-| `scope` | `module` \| `article` | `scope=article` |
-| `thread` | 打开已有会话（与 `/t/` 二选一，优先 path） | `thread=uuid` |
-
-**portal 深链映射**（已由 portal `buildChatSiteUrl` 生成）：
-
-```
-https://chat.acongm.com/?module=interview-prep&title=面试准备
-https://chat.acongm.com/?module=react&slug=react16&title=React+16
-```
-
-旧路径 `/c/react/react16` 重定向到上述 query 形式。
+列数 1–3 随 slots 动态计算；折叠状态 `localStorage` 记忆。
 
 ---
 
-## 4. 核心概念
+## 4. 移动端方案（包内统一，便于 npm）
 
-### 4.1 KnowledgeRef（知识引用）
+### 4.1 portal 现状问题
 
-可选辅助上下文单元，三级之一：
+- Drawer 与文档 TOC/侧栏争宽度。
+- 断点散落 `ChatDrawer`（1180/768），未覆盖多 panel。
+- 键盘弹出易遮挡 composer。
+
+### 4.2 `ChatPanelHost`（chat-ui 内）
+
+| 能力 | 实现 |
+| --- | --- |
+| 主对话全屏 | 移动默认单列 |
+| 侧栏 → Sheet | 统一 `ChatBottomSheet`，拖拽把手 |
+| 底部工具条 | `[会话] [知识] [新建]` |
+| Composer 安全区 | `safe-area-inset` + `visualViewport` 上推 |
+| 断点 | `useChatBreakpoints()`：`compact` <768 / `medium` <1180 / `wide` ≥1180 |
+
+### 4.3 portal 迁移
+
+- 短期：portal 保持 `DocsChatShell`（`preset: embed`）。
+- 中期：portal 移动改用同一 `ChatBottomSheet` + composer 键盘逻辑。
+- 长期：废弃 portal 内重复断点 CSS。
+
+---
+
+## 5. 路由与 URL
+
+| 路径 | 行为 |
+| --- | --- |
+| `/` | 工作台，`preset` 由 `chat.config.yaml` 决定（默认 `siteFull`） |
+| `/t/[threadId]` | 恢复会话 |
+| `/c/[moduleKey]/[[...slug]]` | redirect → `/?module=&slug=` |
+
+| 参数 | 含义 |
+| --- | --- |
+| `module` / `slug` / `title` / `scope` | 预填 knowledge chips（均可选） |
+| `layout` | 覆盖 preset：`full` \| `focus` \| `main`（可选） |
+
+---
+
+## 6. 核心概念
+
+### 6.1 KnowledgeRef
 
 ```typescript
-type KnowledgeLevel = 'domain' | 'module' | 'article';
-
 type KnowledgeRef = {
-  id: string;              // 稳定 id，如 "module:react" | "article:/react/react16.md"
-  level: KnowledgeLevel;
+  id: string;
+  level: 'domain' | 'module' | 'article';
   domainId?: string;
-  moduleKey?: string;      // doc-modules folder
-  pagePath?: string;       // legacy pagePath，article 级必填
-  title: string;           // chip 展示
+  moduleKey?: string;
+  pagePath?: string;
+  title: string;
   scope?: 'module' | 'article';
 };
 ```
 
-**规则：**
+- 0 chip → 通用对话（`moduleKey: '_general'`）
+- 多 chip → `resolveChatV1Context` 合并（article > module > domain）
+- 自动匹配仅建议 chip，不阻止发送
 
-- 0 个 chip → **通用对话**（见 4.3）
-- 允许多个 chip；发送时由 **ContextResolver** 合并（见 4.4）
-- chips 与 thread 绑定持久化（`CreateChatThreadRequest` + thread metadata 扩展）
+### 6.2 与 Cursor 类比
 
-### 4.2 与 Cursor 的类比
-
-| Cursor | Chat 站 |
+| Cursor | Chat |
 | --- | --- |
-| 项目目录（可选打开） | 右侧知识树（默认折叠） |
-| @ 引用文件 | @ 引用领域/模块/文章 |
-| 已选文件标签 | context chips |
-| 无文件也能对话 | 无知识也能对话 |
-
-### 4.3 无知识时的 API 上下文
-
-`ChatV1Context` 字段在 API DTO 中为可选。无 chip 时使用**通用占位上下文**：
-
-```typescript
-const GENERAL_CONTEXT: ChatV1Context = {
-  scope: 'module',
-  pagePath: '/',
-  moduleKey: '_general',
-  title: '通用对话',
-  tags: [],
-  // 不传 content
-};
-```
-
-`historyMode: 'long'`，走 Threads 流式接口。
-
-> 若线上策略需要限制通用对话，可在 `chat.config.yaml` 增加 `chat.allowGeneralChat: false`，UI 仍展示入口但发送前提示挂载知识。
-
-### 4.4 多 chip 合并策略（发送前）
-
-1. 取**最具体**的 chip 作为 primary：`article` > `module` > `domain`
-2. `scope`：有 article → `article`；仅 module/domain → `module`
-3. `pagePath` / `moduleKey` / `title` 来自 primary
-4. 若有多个 article chip：并行拉取 summaries/content，**拼接**进 `context.content`（上限 8k 字符，与 portal 一致）
-5. `domain` 级 chip 仅用于 UI 过滤，不单独作为 API context（除非仅有 domain，则 scope=module + moduleKey 为空 + 在 tags 注明领域）
-
-### 4.5 对话自动匹配知识（辅助建议，非强制）
-
-三阶段实现：
-
-| 阶段 | 机制 | 用户体验 |
-| --- | --- | --- |
-| P1 | 本地 **summaries-v1** 标题模糊匹配 + 模块名关键词 | 首条用户消息后，输入框上方出现「建议引用：react / react16」可一键加 chip |
-| P2 | 调用 API **轻量分类**（新 endpoint 或 ChatV1 meta 事件） | 置信度 ≥ 0.7 自动加 chip；否则仅建议 |
-| P3 | 结合 thread 历史与多轮消歧 | 用户可点「不再自动建议」 |
-
-**原则：** 自动匹配**永不阻止发送**；仅增加/建议 chip，用户可删除。
+| 项目目录（可选） | 知识树（`knowledgePanel`，可关） |
+| @ 文件 | @ 知识 |
+| 标签 | context chips |
+| 无文件可聊 | 无知识可聊 |
 
 ---
 
-## 5. 组件架构
+## 7. 组件架构（均在 portal packages）
 
-### 5.1 `apps/web`（站点专属）
+### 7.1 `@acongm/kb-catalog`
 
-| 组件/模块 | 职责 |
+数据与纯函数：registry、resolver、URL、搜索、建议。
+
+### 7.2 `@acongm/chat-ui`
+
+| 组件 | 职责 |
 | --- | --- |
-| `ChatWorkspaceLayout` | 三栏响应式布局、侧栏折叠状态 |
-| `ThreadSidebar` | 会话列表、新建、删除、登录入口 |
-| `KnowledgePanel` | 右侧树：domain → module → article（懒加载文章列表） |
-| `KnowledgeMentionMenu` | Composer `@` 触发的模糊搜索浮层 |
-| `ContextChipBar` | chips 展示与移除（可被 chat-ui 复用） |
-| `useKnowledgeContext` | chips 状态、URL 同步、thread 持久化 |
-| `useChatThreads` | list/create/load/delete + auth header |
-| `useAuthSession` | 封装 `@acongm/auth-client` |
-| `resolveKnowledgeFromUrl` | 解析 query → 初始 chips |
-| `context-resolver.ts` | KnowledgeRef[] → ChatV1Context |
+| `ChatWorkspace` | 三栏 grid + preset + slots |
+| `ChatPanelHost` / `ChatBottomSheet` | 移动 panel |
+| `ChatEmptyState` | ChatGPT 空态 |
+| `ChatComposer` | 输入 + `@` 槽位 |
+| `ContextChipBar` | chips |
+| `KnowledgePanel` | 三级树（依赖 kb-catalog） |
+| `KnowledgeMentionMenu` | `@` 浮层 |
+| `ThreadSidebar` | 会话列表槽位（数据由宿主注入 hooks） |
+| `DocsChatShell` | 保留，`preset: embed` |
+| `createThreadChatModelAdapter` | Threads 流式 |
 
-### 5.2 `@acongm/chat-ui`（通用聊天内核）
+### 7.3 chat `apps/web`（薄壳）
 
-新增/改造：
-
-| 导出 | 说明 |
+| 模块 | 职责 |
 | --- | --- |
-| `ChatWorkspace` | 替代 `ChatFullscreen` 用于主站：消息区 + 空态 + composer 槽位 |
-| `ChatEmptyState` | 「我们从哪开始？」居中欢迎 |
-| `ChatComposer` | 支持 `onMentionTrigger`、`chipSlot`、`footerActions` |
-| `createThreadChatModelAdapter` | 基于 Threads `streamThreadMessage`，替代纯 ChatV1 短对话 |
-| 保留 `DocsChatShell` | portal 嵌入不变 |
+| `page.tsx` / `t/[id]/page.tsx` | 挂载 `ChatWorkspace preset=siteFull` |
+| `api/chat/threads/**` | BFF 代理 |
+| `api/ai/v1/chat/stream` | 已有 |
+| Auth 接线 | `@acongm/auth-client` + returnTo |
+| `chat.config.yaml` | preset 默认、isolation、domains |
 
-### 5.3 API BFF（`apps/web/app/api`）
-
-| 路由 | 上游 |
-| --- | --- |
-| `POST /api/ai/v1/chat/stream` | 已有，保留 |
-| `/api/chat/threads/**` | **新增** 代理至 `api.acongm.com`（转发 `authorization`、`x-client-id`） |
-| `GET /api/kb/articles` | 可选：按 module 列出文章标题（读 summaries-v1 或静态索引） |
-
-### 5.4 Auth
-
-环境变量（`apps/web/.env`）：
-
-```env
-NEXT_PUBLIC_SUPABASE_URL=...
-NEXT_PUBLIC_SUPABASE_ANON_KEY=...
-NEXT_PUBLIC_AUTH_URL=https://auth.acongm.com
-NEXT_PUBLIC_AUTH_COOKIE_DOMAIN=.acongm.com
-```
-
-- 未登录：匿名 threads（`x-client-id`）
-- 登录：跳转 `auth.acongm.com/login?returnTo=https://chat.acongm.com/t/{id}`
-- 回调后调用 threads claim（API 已支持 `claimThreads`）
+**不在 chat 仓新建** `components/workspace/*` 或 `lib/knowledge/*`（除非极薄的 Next 适配器）。
 
 ---
 
-## 6. 数据流
+## 8. 数据流（摘要）
 
-### 6.1 新建对话
-
-```
-用户打开 / → 空态
-  → 输入首条消息
-  → 若无 threadId：createChatThread({ title: 首条摘要, moduleKey, pagePath from chips })
-  → streamThreadMessage(threadId, { content, context: resolved })
-  → 导航到 /t/{threadId}
-  → 侧栏列表刷新
-```
-
-### 6.2 挂载知识后发送
-
-```
-用户从知识树或 @ 添加 chip
-  → ContextChipBar 更新
-  → useKnowledgeContext 同步 URL（replaceState，不刷新）
-  → 发送时 context-resolver 合并 → streamThreadMessage
-  → thread 记录更新 moduleKey/pagePath
-```
-
-### 6.3 从 portal 深链进入
-
-```
-portal「全屏对话」→ chat.acongm.com/?module=react&slug=react16&title=...
-  → resolveKnowledgeFromUrl → 预填 1 个 article chip
-  → 空态展示 chips，用户直接输入
-```
+1. 打开 `/` → `ChatWorkspace` + 空 chips → 首条消息 → `createChatThread` → `/t/{id}`。
+2. 树 / `@` 加 chip → `ContextChipBar` → URL `replaceState` → 发送时 `resolveChatV1Context`。
+3. portal 深链 `?module=&slug=` → `resolveKnowledgeFromUrl` → 预填 chips。
 
 ---
 
-## 7. 视觉与交互规范
-
-### 7.1 ChatGPT 对齐项
-
-- 深色/浅色跟随系统（沿用 `@acongm/ui-theme` tokens，新增 workspace 中性背景）
-- 主区垂直居中空态；有消息后消息区顶对齐、composer 贴底
-- 侧栏宽度 ~260px；知识树 ~280px；可拖拽调宽（P2）
-- 输入框圆角胶囊、单行起始、Shift+Enter 换行
-- 新建对话按钮在侧栏顶部
-
-### 7.2 知识树
-
-- 默认**折叠**右栏；工具栏图标（书本/文件夹）切换
-- 树节点：domain（不可单独成 chip，仅展开）→ module（可勾选）→ article（可勾选）
-- 勾选 = 添加 chip；取消勾选 = 移除对应 chip
-- 与 `@` 菜单共用 `KnowledgeCatalog` 数据源
-
-### 7.3 移动端
-
-- 单栏主对话；侧栏与知识树改为 **drawer**
-- chips 横向滚动
-
----
-
-## 8. 配置
-
-`chat.config.yaml` 扩展：
+## 9. 配置
 
 ```yaml
+# chat.config.yaml
+ui:
+  layoutPreset: siteFull          # 可被 URL ?layout= 覆盖
+  emptyStateTitle: "我们从哪开始？"
+  defaultPanels:
+    threadSidebar: true
+    knowledgePanel: auto          # auto = 桌面开、移动 sheet
 chat:
   allowGeneralChat: true
-  enableThinking: true
   historyMode: long
-  callSourcePrefix: chat-site
-  autoSuggestKnowledge: true   # P1 本地建议
   maxContextChips: 5
-ui:
-  emptyStateTitle: "我们从哪开始？"
-  showKnowledgePanel: true
+isolation:
+  enforceModuleBoundary: true
 ```
-
-隔离策略不变：`isolation.enforceModuleBoundary` 仅限制**可添加**的 module/article，不阻止进入站点。
 
 ---
 
-## 9. 迁移与兼容
+## 10. 迁移
 
 | 项 | 处理 |
 | --- | --- |
-| 首页模块网格 | 移除；由知识树取代 |
-| `/c/...` 路由 | middleware redirect 到 query 形式 |
-| `ChatSiteShell` | 废弃，由 `ChatWorkspaceLayout` 替代 |
-| portal `buildChatSiteUrl` | 改为生成 `/?module=&slug=`（portal 侧小改，可并行 PR） |
-| sessionStorage 单页 thread | 迁移到 Threads API；旧 key 一次性读取后废弃 |
+| chat `packages/*` | 删除，改依赖 portal |
+| chat 模块目录首页 | 移除 |
+| `ChatSiteShell` | 废弃 → `ChatWorkspace` |
+| portal `buildChatSiteUrl` | 迁至 `@acongm/kb-catalog`，portal re-export |
+| portal `modules.registry` | 迁入 kb-catalog |
 
 ---
 
-## 10. 实施分期
+## 11. 实施分期
 
-### Phase 1 — 外壳与通用对话（MVP 可见）
+### Phase 0 — 包统一（前置）
 
-- [ ] `ChatWorkspaceLayout` 三栏骨架 + ChatGPT 空态
-- [ ] `ChatWorkspace` + `ChatComposer`（无知识也可发）
-- [ ] Threads BFF + 侧栏列表 + `/t/[threadId]`
-- [ ] 废弃模块目录首页
+- [ ] portal 新建 `@acongm/kb-catalog`，合并 module 逻辑
+- [ ] chat 仓删除 packages 副本，改引用 portal
+- [ ] portal 发布/锁定依赖版本
 
-### Phase 2 — 知识上下文
+### Phase 1 — 工作台 MVP
 
-- [ ] `KnowledgeRef` + `ContextChipBar`
-- [ ] 右侧 `KnowledgePanel`（三级树）
-- [ ] Composer `@` mention 菜单
-- [ ] URL 参数同步 + `/c/` redirect
-- [ ] `context-resolver` 多 chip 合并
+- [ ] `ChatWorkspace` + `ChatPanelHost` + `useChatBreakpoints`
+- [ ] `preset: siteFull` / `mainOnly`；chat 薄壳接入
+- [ ] Threads BFF + `/t/[id]`
 
-### Phase 3 — Auth 与同步
+### Phase 2 — 知识与 chips
 
-- [ ] 接入 `@acongm/auth-client`
-- [ ] 登录/登出 UI
-- [ ] 匿名 thread claim
-- [ ] 跨设备列表一致
+- [ ] `KnowledgePanel` + `KnowledgeMentionMenu` + `ContextChipBar`（均在 chat-ui）
+- [ ] URL 同步 + `/c/` redirect
 
-### Phase 4 — 智能建议
+### Phase 3 — Auth
 
-- [ ] summaries 本地匹配建议 chip
-- [ ] 可选 API 分类 endpoint
-- [ ] 用户关闭自动建议偏好（localStorage）
+- [ ] ThreadSidebar 登录 + claim
 
-### Phase 5 — 打磨
+### Phase 4 — 智能建议 + portal 移动升级
 
-- [ ] 响应式 drawer
-- [ ] 侧栏宽度拖拽
-- [ ] portal 深链联调 + E2E
+- [ ] `suggestKnowledgeFromText`
+- [ ] portal `embed` 复用 `ChatBottomSheet`
+
+### Phase 5 — npm 发布
+
+- [ ] `@acongm/chat-ui` + `@acongm/kb-catalog` 发版文档
 
 ---
 
-## 11. 测试要点
+## 12. 测试要点
 
-- 无 chip 可创建 thread 并流式回复
-- URL `?module=react&slug=react16` 预填 chip 且可移除后继续聊
-- 知识树与 `@` 添加同一文章，chip 不重复
-- 多 chip 合并后 API context 符合 4.4 规则
-- 未登录创建 → 登录 → claim 后会话仍在侧栏
-- `/c/react/react16` redirect 后功能等价
-- `enforceModuleBoundary` + 白名单外模块无法添加 chip
+- 各 preset 下栏位正确显隐（含 `?layout=` 覆盖）
+- 移动：sheet 打开/关闭、键盘不挡 composer
+- portal 与 chat 同一 `KnowledgeRef` resolver 结果一致
+- 无 chip / 多 chip / URL 预填 / 白名单隔离
 
 ---
 
-## 12. 风险与对策
+## 13. 风险
 
 | 风险 | 对策 |
 | --- | --- |
-| 通用对话质量/成本 | `allowGeneralChat` 配置开关；限额沿用 API tier |
-| summaries 体积大 | 文章列表按 module 懒加载；@ 搜索 debounce |
-| auth 包跨仓依赖 | chat `package.json` 引用 `@acongm/auth-client`（npm/git）或 workspace copy |
-| chat-ui 膨胀 | 知识相关仅放 apps/web；chat-ui 只保留槽位型组件 |
+| 跨仓 git 依赖脆弱 | Phase 0 后尽快 npm |
+| chat-ui 包过大 | kb-catalog 纯逻辑独立；UI 按子路径 export |
+| portal 回归 | `DocsChatShell` embed preset 单测 + 视觉快照 |
 
 ---
 
-## 13. 开放问题（实现前确认）
+## 14. 开放问题
 
-1. **auth-client 依赖方式**：chat 仓 npm 安装 `@acongm/auth-client` 还是从 auth 仓 copy workspace？（建议 npm 发布或 git submodule，与 portal 一致）
-2. **thread title 生成**：首条用户消息截断 vs API 摘要（建议先截断 40 字）
-3. **P2 分类 API**：是否在 node-vercel-starter 新增 `POST /api/ai/v1/kb/suggest`？（可 Phase 4 再定）
+1. portal 包引用方式：git subtree vs npm workspace vs submodule？
+2. `KnowledgePanel` 文章列表数据源：summaries-v1 全量 vs 按 module 索引 API？
 
 ---
 
-## 附录：关键文件（计划变更）
+## 附录：关键文件（均在 portal）
 
 ```
-chat/apps/web/app/page.tsx                    # → ChatWorkspace 入口
-chat/apps/web/app/t/[threadId]/page.tsx       # 新建
-chat/apps/web/app/c/...                       # → redirect only
-chat/apps/web/components/workspace/*          # 新建三栏组件
-chat/apps/web/lib/knowledge/*                 # KnowledgeRef, resolver, catalog
-chat/apps/web/app/api/chat/threads/[...]/route.ts  # BFF
-chat/packages/chat-ui/src/ChatWorkspace.tsx   # 新建
-chat/packages/chat-ui/src/ChatComposer.tsx    # 新建/拆分
-chat/chat.config.yaml                         # 扩展 ui/chat 配置
+portal/packages/kb-catalog/src/*              # 新建
+portal/packages/chat-ui/src/workspace/*       # ChatWorkspace, PanelHost, Sheet
+portal/packages/chat-ui/src/knowledge/*       # Panel, MentionMenu, ChipBar
+portal/packages/chat-ui/src/hooks/useChatBreakpoints.ts
+
+chat/apps/web/app/page.tsx                    # 薄：import ChatWorkspace
+chat/apps/web/app/api/chat/threads/...        # BFF only
 ```
