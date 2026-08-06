@@ -29,6 +29,11 @@ export type { ChatBreakpoint } from './workspace/useChatBreakpoints';
 export { useChatBreakpoints } from './workspace/useChatBreakpoints';
 export type { ContextChipBarProps } from './knowledge/ContextChipBar';
 export { ContextChipBar } from './knowledge/ContextChipBar';
+export type { KnowledgePanelProps } from './knowledge/KnowledgePanel';
+export { KnowledgePanel } from './knowledge/KnowledgePanel';
+export type { KnowledgeMentionMenuProps } from './knowledge/KnowledgeMentionMenu';
+export { KnowledgeMentionMenu } from './knowledge/KnowledgeMentionMenu';
+export { KnowledgeUiProvider, useKnowledgeUi } from './knowledge/KnowledgeUiContext';
 export type { ThreadSidebarProps } from './workspace/ThreadSidebar';
 export { ThreadSidebar } from './workspace/ThreadSidebar';
 
