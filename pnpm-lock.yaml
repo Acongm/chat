@@ -23,6 +23,9 @@ importers:
       '@acongm/chat-ui':
         specifier: workspace:*
         version: link:../../packages/chat-ui
+      '@acongm/kb-catalog':
+        specifier: workspace:*
+        version: link:../../packages/kb-catalog
       '@acongm/kb-types':
         specifier: workspace:*
         version: link:../../packages/kb-types
@@ -95,6 +98,9 @@ importers:
       '@acongm/assistant-ui-theme':
         specifier: workspace:*
         version: link:../assistant-ui-theme
+      '@acongm/kb-catalog':
+        specifier: workspace:*
+        version: link:../kb-catalog
       '@acongm/kb-types':
         specifier: workspace:*
         version: link:../kb-types
@@ -129,6 +135,16 @@ importers:
       react-dom:
         specifier: ^19.2.0
         version: 19.2.8(react@19.2.8)
+      typescript:
+        specifier: ^5.9.2
+        version: 5.9.3
+
+  packages/kb-catalog:
+    dependencies:
+      '@acongm/kb-types':
+        specifier: workspace:*
+        version: link:../kb-types
+    devDependencies:
       typescript:
         specifier: ^5.9.2
         version: 5.9.3

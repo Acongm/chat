@@ -29,6 +29,7 @@
   "dependencies": {
     "@acongm/agent-session-sdk": "workspace:*",
     "@acongm/assistant-ui-theme": "workspace:*",
+    "@acongm/kb-catalog": "workspace:*",
     "@acongm/kb-types": "workspace:*",
     "@acongm/ui-theme": "workspace:*",
     "@assistant-ui/react": "^0.15.4",

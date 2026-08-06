@@ -42,9 +42,7 @@ export function resolveChatStreamUrl(configured?: string): string {
       hostname === '127.0.0.1' ||
       hostname === '[::1]';
     const isPreview = hostname.endsWith('.vercel.app');
-    if (isLocal || isPreview || hostname === 'chat.acongm.com') {
-      return DEFAULT_CHAT_STREAM_PROXY;
-    }
+    if (isLocal || isPreview) return DEFAULT_CHAT_STREAM_PROXY;
     if (hostname === 'www.acongm.com' || hostname === 'acongm.com') {
       return value || DEFAULT_CHAT_STREAM_UPSTREAM;
     }

@@ -7,10 +7,6 @@ export const CALL_SOURCES = {
   MODULE_PANEL: 'portal:module-panel',
   ARTICLE_PANEL_WEB: 'portal:article-panel:web',
   MODULE_PANEL_WEB: 'portal:module-panel:web',
-  CHAT_SITE_ARTICLE: 'chat-site:article',
-  CHAT_SITE_MODULE: 'chat-site:module',
-  CHAT_SITE_ARTICLE_WEB: 'chat-site:article:web',
-  CHAT_SITE_MODULE_WEB: 'chat-site:module:web',
 } as const;
 
 export function getClientId(): string {
@@ -38,17 +34,8 @@ export function getConversationId(pagePath: string): string {
 export function resolveCallSource(
   scope: 'article' | 'module',
   enableWebSearch = false,
-  prefix: 'portal' | 'chat-site' = 'portal',
 ): string {
   const isModule = scope === 'module';
-  if (prefix === 'chat-site') {
-    if (enableWebSearch) {
-      return isModule
-        ? CALL_SOURCES.CHAT_SITE_MODULE_WEB
-        : CALL_SOURCES.CHAT_SITE_ARTICLE_WEB;
-    }
-    return isModule ? CALL_SOURCES.CHAT_SITE_MODULE : CALL_SOURCES.CHAT_SITE_ARTICLE;
-  }
   if (enableWebSearch) {
     return isModule
       ? CALL_SOURCES.MODULE_PANEL_WEB
