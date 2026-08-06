@@ -1,0 +1,26 @@
+# chat.acongm.com 站点配置（与 portal 文档站解耦，可独立部署）
+
+domains:
+  chat: https://chat.acongm.com
+  portal: https://www.acongm.com
+  api: https://api.acongm.com
+
+kb:
+  # portal 构建产物；本地 dev 可覆盖为 http://localhost:3000/summaries-v1.json
+  summariesUrl: https://www.acongm.com/summaries-v1.json
+  modulesCatalogPath: config/doc-modules.json
+
+isolation:
+  # 开启后：对话 context 不得跨 moduleKey；URL 中非法模块返回 404
+  enforceModuleBoundary: true
+  # 默认回答范围：article=当前文章 | module=整个模块知识库
+  defaultScope: article
+  # 域白名单（doc-modules.json 的 domain.id）；空数组 = 全部域
+  allowedDomains: []
+  # 模块白名单（folder 名，如 react、webpack）；空数组 = 全部模块
+  allowedModules: []
+
+chat:
+  enableThinking: true
+  historyMode: long
+  callSourcePrefix: chat-site

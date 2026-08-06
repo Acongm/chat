@@ -1,0 +1,263 @@
+{
+  "domains": [
+    {
+      "id": "core",
+      "title": "前端核心",
+      "description": "语言基础、框架生态与设计模式",
+      "icon": "Code2",
+      "accent": "#3eaf7c",
+      "categories": [
+        {
+          "title": "语言基础",
+          "description": "JavaScript / TypeScript / CSS",
+          "modules": [
+            {
+              "folder": "JavaScript",
+              "title": "JavaScript",
+              "description": "类型、闭包、原型链与经典面试题",
+              "icon": "Braces",
+              "accent": "#f7df1e"
+            },
+            {
+              "folder": "TypeScript",
+              "title": "TypeScript",
+              "description": "类型系统与工程化实践",
+              "icon": "FileType",
+              "accent": "#3178c6"
+            },
+            {
+              "folder": "css",
+              "title": "CSS",
+              "description": "布局、动画与工程化样式方案",
+              "icon": "Palette",
+              "accent": "#264de4"
+            }
+          ]
+        },
+        {
+          "title": "框架与模式",
+          "description": "React / Vue / 设计模式",
+          "modules": [
+            {
+              "folder": "react",
+              "title": "React",
+              "description": "Hooks、渲染机制与版本演进",
+              "icon": "Atom",
+              "accent": "#61dafb"
+            },
+            {
+              "folder": "vue",
+              "title": "Vue",
+              "description": "响应式、编译与 Vue 2/3 对比",
+              "icon": "Component",
+              "accent": "#42b883"
+            },
+            {
+              "folder": "Pattern",
+              "title": "设计模式",
+              "description": "前端常见模式与实现示例",
+              "icon": "Shapes",
+              "accent": "#8b5cf6"
+            }
+          ]
+        }
+      ],
+      "nestedModules": []
+    },
+    {
+      "id": "engineering",
+      "title": "工程实践",
+      "description": "构建、Node、Git、性能与踩坑",
+      "icon": "Package",
+      "accent": "#0ea5e9",
+      "categories": [
+        {
+          "title": "构建与运行时",
+          "modules": [
+            {
+              "folder": "webpack",
+              "title": "Webpack",
+              "description": "打包原理、Vite 对比与安装指南",
+              "icon": "Package",
+              "accent": "#8dd6f9"
+            },
+            {
+              "folder": "node",
+              "title": "Node.js",
+              "description": "npm 生态与常用工具链",
+              "icon": "Server",
+              "accent": "#339933"
+            },
+            {
+              "folder": "git",
+              "title": "Git",
+              "description": "命令速查、提交规范与工作流",
+              "icon": "GitBranch",
+              "accent": "#f05032"
+            },
+            {
+              "folder": "performance",
+              "title": "性能优化",
+              "description": "加载、渲染与监控实战",
+              "icon": "Gauge",
+              "accent": "#f59e0b"
+            }
+          ]
+        },
+        {
+          "title": "问题排查",
+          "modules": [
+            {
+              "folder": "issue",
+              "title": "踩坑记录",
+              "description": "兼容性疑难杂症与解决方案",
+              "icon": "Bug",
+              "accent": "#ef4444"
+            }
+          ]
+        }
+      ],
+      "nestedModules": []
+    },
+    {
+      "id": "tools",
+      "title": "工具",
+      "description": "在线工具、软件推荐、工具函数与 AI 辅助",
+      "icon": "Wrench",
+      "accent": "#6366f1",
+      "categories": [
+        {
+          "title": "效率工具",
+          "modules": [
+            {
+              "folder": "online-tools",
+              "title": "在线工具",
+              "description": "书签脚本与常用网页工具",
+              "icon": "Wrench",
+              "accent": "#3eaf7c"
+            },
+            {
+              "folder": "software",
+              "title": "软件推荐",
+              "description": "跨平台软件与编辑器插件",
+              "icon": "AppWindow",
+              "accent": "#6366f1"
+            },
+            {
+              "folder": "ai",
+              "title": "AI 开发",
+              "description": "AI 相关实践与文档增强",
+              "icon": "Sparkles",
+              "accent": "#a855f7"
+            }
+          ]
+        }
+      ],
+      "nestedModules": [
+        {
+          "folder": "utils",
+          "title": "工具函数",
+          "description": "正则等常用工具函数片段",
+          "parent": "online-tools"
+        }
+      ]
+    },
+    {
+      "id": "career",
+      "title": "面试求职",
+      "description": "面试准备、题库、记录、简历与查漏补缺",
+      "icon": "GraduationCap",
+      "accent": "#14b8a6",
+      "categories": [
+        {
+          "title": "备战与题库",
+          "modules": [
+            {
+              "folder": "interview-prep",
+              "title": "面试准备",
+              "description": "项目与技术面复习矩阵",
+              "icon": "ClipboardList",
+              "accent": "#0ea5e9"
+            },
+            {
+              "folder": "theory",
+              "title": "面试题库",
+              "description": "岗位大纲与 Hard Mode 题目",
+              "icon": "GraduationCap",
+              "accent": "#14b8a6"
+            }
+          ]
+        },
+        {
+          "title": "记录与简历",
+          "modules": [
+            {
+              "folder": "interview",
+              "title": "面试记录",
+              "description": "真实面试题与复盘",
+              "icon": "MessageSquare",
+              "accent": "#64748b"
+            },
+            {
+              "folder": "job-description",
+              "title": "简历问答",
+              "description": "简历项目与问答大纲",
+              "icon": "FileUser",
+              "accent": "#78716c"
+            },
+            {
+              "folder": "mark",
+              "title": "技能提炼",
+              "description": "简历查漏补缺与知识点梳理",
+              "icon": "BookOpen",
+              "accent": "#ec4899"
+            }
+          ]
+        }
+      ],
+      "nestedModules": []
+    },
+    {
+      "id": "news",
+      "title": "资讯",
+      "description": "每日技术资讯与阅读摘要",
+      "icon": "Newspaper",
+      "accent": "#ec4899",
+      "categories": [
+        {
+          "title": "阅读",
+          "modules": [
+            {
+              "folder": "daily-news",
+              "title": "每日资讯",
+              "description": "技术资讯与阅读摘要",
+              "icon": "Newspaper",
+              "accent": "#f43f5e"
+            }
+          ]
+        }
+      ],
+      "nestedModules": []
+    },
+    {
+      "id": "yoga",
+      "title": "瑜伽学习",
+      "description": "体式、呼吸与练习计划（待扩充）",
+      "icon": "Flower2",
+      "accent": "#f472b6",
+      "hidden": true,
+      "categories": [],
+      "nestedModules": []
+    },
+    {
+      "id": "education",
+      "title": "小学教育",
+      "description": "学习资料与辅导笔记（待扩充）",
+      "icon": "School",
+      "accent": "#38bdf8",
+      "hidden": true,
+      "categories": [],
+      "nestedModules": []
+    }
+  ]
+}

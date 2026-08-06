@@ -1,0 +1,7 @@
+@import './tokens.css';
+
+/* Chat 壳层布局 token 消费层 — 具体组件样式在 @acongm/chat-ui */
+.acongm-chat-root {
+  font-family: var(--acongm-font-sans);
+  color: var(--acongm-text);
+}

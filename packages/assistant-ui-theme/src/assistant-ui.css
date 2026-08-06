@@ -1,0 +1,38 @@
+/**
+ * Map Codex / acongm tokens onto assistant-ui CSS variables.
+ * Host apps import: `@acongm/assistant-ui-theme/assistant-ui.css`
+ */
+@import './tokens.css';
+
+.acongm-aui-root,
+.aui-root,
+.acongm-chat-root {
+  --aui-background: var(--acongm-surface-1);
+  --aui-foreground: var(--acongm-text);
+  --aui-muted: var(--acongm-surface-2);
+  --aui-muted-foreground: var(--acongm-text-muted);
+  --aui-border: var(--acongm-border);
+  --aui-primary: var(--acongm-surface-ink);
+  --aui-primary-foreground: #ffffff;
+  --aui-accent: var(--acongm-accent-soft);
+  --aui-accent-foreground: var(--acongm-text);
+  --aui-destructive: var(--acongm-danger);
+  --aui-ring: var(--acongm-accent-hover);
+  --aui-radius: var(--acongm-radius-md);
+
+  color: var(--acongm-text);
+  font-family: var(--acongm-font-sans);
+}
+
+/* 仅面板容器铺底；勿给全屏 portal 根节点上色（会挡住正文） */
+.acongm-aui-root:not(.rc-drawer),
+.aui-root:not(.rc-drawer),
+.acongm-chat-root:not(.rc-drawer) {
+  background: var(--acongm-surface-0);
+}
+
+.acongm-aui-root code,
+.aui-root code,
+.acongm-chat-root code {
+  font-family: var(--acongm-font-mono);
+}

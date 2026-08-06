@@ -1,0 +1,26 @@
+{
+  "name": "@acongm/agent-session-sdk",
+  "version": "0.1.0",
+  "private": true,
+  "description": "ChatV1 session / stream / summary SDK shared by portal and chat",
+  "type": "module",
+  "sideEffects": false,
+  "exports": {
+    ".": {
+      "types": "./src/index.ts",
+      "default": "./src/index.ts"
+    }
+  },
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "files": ["src"],
+  "scripts": {
+    "types:check": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@acongm/kb-types": "workspace:*"
+  },
+  "devDependencies": {
+    "typescript": "^5.9.2"
+  }
+}

@@ -1,0 +1,26 @@
+{
+  "name": "@acongm/assistant-ui-theme",
+  "version": "0.1.0",
+  "private": true,
+  "description": "assistant-ui theming tokens (Codex) for portal / chat reuse",
+  "type": "module",
+  "sideEffects": ["**/*.css"],
+  "exports": {
+    ".": {
+      "types": "./src/index.ts",
+      "default": "./src/index.ts"
+    },
+    "./tokens.css": "./src/tokens.css",
+    "./assistant-ui.css": "./src/assistant-ui.css"
+  },
+  "files": ["src"],
+  "scripts": {
+    "types:check": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@acongm/ui-theme": "workspace:*"
+  },
+  "devDependencies": {
+    "typescript": "^5.9.2"
+  }
+}
