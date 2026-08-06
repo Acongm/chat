@@ -19,6 +19,17 @@ export { AssistantThread } from './thread/AssistantThread';
 export { DocChatRuntimeProvider } from './runtime/DocChatRuntimeProvider';
 export { createDocChatModelAdapter } from './runtime/createDocChatModelAdapter';
 
+export type { ChatWorkspaceProps } from './workspace/ChatWorkspace';
+export { ChatWorkspace } from './workspace/ChatWorkspace';
+export type { ChatEmptyStateProps } from './workspace/ChatEmptyState';
+export { ChatEmptyState } from './workspace/ChatEmptyState';
+export type { ChatLayoutPreset, PanelSlotMode } from './workspace/presets';
+export { resolveWorkspaceSlots } from './workspace/presets';
+export type { ChatBreakpoint } from './workspace/useChatBreakpoints';
+export { useChatBreakpoints } from './workspace/useChatBreakpoints';
+export type { ContextChipBarProps } from './knowledge/ContextChipBar';
+export { ContextChipBar } from './knowledge/ContextChipBar';
+
 // re-export session SDK for chat repo convenience
 export {
   streamChatV1,

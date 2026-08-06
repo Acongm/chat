@@ -56,8 +56,6 @@ export function createDocChatModelAdapter(
         enableThinking = true,
         maxTokens,
         historyMode = 'short',
-        defaultScope,
-        callSourcePrefix = 'portal',
       } = getContext();
 
       const lastUser = [...messages]
@@ -70,21 +68,16 @@ export function createDocChatModelAdapter(
       }
 
       const tagOptions = deriveTagOptions(question);
-      const scope =
-        question.includes('结合本模块，') || question.includes('结合当前文章，')
-          ? tagOptions.scope
-          : (defaultScope ?? tagOptions.scope);
       const callSource = resolveCallSource(
-        scope,
+        tagOptions.scope,
         tagOptions.enableWebSearch,
-        callSourcePrefix,
       );
 
       const events = await streamChatV1(
         {
           messages: modelHistory(toUiMessages(messages)),
           context: {
-            scope,
+            scope: tagOptions.scope,
             pagePath,
             moduleKey,
             title,

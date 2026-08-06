@@ -24,3 +24,12 @@ chat:
   enableThinking: true
   historyMode: long
   callSourcePrefix: chat-site
+  allowGeneralChat: true
+  maxContextChips: 5
+
+ui:
+  layoutPreset: siteFull
+  emptyStateTitle: "我们从哪开始？"
+  defaultPanels:
+    threadSidebar: true
+    knowledgePanel: auto

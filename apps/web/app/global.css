@@ -11,68 +11,104 @@
 body {
   margin: 0;
   min-height: 100vh;
-  background: var(--acongm-bg, #0b0f14);
-  color: var(--acongm-fg, #e8edf5);
+  background: var(--acongm-bg, #f7f7f8);
+  color: var(--acongm-fg, #0d0d0d);
 }
 
-.chat-site-layout {
+.workspace-loading {
+  display: grid;
+  place-items: center;
+  min-height: 100dvh;
+  opacity: 0.7;
+}
+
+.workspace-panel {
   display: flex;
   flex-direction: column;
-  min-height: 100vh;
+  gap: 0.75rem;
+  padding: 0.9rem 0.85rem;
+  height: 100%;
+  box-sizing: border-box;
 }
 
-.chat-site-header {
+.workspace-panel__head {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 1rem;
-  padding: 0.75rem 1.25rem;
-  border-bottom: 1px solid color-mix(in srgb, white 10%, transparent);
-  backdrop-filter: blur(8px);
+  gap: 0.5rem;
 }
 
-.chat-site-header a {
+.workspace-panel__new {
+  border: 1px solid color-mix(in srgb, currentColor 18%, transparent);
+  background: transparent;
+  border-radius: 999px;
+  padding: 0.25rem 0.7rem;
+  font-size: 0.8rem;
+  cursor: pointer;
+}
+
+.workspace-panel__hint {
+  margin: 0;
+  font-size: 0.8rem;
+  opacity: 0.65;
+  line-height: 1.4;
+}
+
+.workspace-panel__link {
   color: inherit;
-  text-decoration: none;
+  font-size: 0.85rem;
+  opacity: 0.8;
 }
 
-.chat-site-main {
+.workspace-kb-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  overflow: auto;
+  flex: 1;
+}
+
+.workspace-kb-list button {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.15rem;
+  text-align: left;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  padding: 0.55rem 0.45rem;
+  border-radius: 0.55rem;
+  cursor: pointer;
+}
+
+.workspace-kb-list button:hover,
+.workspace-kb-list button.is-active {
+  background: color-mix(in srgb, currentColor 8%, transparent);
+}
+
+.workspace-kb-list small {
+  opacity: 0.55;
+  font-size: 0.72rem;
+}
+
+.workspace-main-chat {
   flex: 1;
   min-height: 0;
+  display: flex;
+  flex-direction: column;
 }
 
-.module-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
-  gap: 1rem;
-  padding: 1.25rem;
+.workspace-main-chat .acongm-chat-fullscreen,
+.workspace-main-chat .acongm-chat-shell.is-fullscreen {
+  height: 100%;
+  min-height: 0;
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
 }
 
-.module-card {
-  display: block;
-  padding: 1rem;
-  border-radius: 1rem;
-  border: 1px solid color-mix(in srgb, white 12%, transparent);
-  background: color-mix(in srgb, white 4%, transparent);
-  text-decoration: none;
-  color: inherit;
-  transition: border-color 0.15s ease, transform 0.15s ease;
-}
-
-.module-card:hover {
-  border-color: color-mix(in srgb, #60a5fa 50%, transparent);
-  transform: translateY(-1px);
-}
-
-.isolation-badge {
-  font-size: 0.75rem;
-  padding: 0.2rem 0.55rem;
-  border-radius: 999px;
-  border: 1px solid color-mix(in srgb, #34d399 35%, transparent);
-  color: #6ee7b7;
-}
-
-.isolation-badge.is-off {
-  border-color: color-mix(in srgb, #fbbf24 35%, transparent);
-  color: #fcd34d;
+.workspace-main-chat .acongm-chat-shell__header {
+  display: none;
 }
