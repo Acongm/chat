@@ -4,14 +4,21 @@ export {
   getAuthBaseUrl,
   getOAuthLoginUrl,
   isAuthConfigured,
+  isSocialAuthProvider,
   signInWithGitHub,
+  signInWithGoogle,
+  signInWithOAuth,
+  signInWithPassword,
   signOut,
+  signUpWithPassword,
 } from './client';
 export type {
   AuthClientOptions,
   ClaimAnonymousThreadsInput,
   ClaimAnonymousThreadsResult,
+  EmailAuthResult,
   Session,
+  SocialAuthProvider,
   User,
 } from './client';
 export { createServerClient } from './server';
