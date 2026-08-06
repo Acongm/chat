@@ -18,6 +18,8 @@ PACKAGES=(
   ui-theme
   assistant-ui-theme
   chat-ui
+  auth-client
+  config
 )
 
 mkdir -p "$ROOT/packages"

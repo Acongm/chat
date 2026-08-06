@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useMemo, useState, type ReactNode } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import {
   ChatFullscreen,
@@ -17,6 +17,7 @@ import {
   type KnowledgeRef,
 } from '@acongm/kb-catalog';
 import { useChatThreads } from '@/lib/use-chat-threads';
+import { ChatAuthSlot } from '@/components/chat-auth-slot';
 
 export type ChatWorkspaceAppProps = {
   registry: DocModulesRegistry;
@@ -27,11 +28,9 @@ export type ChatWorkspaceAppProps = {
   summariesUrl: string;
   emptyTitle: string;
   portalBase: string;
+  apiBase: string;
   /** 来自 /t/[threadId] */
   initialThreadId?: string | null;
-  /** Auth 插槽（下一步接入） */
-  authSlot?: ReactNode;
-  accessToken?: string | null;
 };
 
 function buildDocContext(
@@ -82,12 +81,12 @@ export function ChatWorkspaceApp({
   summariesUrl,
   emptyTitle,
   portalBase,
+  apiBase,
   initialThreadId = null,
-  authSlot,
-  accessToken = null,
 }: ChatWorkspaceAppProps) {
   const searchParams = useSearchParams();
   const router = useRouter();
+  const [accessToken, setAccessToken] = useState<string | null>(null);
 
   const initialChips = useMemo(
     () =>
@@ -193,7 +192,15 @@ export function ChatWorkspaceApp({
             loading={threads.loading}
             error={threads.error}
             portalHref={portalBase}
-            authSlot={authSlot}
+            authSlot={
+              <ChatAuthSlot
+                apiBase={apiBase}
+                onAccessTokenChange={setAccessToken}
+                onClaimed={() => {
+                  void threads.refresh();
+                }}
+              />
+            }
             onNewThread={() => {
               void handleNewThread();
             }}

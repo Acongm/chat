@@ -16,6 +16,7 @@ export default function HomePage() {
         summariesUrl={config.kb.summariesUrl}
         emptyTitle="我们从哪开始？"
         portalBase={config.domains.portal}
+        apiBase={config.domains.api}
       />
     </Suspense>
   );

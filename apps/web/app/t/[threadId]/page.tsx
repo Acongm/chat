@@ -21,6 +21,7 @@ export default async function ThreadPage({ params }: PageProps) {
         summariesUrl={config.kb.summariesUrl}
         emptyTitle="我们从哪开始？"
         portalBase={config.domains.portal}
+        apiBase={config.domains.api}
         initialThreadId={decodeURIComponent(threadId)}
       />
     </Suspense>
