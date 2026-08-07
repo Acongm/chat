@@ -42,11 +42,7 @@ function buildDocContext(
   threadId?: string | null,
 ): Omit<
   DocChatContext,
-  | 'runtimeKey'
-  | 'ensureThread'
-  | 'accessToken'
-  | 'onThreadPersisted'
-  | 'threadsBaseUrl'
+  'runtimeKey' | 'ensureThread' | 'accessToken' | 'onThreadPersisted'
 > {
   const base = resolveChatV1Context(refs);
   return {
