@@ -282,6 +282,19 @@ html[data-theme='dark'] .acongm-workspace[data-preset='siteFull'] {
 
 .acongm-gpt-sidebar__auth .acongm-auth-user {
   width: 100%;
+  align-items: flex-start;
+}
+
+.acongm-gpt-sidebar__auth .acongm-auth-user__identity {
+  min-width: 0;
+}
+
+.acongm-gpt-sidebar__auth .acongm-auth-user .acongm-auth-btn {
+  width: auto;
+  flex-shrink: 0;
+  min-height: 32px;
+  padding: 0 0.65rem;
+  font-size: 0.75rem;
 }
 
 /* Thread / messages */

@@ -5,20 +5,32 @@ import { useAuthActions, useSession } from './hooks';
 export type AuthAccountButtonProps = {
   className?: string;
   /**
-   * nav：顶栏文字+图标；sidebar：侧栏；icon：仅图标；avatar：首字圆标（logo 位）
+   * nav：顶栏文字+图标；sidebar：侧栏；icon：仅图标；avatar：首字/头像圆标（logo 位）
    */
   variant?: 'nav' | 'sidebar' | 'icon' | 'avatar';
+  /** 退出登录后的本地清理（如清除会话草稿），在 signOut 之后调用 */
+  onSignedOut?: () => void;
 };
 
-function displayLabel(session: NonNullable<ReturnType<typeof useSession>['session']>) {
+type AuthSession = NonNullable<ReturnType<typeof useSession>['session']>;
+
+function displayLabel(session: AuthSession) {
   return (
     session.user.user_metadata?.display_name ||
     session.user.user_metadata?.full_name ||
+    session.user.user_metadata?.name ||
     session.user.user_metadata?.user_name ||
     session.user.user_metadata?.preferred_username ||
     session.user.email ||
     '已登录'
   );
+}
+
+function avatarUrl(session: AuthSession): string | null {
+  const meta = session.user.user_metadata ?? {};
+  const raw =
+    meta.avatar_url || meta.picture || meta.avatar || meta.profile_image;
+  return typeof raw === 'string' && raw.trim() ? raw.trim() : null;
 }
 
 function avatarChar(label: string): string {
@@ -45,6 +57,37 @@ function LoginIcon() {
       <polyline points="10 17 15 12 10 7" />
       <line x1="15" x2="3" y1="12" y2="12" />
     </svg>
+  );
+}
+
+function UserAvatar({
+  label,
+  src,
+  className,
+}: {
+  label: string;
+  src: string | null;
+  className?: string;
+}) {
+  const mark = avatarChar(label);
+  if (src) {
+    return (
+      // eslint-disable-next-line @next/next/no-img-element -- 第三方 OAuth 头像 URL
+      <img
+        className={className ?? 'acongm-auth-avatar'}
+        src={src}
+        alt=""
+        width={28}
+        height={28}
+        referrerPolicy="no-referrer"
+        decoding="async"
+      />
+    );
+  }
+  return (
+    <span className={className ?? 'acongm-auth-avatar'} aria-hidden>
+      {mark}
+    </span>
   );
 }
 
@@ -87,9 +130,17 @@ function LoginControl({
 export function AuthAccountButton({
   className,
   variant = 'nav',
+  onSignedOut,
 }: AuthAccountButtonProps) {
   const { session, loading, configured } = useSession();
   const { login, logout } = useAuthActions();
+
+  const handleLogout = () => {
+    void (async () => {
+      await logout();
+      onSignedOut?.();
+    })();
+  };
 
   if (configured && loading) {
     if (variant === 'avatar' || variant === 'icon') {
@@ -122,20 +173,35 @@ export function AuthAccountButton({
   }
 
   const label = String(displayLabel(session));
-  const mark = avatarChar(label);
+  const photo = avatarUrl(session);
+  const email =
+    typeof session.user.email === 'string' && session.user.email.trim()
+      ? session.user.email.trim()
+      : null;
+  const title = email && email !== label ? `${label} · ${email}` : label;
 
   if (variant === 'avatar') {
     return (
       <button
         type="button"
         className={className ?? 'acongm-auth-avatar'}
-        title={`${label} · 点击退出`}
-        aria-label={`${label}，点击退出登录`}
-        onClick={() => {
-          void logout();
-        }}
+        title={`${title} · 点击退出`}
+        aria-label={`${title}，点击退出登录`}
+        onClick={handleLogout}
       >
-        {mark}
+        {photo ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            src={photo}
+            alt=""
+            width={28}
+            height={28}
+            referrerPolicy="no-referrer"
+            decoding="async"
+          />
+        ) : (
+          avatarChar(label)
+        )}
       </button>
     );
   }
@@ -145,33 +211,49 @@ export function AuthAccountButton({
       <button
         type="button"
         className={className ?? 'acongm-auth-icon-btn'}
-        title={`${label} · 点击退出`}
-        aria-label={`${label}，点击退出登录`}
-        onClick={() => {
-          void logout();
-        }}
+        title={`${title} · 点击退出`}
+        aria-label={`${title}，点击退出登录`}
+        onClick={handleLogout}
       >
-        <span className="acongm-auth-icon-btn__mark" aria-hidden>
-          {mark}
-        </span>
+        {photo ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            className="acongm-auth-icon-btn__photo"
+            src={photo}
+            alt=""
+            width={22}
+            height={22}
+            referrerPolicy="no-referrer"
+            decoding="async"
+          />
+        ) : (
+          <span className="acongm-auth-icon-btn__mark" aria-hidden>
+            {avatarChar(label)}
+          </span>
+        )}
       </button>
     );
   }
 
   return (
     <div className="acongm-auth-user" data-variant={variant}>
-      <span className="acongm-auth-avatar" aria-hidden>
-        {mark}
-      </span>
-      <span className="acongm-auth-user__name" title={session.user.email ?? undefined}>
-        {label}
-      </span>
+      <div className="acongm-auth-user__identity">
+        <UserAvatar label={label} src={photo} />
+        <div className="acongm-auth-user__meta">
+          <span className="acongm-auth-user__name" title={title}>
+            {label}
+          </span>
+          {email && email !== label ? (
+            <span className="acongm-auth-user__account" title={email}>
+              {email}
+            </span>
+          ) : null}
+        </div>
+      </div>
       <button
         type="button"
         className={className ?? 'acongm-auth-btn'}
-        onClick={() => {
-          void logout();
-        }}
+        onClick={handleLogout}
       >
         退出
       </button>
