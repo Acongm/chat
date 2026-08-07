@@ -177,23 +177,28 @@ function WorkspaceInner({
     [navigateWithChips, threads.activeThreadId],
   );
 
-  const ensureThread = useCallback(async () => {
-    if (threads.activeThreadId) return threads.activeThreadId;
-    const primary =
-      chips.find((c) => c.level === 'article') ??
-      chips.find((c) => c.moduleKey);
-    const thread = await threads.createThread({
-      moduleKey: primary?.moduleKey,
-      pagePath:
-        primary?.pagePath ||
-        (primary?.moduleKey ? `/${primary.moduleKey}/README.md` : undefined),
-      preserveSeed: true,
-    });
-    // Soft URL update — avoid Next remount mid-stream (runtimeKey stays stable).
-    const nextPath = `/t/${thread.id}${chipsQuery(chips)}`;
-    window.history.replaceState(window.history.state, '', nextPath);
-    return thread.id;
-  }, [chips, threads.activeThreadId, threads.createThread]);
+  const ensureThread = useCallback(
+    async (input?: { title?: string }) => {
+      if (threads.activeThreadId) return threads.activeThreadId;
+      const primary =
+        chips.find((c) => c.level === 'article') ??
+        chips.find((c) => c.moduleKey);
+      const title = input?.title?.trim().slice(0, 80) || undefined;
+      const thread = await threads.createThread({
+        title,
+        moduleKey: primary?.moduleKey,
+        pagePath:
+          primary?.pagePath ||
+          (primary?.moduleKey ? `/${primary.moduleKey}/README.md` : undefined),
+        preserveSeed: true,
+      });
+      // Soft URL update — avoid Next remount mid-stream (runtimeKey stays stable).
+      const nextPath = `/t/${thread.id}${chipsQuery(chips)}`;
+      window.history.replaceState(window.history.state, '', nextPath);
+      return thread.id;
+    },
+    [chips, threads.activeThreadId, threads.createThread],
+  );
 
   const context = useMemo(
     (): DocChatContext => ({
