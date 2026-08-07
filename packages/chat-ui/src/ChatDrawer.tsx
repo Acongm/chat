@@ -64,6 +64,7 @@ function ChatDrawerPanel({
           aria-label="关闭助手"
         >
           <X size={16} strokeWidth={2} aria-hidden />
+          <span className="acongm-chat-shell__close-label">关闭</span>
         </button>
       </div>
       <div className="acongm-chat-shell__body">
@@ -108,7 +109,7 @@ export function ChatDrawer({ context }: ChatDrawerProps) {
             ? 'var(--acongm-chat-width)'
             : 'min(520px, 88vw)'
       }
-      height={isMobile ? 'min(76vh, 92dvh)' : undefined}
+      height={isMobile ? '100dvh' : undefined}
       mask={!isDesktop}
       maskClosable
       keyboard

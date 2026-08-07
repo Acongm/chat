@@ -1,6 +1,6 @@
 'use client';
 
-import type { ReactNode } from 'react';
+import { useCallback, useEffect, useState, type ReactNode } from 'react';
 import type { KnowledgeRef } from '@acongm/kb-catalog';
 import { KnowledgeUiProvider } from '../knowledge/KnowledgeUiContext';
 import { ChatEmptyState } from './ChatEmptyState';
@@ -10,6 +10,7 @@ import {
   type PanelSlotMode,
 } from './presets';
 import { useChatBreakpoints } from './useChatBreakpoints';
+import { WorkspacePanelSheet } from './WorkspacePanelSheet';
 
 export type ChatWorkspaceProps = {
   preset?: ChatLayoutPreset;
@@ -25,7 +26,7 @@ export type ChatWorkspaceProps = {
   emptySubtitle?: string;
   contextChips?: KnowledgeRef[];
   onContextChipsChange?: (refs: KnowledgeRef[]) => void;
-  /** 移动端底部工具条（占位） */
+  /** 移动端底部工具条 */
   showMobileToggles?: boolean;
   onOpenThreads?: () => void;
   onOpenKnowledge?: () => void;
@@ -40,7 +41,7 @@ function isReactNode(value: PanelSlotMode | ReactNode): value is ReactNode {
 
 /**
  * ChatGPT 式可配置三栏工作台。
- * 左/右栏可通过 preset 或 slots 关闭；compact 断点下 auto → 不占列（改用 sheet）。
+ * compact 下侧栏改为全屏 sheet；桌面保持固定左栏 + 底部设置/登录。
  */
 export function ChatWorkspace({
   preset = 'siteFull',
@@ -61,6 +62,9 @@ export function ChatWorkspace({
 }: ChatWorkspaceProps) {
   const bp = useChatBreakpoints();
   const compact = bp === 'compact';
+  const [threadsOpen, setThreadsOpen] = useState(false);
+  const [knowledgeOpen, setKnowledgeOpen] = useState(false);
+
   const threadSlotMode = isReactNode(threadSidebar)
     ? true
     : (threadSidebar as PanelSlotMode | undefined);
@@ -81,8 +85,8 @@ export function ChatWorkspace({
     compact: false,
   });
 
-  const showThread = slots.threadSidebar;
-  const showKnowledge = slots.knowledgePanel;
+  const showThreadColumn = slots.threadSidebar && !compact;
+  const showKnowledgeColumn = slots.knowledgePanel && !compact;
 
   const threadNode = isReactNode(threadSidebar)
     ? threadSidebar
@@ -91,16 +95,37 @@ export function ChatWorkspace({
     ? knowledgePanel
     : knowledgePanelContent;
 
+  const hasThreadContent = Boolean(threadNode) && configuredSlots.threadSidebar;
+  const hasKnowledgeContent =
+    Boolean(knowledgeNode) && configuredSlots.knowledgePanel;
+
+  useEffect(() => {
+    if (!compact) {
+      setThreadsOpen(false);
+      setKnowledgeOpen(false);
+    }
+  }, [compact]);
+
+  const openThreads = useCallback(() => {
+    setKnowledgeOpen(false);
+    setThreadsOpen(true);
+    onOpenThreads?.();
+  }, [onOpenThreads]);
+
+  const openKnowledge = useCallback(() => {
+    setThreadsOpen(false);
+    setKnowledgeOpen(true);
+    onOpenKnowledge?.();
+  }, [onOpenKnowledge]);
+
   const columns = [
-    showThread ? 'thread' : null,
+    showThreadColumn ? 'thread' : null,
     'main',
-    showKnowledge ? 'knowledge' : null,
+    showKnowledgeColumn ? 'knowledge' : null,
   ].filter(Boolean);
 
-  const showThreadToggle =
-    Boolean(onOpenThreads) && configuredSlots.threadSidebar;
-  const showKnowledgeToggle =
-    Boolean(onOpenKnowledge) && configuredSlots.knowledgePanel;
+  const showThreadToggle = compact && hasThreadContent;
+  const showKnowledgeToggle = compact && hasKnowledgeContent;
   const showMobileBar =
     compact && showMobileToggles && (showThreadToggle || showKnowledgeToggle);
 
@@ -120,7 +145,7 @@ export function ChatWorkspace({
           .join(' ')}
         data-preset={preset}
       >
-        {showThread ? (
+        {showThreadColumn ? (
           <aside className="acongm-workspace__thread" aria-label="会话列表">
             {threadNode}
           </aside>
@@ -137,7 +162,7 @@ export function ChatWorkspace({
           </div>
         </section>
 
-        {showKnowledge ? (
+        {showKnowledgeColumn ? (
           <aside className="acongm-workspace__knowledge" aria-label="知识目录">
             {knowledgeNode}
           </aside>
@@ -146,16 +171,36 @@ export function ChatWorkspace({
         {showMobileBar ? (
           <nav className="acongm-workspace__mobile-bar" aria-label="面板切换">
             {showThreadToggle ? (
-              <button type="button" onClick={onOpenThreads}>
+              <button type="button" onClick={openThreads}>
                 会话
               </button>
             ) : null}
             {showKnowledgeToggle ? (
-              <button type="button" onClick={onOpenKnowledge}>
+              <button type="button" onClick={openKnowledge}>
                 知识
               </button>
             ) : null}
           </nav>
+        ) : null}
+
+        {compact && hasThreadContent ? (
+          <WorkspacePanelSheet
+            open={threadsOpen}
+            title="会话"
+            onClose={() => setThreadsOpen(false)}
+          >
+            {threadNode}
+          </WorkspacePanelSheet>
+        ) : null}
+
+        {compact && hasKnowledgeContent ? (
+          <WorkspacePanelSheet
+            open={knowledgeOpen}
+            title="知识"
+            onClose={() => setKnowledgeOpen(false)}
+          >
+            {knowledgeNode}
+          </WorkspacePanelSheet>
         ) : null}
       </div>
       {overlay}
