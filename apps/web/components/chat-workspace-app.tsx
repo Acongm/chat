@@ -242,6 +242,13 @@ function WorkspaceInner({
     }
   };
 
+  const handleSignedOut = useCallback(() => {
+    setAccessToken(null);
+    threads.clearActive();
+    setRuntimeKey(`draft-${Date.now()}`);
+    navigateWithChips('/', chips);
+  }, [chips, navigateWithChips, threads.clearActive]);
+
   return (
     <ChatWorkspace
       preset="siteFocus"
@@ -260,9 +267,7 @@ function WorkspaceInner({
             <ChatAuthSlot
               apiBase={apiBase}
               onAccessTokenChange={setAccessToken}
-              onClaimed={() => {
-                void threads.refresh();
-              }}
+              onSignedOut={handleSignedOut}
             />
           }
           settingsSlot={<ChatSettingsSlot />}

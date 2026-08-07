@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import type { ChatThreadRecord, ChatUiMessage } from '@acongm/kb-types';
 import {
   createChatThread,
@@ -87,11 +87,19 @@ export function useChatThreads(
     accessToken: accessToken ?? undefined,
   };
 
+  const refreshGen = useRef(0);
+
   const refresh = useCallback(async () => {
+    const gen = ++refreshGen.current;
     setError(null);
     setRefreshing(true);
     try {
-      const list = await listChatThreads(requestOpts);
+      const list = await listChatThreads({
+        baseUrl: THREADS_BASE,
+        accessToken: accessToken ?? undefined,
+      });
+      // 丢弃过期响应，避免登录前后并发 list 互相覆盖
+      if (gen !== refreshGen.current) return;
       const sorted = [...list].sort((a, b) => {
         const ta = new Date(a.updatedAt || a.createdAt || 0).getTime();
         const tb = new Date(b.updatedAt || b.createdAt || 0).getTime();
@@ -99,10 +107,13 @@ export function useChatThreads(
       });
       setThreads(sorted);
     } catch (err) {
+      if (gen !== refreshGen.current) return;
       setError(err instanceof Error ? err.message : '加载会话失败');
     } finally {
-      setRefreshing(false);
-      setLoading(false);
+      if (gen === refreshGen.current) {
+        setRefreshing(false);
+        setLoading(false);
+      }
     }
   }, [accessToken]);
 

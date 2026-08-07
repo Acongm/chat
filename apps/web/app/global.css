@@ -135,9 +135,33 @@ body {
   gap: 0.5rem;
 }
 
+.acongm-auth-user__identity {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  min-width: 0;
+  flex: 1;
+}
+
+.acongm-auth-user__meta {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  gap: 0.1rem;
+}
+
 .acongm-auth-user__name {
   font-size: 0.8rem;
-  opacity: 0.75;
+  font-weight: 600;
+  opacity: 0.92;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.acongm-auth-user__account {
+  font-size: 0.68rem;
+  opacity: 0.55;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -155,4 +179,20 @@ body {
   font-size: 0.72rem;
   font-weight: 650;
   flex-shrink: 0;
+  object-fit: cover;
+  overflow: hidden;
+}
+
+.acongm-auth-avatar img,
+.acongm-auth-icon-btn__photo {
+  width: 100%;
+  height: 100%;
+  border-radius: inherit;
+  object-fit: cover;
+  display: block;
+}
+
+.acongm-auth-icon-btn__photo {
+  width: 1.35rem;
+  height: 1.35rem;
 }
