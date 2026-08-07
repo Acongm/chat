@@ -116,6 +116,7 @@ body {
 .acongm-auth-btn {
   display: inline-flex;
   align-items: center;
+  gap: 0.35rem;
   min-height: 30px;
   padding: 0 0.7rem;
   border: 1px solid color-mix(in srgb, currentColor 18%, transparent);
@@ -140,4 +141,18 @@ body {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.acongm-auth-avatar {
+  display: inline-flex;
+  width: 1.6rem;
+  height: 1.6rem;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  border: 1px solid color-mix(in srgb, currentColor 18%, transparent);
+  background: color-mix(in srgb, currentColor 10%, transparent);
+  font-size: 0.72rem;
+  font-weight: 650;
+  flex-shrink: 0;
 }

@@ -19,8 +19,9 @@ const PRESET_SLOTS: Record<
 > = {
   embed: { threadSidebar: false, knowledgePanel: false },
   embedWithContext: { threadSidebar: false, knowledgePanel: 'auto' },
-  siteFull: { threadSidebar: true, knowledgePanel: 'auto' },
-  siteFocus: { threadSidebar: true, knowledgePanel: false },
+  siteFull: { threadSidebar: 'auto', knowledgePanel: 'auto' },
+  // 桌面固定左栏；移动端 auto→sheet（由 ChatWorkspace 托管）
+  siteFocus: { threadSidebar: 'auto', knowledgePanel: false },
   siteKbBrowse: { threadSidebar: false, knowledgePanel: true },
   mainOnly: { threadSidebar: false, knowledgePanel: false },
 };

@@ -42,6 +42,8 @@ export type {
 } from './knowledge/KnowledgeUiContext';
 export type { ThreadSidebarProps } from './workspace/ThreadSidebar';
 export { ThreadSidebar } from './workspace/ThreadSidebar';
+export type { WorkspacePanelSheetProps } from './workspace/WorkspacePanelSheet';
+export { WorkspacePanelSheet } from './workspace/WorkspacePanelSheet';
 
 // re-export session SDK for chat repo convenience
 export {

@@ -38,6 +38,9 @@ function formatTime(value?: string): string {
   });
 }
 
+/**
+ * ChatGPT 式左侧会话栏：列表 + 底部设置/登录。
+ */
 export function ThreadSidebar({
   threads,
   activeThreadId,
@@ -54,7 +57,7 @@ export function ThreadSidebar({
   return (
     <div className="acongm-thread-sidebar workspace-panel">
       <div className="workspace-panel__head">
-        <strong>会话</strong>
+        <strong className="acongm-thread-sidebar__brand">Chat</strong>
         <div className="acongm-thread-sidebar__actions">
           {onRefresh ? (
             <button
@@ -67,16 +70,17 @@ export function ThreadSidebar({
               刷新
             </button>
           ) : null}
-          <button
-            type="button"
-            className="workspace-panel__new"
-            onClick={onNewThread}
-            disabled={loading}
-          >
-            新对话
-          </button>
         </div>
       </div>
+
+      <button
+        type="button"
+        className="acongm-thread-sidebar__new"
+        onClick={onNewThread}
+        disabled={loading}
+      >
+        + 新对话
+      </button>
 
       <div className="acongm-thread-sidebar__middle">
         {error ? <p className="workspace-panel__hint is-error">{error}</p> : null}
