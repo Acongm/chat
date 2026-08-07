@@ -43,8 +43,16 @@ export type ChatWorkspaceProps = {
   className?: string;
 };
 
-function isReactNode(value: PanelSlotMode | ReactNode): value is ReactNode {
-  return typeof value !== 'boolean' && value !== 'auto';
+/**
+ * 区分「插槽模式」与「自定义 React 节点」。
+ * 注意：`undefined` / `null` 不是自定义节点，否则会吞掉 threadSidebarContent。
+ */
+function isCustomPanelNode(
+  value: PanelSlotMode | ReactNode | undefined | null,
+): value is ReactNode {
+  if (value === undefined || value === null) return false;
+  if (value === false || value === true || value === 'auto') return false;
+  return true;
 }
 
 /**
@@ -73,10 +81,10 @@ export function ChatWorkspace({
   const [threadsOpen, setThreadsOpen] = useState(false);
   const [knowledgeOpen, setKnowledgeOpen] = useState(false);
 
-  const threadSlotMode = isReactNode(threadSidebar)
+  const threadSlotMode = isCustomPanelNode(threadSidebar)
     ? true
     : (threadSidebar as PanelSlotMode | undefined);
-  const knowledgeSlotMode = isReactNode(knowledgePanel)
+  const knowledgeSlotMode = isCustomPanelNode(knowledgePanel)
     ? true
     : (knowledgePanel as PanelSlotMode | undefined);
 
@@ -96,10 +104,10 @@ export function ChatWorkspace({
   const showThreadColumn = slots.threadSidebar && !compact;
   const showKnowledgeColumn = slots.knowledgePanel && !compact;
 
-  const threadNode = isReactNode(threadSidebar)
+  const threadNode = isCustomPanelNode(threadSidebar)
     ? threadSidebar
     : threadSidebarContent;
-  const knowledgeNode = isReactNode(knowledgePanel)
+  const knowledgeNode = isCustomPanelNode(knowledgePanel)
     ? knowledgePanel
     : knowledgePanelContent;
 
