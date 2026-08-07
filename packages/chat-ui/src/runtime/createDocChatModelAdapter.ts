@@ -4,8 +4,9 @@ import {
   modelHistory,
   resolveCallSource,
   streamChatV1,
+  streamThreadMessage,
 } from '@acongm/agent-session-sdk';
-import type { ChatUiMessage } from '@acongm/kb-types';
+import type { ChatUiMessage, ChatV1Context } from '@acongm/kb-types';
 import type { DocChatContext } from '../types';
 
 function textFromMessage(message: ThreadMessage | undefined): string {
@@ -37,26 +38,52 @@ function yieldParts(thinking: string, text: string) {
   };
 }
 
+/** Omit empty optional strings — Nest `@IsOptional` + `@Length` rejects `""`. */
+function buildRequestContext(
+  scope: ChatV1Context['scope'],
+  pagePath: string,
+  moduleKey: string | undefined,
+  title: string | undefined,
+  tags: string[] | undefined,
+  content: string | undefined,
+): ChatV1Context {
+  const context: ChatV1Context = {
+    scope,
+    pagePath: pagePath || '/',
+    moduleKey: moduleKey?.trim() || '_general',
+    title: title?.trim() || '通用对话',
+    tags: tags ?? [],
+  };
+  const trimmed = content?.trim();
+  if (trimmed) context.content = trimmed;
+  return context;
+}
+
 /**
- * 薄 ChatModelAdapter：ChatV1 SSE（含 thinking）→ reasoning + text parts。
- * 对齐 node-vercel-starter PR #22。
+ * 薄 ChatModelAdapter：ChatV1 / Threads SSE（含 thinking）→ reasoning + text parts。
+ * chat 站有 threadId（或 ensureThread）时走 Threads 持久化流。
  */
 export function createDocChatModelAdapter(
   getContext: () => DocChatContext,
 ): ChatModelAdapter {
   return {
     async *run({ messages, abortSignal }) {
+      const ctx = getContext();
       const {
         pagePath,
-        moduleKey = '',
-        title = '当前文档',
+        moduleKey,
+        title,
         tags = [],
-        content = '',
+        content,
         streamUrl,
         enableThinking = true,
         maxTokens,
         historyMode = 'short',
-      } = getContext();
+        threadsBaseUrl,
+        accessToken,
+        ensureThread,
+        onThreadPersisted,
+      } = ctx;
 
       const lastUser = [...messages]
         .reverse()
@@ -73,24 +100,47 @@ export function createDocChatModelAdapter(
         tagOptions.enableWebSearch,
       );
 
-      const events = await streamChatV1(
-        {
-          messages: modelHistory(toUiMessages(messages)),
-          context: {
-            scope: tagOptions.scope,
-            pagePath,
-            moduleKey,
-            title,
-            tags,
-            content,
-          },
-          enableWebSearch: tagOptions.enableWebSearch,
-          enableThinking,
-          maxTokens,
-          historyMode,
-        },
-        { signal: abortSignal, callSource, url: streamUrl },
+      const requestContext = buildRequestContext(
+        tagOptions.scope,
+        pagePath,
+        moduleKey,
+        title,
+        tags,
+        content,
       );
+
+      let threadId = ctx.threadId?.trim() || '';
+      if (!threadId && ensureThread) {
+        threadId = (await ensureThread()).trim();
+      }
+
+      const events = threadId
+        ? await streamThreadMessage(
+            threadId,
+            {
+              content: question,
+              enableWebSearch: tagOptions.enableWebSearch,
+              enableThinking,
+              maxTokens,
+              context: requestContext,
+            },
+            {
+              signal: abortSignal,
+              accessToken: accessToken ?? undefined,
+              baseUrl: threadsBaseUrl,
+            },
+          )
+        : await streamChatV1(
+            {
+              messages: modelHistory(toUiMessages(messages)),
+              context: requestContext,
+              enableWebSearch: tagOptions.enableWebSearch,
+              enableThinking,
+              maxTokens,
+              historyMode,
+            },
+            { signal: abortSignal, callSource, url: streamUrl },
+          );
 
       let thinking = '';
       let text = '';
@@ -103,6 +153,9 @@ export function createDocChatModelAdapter(
         if (event.type === 'delta') {
           text += event.content || '';
           yield yieldParts(thinking, text);
+        }
+        if (event.type === 'persisted' && event.threadId) {
+          onThreadPersisted?.(event.threadId);
         }
         if (event.type === 'error') {
           throw new Error(event.message || '回答失败');

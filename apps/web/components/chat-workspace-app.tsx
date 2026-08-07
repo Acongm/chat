@@ -40,17 +40,22 @@ function buildDocContext(
   refs: KnowledgeRef[],
   summariesUrl: string,
   threadId?: string | null,
-): DocChatContext {
+): Omit<
+  DocChatContext,
+  'runtimeKey' | 'ensureThread' | 'accessToken' | 'onThreadPersisted'
+> {
   const base = resolveChatV1Context(refs);
   return {
     ...base,
-    content: '',
+    // Do not send empty content — API rejects Length(1) on "".
+    content: undefined,
     summariesUrl,
     enableThinking: true,
     historyMode: 'long',
     defaultScope: base.scope,
     callSourcePrefix: 'chat-site',
     streamUrl: '/api/ai/v1/chat/stream',
+    threadsBaseUrl: '/api/chat/threads',
     threadId: threadId ?? undefined,
   };
 }
@@ -128,6 +133,12 @@ function WorkspaceInner({
   const searchParams = useSearchParams();
   const router = useRouter();
   const [accessToken, setAccessToken] = useState<string | null>(null);
+  const [runtimeKey, setRuntimeKey] = useState(
+    () =>
+      initialThreadId
+        ? `thread:${initialThreadId}`
+        : `draft-${Date.now()}`,
+  );
 
   const initialChips = useMemo(
     () =>
@@ -166,27 +177,54 @@ function WorkspaceInner({
     [navigateWithChips, threads.activeThreadId],
   );
 
-  const context = useMemo(
-    () => buildDocContext(chips, summariesUrl, threads.activeThreadId),
-    [chips, summariesUrl, threads.activeThreadId],
-  );
-
-  const handleNewThread = async () => {
+  const ensureThread = useCallback(async () => {
+    if (threads.activeThreadId) return threads.activeThreadId;
     const primary =
       chips.find((c) => c.level === 'article') ??
       chips.find((c) => c.moduleKey);
     const thread = await threads.createThread({
-      title: primary?.title || '新对话',
       moduleKey: primary?.moduleKey,
       pagePath:
         primary?.pagePath ||
         (primary?.moduleKey ? `/${primary.moduleKey}/README.md` : undefined),
+      preserveSeed: true,
     });
-    navigateWithChips(`/t/${thread.id}`, chips);
+    // Soft URL update — avoid Next remount mid-stream (runtimeKey stays stable).
+    const nextPath = `/t/${thread.id}${chipsQuery(chips)}`;
+    window.history.replaceState(window.history.state, '', nextPath);
+    return thread.id;
+  }, [chips, threads.activeThreadId, threads.createThread]);
+
+  const context = useMemo(
+    (): DocChatContext => ({
+      ...buildDocContext(chips, summariesUrl, threads.activeThreadId),
+      runtimeKey,
+      accessToken,
+      ensureThread,
+      onThreadPersisted: () => {
+        void threads.refresh();
+      },
+    }),
+    [
+      chips,
+      summariesUrl,
+      threads.activeThreadId,
+      threads.refresh,
+      runtimeKey,
+      accessToken,
+      ensureThread,
+    ],
+  );
+
+  const handleNewThread = () => {
+    threads.clearActive();
+    setRuntimeKey(`draft-${Date.now()}`);
+    navigateWithChips('/', chips);
   };
 
   const handleSelectThread = async (id: string) => {
     await threads.selectThread(id);
+    setRuntimeKey(`thread:${id}`);
     navigateWithChips(`/t/${id}`, chips);
   };
 
@@ -194,6 +232,7 @@ function WorkspaceInner({
     const wasActive = threads.activeThreadId === id;
     await threads.removeThread(id);
     if (wasActive) {
+      setRuntimeKey(`draft-${Date.now()}`);
       navigateWithChips('/', chips);
     }
   };
@@ -221,9 +260,7 @@ function WorkspaceInner({
             />
           }
           settingsSlot={<ChatSettingsSlot />}
-          onNewThread={() => {
-            void handleNewThread();
-          }}
+          onNewThread={handleNewThread}
           onSelectThread={(id) => {
             void handleSelectThread(id);
           }}
@@ -237,7 +274,7 @@ function WorkspaceInner({
       }
       main={
         <ChatFullscreen
-          key={threads.activeThreadId || 'new'}
+          key={runtimeKey}
           context={context}
           forceOpen
           seedMessages={threads.activeThreadId ? threads.seedMessages : null}

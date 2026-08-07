@@ -105,6 +105,7 @@ function fromThreadLike(messages: readonly ThreadMessageLike[]): ChatUiMessage[]
 }
 
 function historyKey(context: DocChatContext): string {
+  if (context.runtimeKey?.trim()) return context.runtimeKey.trim();
   return context.threadId ? `thread:${context.threadId}` : context.pagePath;
 }
 
@@ -284,7 +285,6 @@ export function DocChatRuntimeProvider({
     pagePath,
     summariesUrl,
     storageKey,
-    threadId,
     context.moduleKey,
     seedMessages,
   ]);
