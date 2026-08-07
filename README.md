@@ -40,4 +40,8 @@ chat.config.yaml    # 隔离与白名单
 
 ## 部署
 
-Vercel Root Directory = `apps/web`。环境变量见 `apps/web/.env.example`。
+推荐 Vercel 项目 **Root Directory = `apps/web`**（如 `chat-web`），使用 `apps/web/vercel.json`。
+
+若项目 Root 为仓库根（如历史项目 `chat`），根目录 `vercel.json` 会执行 `pnpm --filter web build`，产物目录 `apps/web/.next`。
+
+环境变量见 `apps/web/.env.example`。

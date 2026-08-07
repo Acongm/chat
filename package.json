@@ -12,6 +12,11 @@
     "start": "pnpm --filter web start",
     "types:check": "pnpm -r --filter @acongm/* --filter web types:check"
   },
+  "dependencies": {
+    "next": "^16.2.12",
+    "react": "^19.2.0",
+    "react-dom": "^19.2.0"
+  },
   "pnpm": {
     "onlyBuiltDependencies": ["esbuild", "sharp"]
   }

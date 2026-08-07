@@ -1,4 +1,8 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
-  "buildCommand": "echo 'ERROR: Use the chat-web Vercel project (Root Directory = apps/web). Disconnect this root-level chat project.' && exit 1"
+  "framework": "nextjs",
+  "installCommand": "pnpm install",
+  "buildCommand": "pnpm --filter web build",
+  "outputDirectory": "apps/web/.next",
+  "devCommand": "pnpm --filter web dev"
 }
