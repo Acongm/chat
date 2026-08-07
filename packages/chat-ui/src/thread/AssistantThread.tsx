@@ -3,6 +3,7 @@
 import { useEffect, useState, type FormEvent } from 'react';
 import {
   ActionBarPrimitive,
+  AuiIf,
   ComposerPrimitive,
   MessagePrimitive,
   ThreadPrimitive,
@@ -10,7 +11,17 @@ import {
 } from '@assistant-ui/react';
 import { MarkdownTextPrimitive } from '@assistant-ui/react-markdown';
 import remarkGfm from 'remark-gfm';
-import { ArrowUp, Brain, ChevronDown, Copy, Plus, Square } from 'lucide-react';
+import {
+  ArrowUp,
+  Brain,
+  Check,
+  ChevronDown,
+  Copy,
+  Pencil,
+  Plus,
+  RefreshCw,
+  Square,
+} from 'lucide-react';
 import { ContextChipBar } from '../knowledge/ContextChipBar';
 import { useKnowledgeUi } from '../knowledge/KnowledgeUiContext';
 
@@ -18,12 +29,11 @@ function AssistantMarkdown() {
   return (
     <MarkdownTextPrimitive
       remarkPlugins={[remarkGfm]}
-      className="acongm-aui-md"
+      className="acongm-gpt-md"
     />
   );
 }
 
-/** Codex 风格可折叠思考块：流式时展开，历史默认收起可点开查看 */
 function ReasoningPart() {
   const part = useMessagePartReasoning();
   const running = part.status?.type === 'running';
@@ -37,26 +47,23 @@ function ReasoningPart() {
 
   return (
     <div
-      className={`acongm-aui-reasoning${running ? ' is-streaming' : ''}${shown ? ' is-open' : ''}`}
+      className={`acongm-gpt-reasoning${running ? ' is-streaming' : ''}${shown ? ' is-open' : ''}`}
     >
       <button
         type="button"
-        className="acongm-aui-reasoning__trigger"
+        className="acongm-gpt-reasoning__trigger"
         aria-expanded={shown}
         onClick={() => setOpen((value) => !value)}
       >
-        <Brain className="acongm-aui-reasoning__icon" aria-hidden />
-        <span className={running ? 'acongm-aui-shimmer' : undefined}>
+        <Brain size={14} aria-hidden />
+        <span className={running ? 'acongm-gpt-shimmer' : undefined}>
           {running ? '思考中…' : '思考过程'}
         </span>
-        <ChevronDown
-          className="acongm-aui-reasoning__chevron"
-          aria-hidden
-        />
+        <ChevronDown size={14} aria-hidden />
       </button>
       {shown ? (
-        <div className="acongm-aui-reasoning__body" aria-busy={running}>
-          <pre className="acongm-aui-reasoning__text">{part.text}</pre>
+        <div className="acongm-gpt-reasoning__body" aria-busy={running}>
+          <pre className="acongm-gpt-reasoning__text">{part.text}</pre>
         </div>
       ) : null}
     </div>
@@ -65,38 +72,84 @@ function ReasoningPart() {
 
 function UserMessage() {
   return (
-    <MessagePrimitive.Root className="acongm-aui-msg is-user">
-      <div className="acongm-aui-msg__bubble">
-        <MessagePrimitive.Content />
+    <MessagePrimitive.Root className="acongm-gpt-msg is-user">
+      <div className="acongm-gpt-msg__bubble">
+        <MessagePrimitive.Parts />
       </div>
+      <ActionBarPrimitive.Root
+        hideWhenRunning
+        autohide="always"
+        className="acongm-gpt-actions is-user"
+      >
+        <ActionBarPrimitive.Copy asChild>
+          <button type="button" className="acongm-gpt-icon-btn" title="复制">
+            <AuiIf condition={(s) => s.message.isCopied}>
+              <Check size={14} aria-hidden />
+            </AuiIf>
+            <AuiIf condition={(s) => !s.message.isCopied}>
+              <Copy size={14} aria-hidden />
+            </AuiIf>
+          </button>
+        </ActionBarPrimitive.Copy>
+        <ActionBarPrimitive.Edit asChild>
+          <button type="button" className="acongm-gpt-icon-btn" title="编辑">
+            <Pencil size={14} aria-hidden />
+          </button>
+        </ActionBarPrimitive.Edit>
+      </ActionBarPrimitive.Root>
     </MessagePrimitive.Root>
+  );
+}
+
+function EditComposer() {
+  return (
+    <ComposerPrimitive.Root className="acongm-gpt-edit">
+      <ComposerPrimitive.Input className="acongm-gpt-edit__input" />
+      <div className="acongm-gpt-edit__actions">
+        <ComposerPrimitive.Cancel className="acongm-gpt-edit__cancel">
+          取消
+        </ComposerPrimitive.Cancel>
+        <ComposerPrimitive.Send className="acongm-gpt-edit__send">
+          发送
+        </ComposerPrimitive.Send>
+      </div>
+    </ComposerPrimitive.Root>
   );
 }
 
 function AssistantMessage() {
   return (
-    <MessagePrimitive.Root className="acongm-aui-msg is-assistant">
-      <div className="acongm-aui-msg__meta">
-        <span className="acongm-aui-msg__label">助手</span>
-        <ActionBarPrimitive.Root hideWhenRunning className="acongm-aui-actions">
-          <ActionBarPrimitive.Copy className="acongm-aui-icon-btn" title="复制">
-            <Copy size={14} />
-          </ActionBarPrimitive.Copy>
-        </ActionBarPrimitive.Root>
-      </div>
-      <div className="acongm-aui-msg__body">
-        <MessagePrimitive.Content
+    <MessagePrimitive.Root className="acongm-gpt-msg is-assistant">
+      <div className="acongm-gpt-msg__body">
+        <MessagePrimitive.Parts
           components={{
             Text: AssistantMarkdown,
             Reasoning: ReasoningPart,
           }}
         />
       </div>
+      <ActionBarPrimitive.Root hideWhenRunning className="acongm-gpt-actions">
+        <ActionBarPrimitive.Copy asChild>
+          <button type="button" className="acongm-gpt-icon-btn" title="复制">
+            <AuiIf condition={(s) => s.message.isCopied}>
+              <Check size={14} aria-hidden />
+            </AuiIf>
+            <AuiIf condition={(s) => !s.message.isCopied}>
+              <Copy size={14} aria-hidden />
+            </AuiIf>
+          </button>
+        </ActionBarPrimitive.Copy>
+        <ActionBarPrimitive.Reload asChild>
+          <button type="button" className="acongm-gpt-icon-btn" title="重新生成">
+            <RefreshCw size={14} aria-hidden />
+          </button>
+        </ActionBarPrimitive.Reload>
+      </ActionBarPrimitive.Root>
     </MessagePrimitive.Root>
   );
 }
 
-function Composer() {
+function Composer({ placeholder }: { placeholder: string }) {
   const {
     chips,
     removeChip,
@@ -117,64 +170,115 @@ function Composer() {
   };
 
   return (
-    <ComposerPrimitive.Root className="acongm-aui-composer">
-      <div className="acongm-aui-composer__chips">
-        <ContextChipBar chips={chips} onRemove={removeChip} />
-      </div>
-      <div className="acongm-aui-composer__box">
+    <ComposerPrimitive.Root className="acongm-gpt-composer">
+      {chips.length > 0 ? (
+        <div className="acongm-gpt-composer__chips">
+          <ContextChipBar chips={chips} onRemove={removeChip} />
+        </div>
+      ) : null}
+      <div className="acongm-gpt-composer__row">
         <button
           type="button"
-          className="acongm-aui-composer__tool"
+          className="acongm-gpt-composer__plus"
           onClick={openAttachPicker}
-          title="关联知识"
-          aria-label="关联知识"
+          title="添加知识 / 附件"
+          aria-label="添加知识"
         >
           <Plus size={18} strokeWidth={2} aria-hidden />
         </button>
         <ComposerPrimitive.Input
-          rows={2}
-          placeholder="有什么可以帮忙的？输入 @ 引用知识…"
-          className="acongm-aui-composer__input"
+          autoFocus
+          rows={1}
+          placeholder={placeholder}
+          className="acongm-gpt-composer__input"
           onChange={onInputChange}
         />
-        <ThreadPrimitive.If running={false}>
-          <ComposerPrimitive.Send className="acongm-aui-send" title="发送">
-            <ArrowUp size={16} strokeWidth={2.25} />
-          </ComposerPrimitive.Send>
-        </ThreadPrimitive.If>
-        <ThreadPrimitive.If running>
-          <ComposerPrimitive.Cancel className="acongm-aui-stop" title="停止">
-            <Square size={12} fill="currentColor" />
-          </ComposerPrimitive.Cancel>
-        </ThreadPrimitive.If>
+        <div className="acongm-gpt-composer__primary">
+          <ThreadPrimitive.If running>
+            <ComposerPrimitive.Cancel
+              className="acongm-gpt-composer__send"
+              title="停止"
+            >
+              <Square size={12} fill="currentColor" aria-hidden />
+            </ComposerPrimitive.Cancel>
+          </ThreadPrimitive.If>
+          <ThreadPrimitive.If running={false}>
+            <ComposerPrimitive.Send
+              className="acongm-gpt-composer__send"
+              title="发送"
+            >
+              <ArrowUp size={16} strokeWidth={2.25} aria-hidden />
+            </ComposerPrimitive.Send>
+          </ThreadPrimitive.If>
+        </div>
       </div>
     </ComposerPrimitive.Root>
   );
 }
 
-/** assistant-ui Thread：Codex 风消息列表 + Reasoning + Composer */
-export function AssistantThread() {
+function EmptyState({
+  title,
+  placeholder,
+}: {
+  title: string;
+  placeholder: string;
+}) {
   return (
-    <ThreadPrimitive.Root className="acongm-aui-thread">
-      <ThreadPrimitive.Viewport className="acongm-aui-thread__viewport">
-        <ThreadPrimitive.Empty>
-          <div className="acongm-aui-empty">
-            <p className="acongm-aui-empty__title">有什么可以帮忙的？</p>
-            <p className="acongm-aui-empty__desc">
-              可以直接提问，也可以用 @ 或 + 关联知识上下文。
-            </p>
-          </div>
-        </ThreadPrimitive.Empty>
-        <ThreadPrimitive.Messages
-          components={{
-            UserMessage,
-            AssistantMessage,
-          }}
-        />
-      </ThreadPrimitive.Viewport>
-      <ThreadPrimitive.ViewportFooter className="acongm-aui-thread__footer">
-        <Composer />
-      </ThreadPrimitive.ViewportFooter>
+    <div className="acongm-gpt-empty">
+      <h1 className="acongm-gpt-empty__title">{title}</h1>
+      <div className="acongm-gpt-empty__composer">
+        <Composer placeholder={placeholder} />
+      </div>
+    </div>
+  );
+}
+
+function ThreadScrollToBottom() {
+  return (
+    <ThreadPrimitive.ScrollToBottom className="acongm-gpt-scroll-bottom">
+      <ChevronDown size={18} aria-hidden />
+    </ThreadPrimitive.ScrollToBottom>
+  );
+}
+
+export type AssistantThreadProps = {
+  emptyTitle?: string;
+  placeholder?: string;
+  disclaimer?: string;
+};
+
+/**
+ * ChatGPT demo 风格 Thread（assistant-ui primitives）。
+ * 参考：https://www.assistant-ui.com/demos/chatgpt
+ */
+export function AssistantThread({
+  emptyTitle = '我们从哪开始？',
+  placeholder = '有什么可以帮忙的？输入 @ 引用知识…',
+  disclaimer = '回答可能不准确，请核对重要信息。',
+}: AssistantThreadProps) {
+  return (
+    <ThreadPrimitive.Root className="acongm-gpt-thread">
+      <AuiIf condition={(s) => s.thread.isEmpty}>
+        <EmptyState title={emptyTitle} placeholder={placeholder} />
+      </AuiIf>
+
+      <AuiIf condition={(s) => !s.thread.isEmpty}>
+        <ThreadPrimitive.Viewport className="acongm-gpt-thread__viewport">
+          <ThreadPrimitive.Messages
+            components={{
+              UserMessage,
+              EditComposer,
+              AssistantMessage,
+            }}
+          />
+
+          <ThreadPrimitive.ViewportFooter className="acongm-gpt-thread__footer">
+            <ThreadScrollToBottom />
+            <Composer placeholder={placeholder} />
+            <p className="acongm-gpt-disclaimer">{disclaimer}</p>
+          </ThreadPrimitive.ViewportFooter>
+        </ThreadPrimitive.Viewport>
+      </AuiIf>
     </ThreadPrimitive.Root>
   );
 }

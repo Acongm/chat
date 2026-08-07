@@ -241,6 +241,7 @@ function WorkspaceInner({
           context={context}
           forceOpen
           seedMessages={threads.activeThreadId ? threads.seedMessages : null}
+          emptyTitle={emptyTitle}
         />
       }
       overlay={
