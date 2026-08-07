@@ -1,41 +1,66 @@
 /**
- * @acongm/ui-theme — Codex-inspired tokens
- * 可被 chat-ui / dochub link；不依赖具体框架。
+ * @acongm/ui-theme
+ *
+ * Shared semantic theme contract for portal / chat / auth.
+ * New UI should consume the shadcn-style semantic variables below.
+ * Legacy --acongm-* variables remain as aliases during migration.
  */
 :root {
+  color-scheme: light;
+
+  --background: #f7f8fa;
+  --foreground: #1a1d27;
+  --card: #ffffff;
+  --card-foreground: #1a1d27;
+  --popover: #ffffff;
+  --popover-foreground: #1a1d27;
+  --primary: #2f6b4f;
+  --primary-foreground: #ffffff;
+  --secondary: #eef1f5;
+  --secondary-foreground: #25283a;
+  --muted: #eef1f5;
+  --muted-foreground: #6b7280;
+  --accent: #e6f3ec;
+  --accent-foreground: #24543f;
+  --destructive: #c62828;
+  --destructive-foreground: #ffffff;
+  --border: #e4e7ef;
+  --input: #d4d8e3;
+  --ring: #2f6b4f;
+  --radius: 0.75rem;
+
   --acongm-font-sans: ui-sans-serif, system-ui, -apple-system, 'Segoe UI',
     Roboto, 'PingFang SC', 'Noto Sans SC', sans-serif;
   --acongm-font-mono: ui-monospace, 'SFMono-Regular', Menlo, Consolas, monospace;
 
-  --acongm-radius-sm: 8px;
-  --acongm-radius-md: 12px;
-  --acongm-radius-lg: 16px;
+  --acongm-radius-sm: calc(var(--radius) - 0.25rem);
+  --acongm-radius-md: var(--radius);
+  --acongm-radius-lg: calc(var(--radius) + 0.25rem);
   --acongm-radius-pill: 999px;
 
-  --acongm-surface-0: #f7f8fa;
-  --acongm-surface-1: #ffffff;
-  --acongm-surface-2: #eef1f5;
+  /* Legacy aliases — remove after all consumers migrate to semantic tokens. */
+  --acongm-bg: var(--background);
+  --acongm-fg: var(--foreground);
+  --acongm-surface-0: var(--background);
+  --acongm-surface-1: var(--card);
+  --acongm-surface-2: var(--secondary);
   --acongm-surface-ink: #14161f;
   --acongm-surface-ink-soft: #25283a;
-
-  --acongm-border: #e4e7ef;
-  --acongm-border-strong: #d4d8e3;
-  --acongm-text: #1a1d27;
-  --acongm-text-muted: #6b7280;
-  --acongm-text-on-accent: #ffffff;
-
-  /* Codex 风格主色：沉稳绿，与 portal fd-primary 对齐可覆盖 */
-  --acongm-accent: #2f6b4f;
+  --acongm-border: var(--border);
+  --acongm-border-strong: var(--input);
+  --acongm-text: var(--foreground);
+  --acongm-text-muted: var(--muted-foreground);
+  --acongm-text-on-accent: var(--primary-foreground);
+  --acongm-accent: var(--primary);
   --acongm-accent-hover: #3eaf7c;
-  --acongm-accent-soft: color-mix(in oklab, var(--acongm-accent) 12%, white);
+  --acongm-accent-soft: var(--accent);
   --acongm-accent-gradient: linear-gradient(
     135deg,
     var(--acongm-surface-ink-soft) 0%,
-    var(--acongm-accent) 100%
+    var(--primary) 100%
   );
-
-  --acongm-danger: #c62828;
-  --acongm-danger-border: #f1b5b5;
+  --acongm-danger: var(--destructive);
+  --acongm-danger-border: color-mix(in oklab, var(--destructive) 36%, transparent);
   --acongm-shadow: 0 8px 24px rgba(24, 32, 56, 0.06);
   --acongm-overlay: rgba(20, 22, 31, 0.42);
 
@@ -44,34 +69,117 @@
   --acongm-fab-z: 1100;
   --acongm-ease: cubic-bezier(0.22, 1, 0.36, 1);
 
-  /* FAB：亮色主题用 accent 绿 + 白字，保证浅色页上醒目 */
-  --acongm-fab-bg: var(--acongm-accent);
-  --acongm-fab-bg-soft: color-mix(in oklab, var(--acongm-accent) 78%, #0b3d28);
-  --acongm-fab-fg: #ffffff;
+  --acongm-fab-bg: var(--primary);
+  --acongm-fab-bg-soft: color-mix(in oklab, var(--primary) 78%, #0b3d28);
+  --acongm-fab-fg: var(--primary-foreground);
   --acongm-fab-border: color-mix(in oklab, #ffffff 24%, transparent);
   --acongm-fab-icon-bg: color-mix(in oklab, #ffffff 18%, transparent);
-  --acongm-fab-shadow: 0 10px 28px color-mix(in oklab, var(--acongm-accent) 38%, transparent);
-  --acongm-fab-glow: color-mix(in oklab, var(--acongm-accent-hover) 50%, transparent);
+  --acongm-fab-shadow: 0 10px 28px color-mix(in oklab, var(--primary) 38%, transparent);
+  --acongm-fab-glow: color-mix(in oklab, #3eaf7c 50%, transparent);
 }
 
 .dark,
 [data-theme='dark'] {
-  --acongm-surface-0: #12141c;
-  --acongm-surface-1: #1a1d27;
-  --acongm-surface-2: #222633;
-  --acongm-border: #2c3140;
-  --acongm-border-strong: #3a4052;
-  --acongm-text: #e8eaef;
-  --acongm-text-muted: #9aa3b5;
-  --acongm-accent-soft: color-mix(in oklab, var(--acongm-accent) 22%, black);
-  --acongm-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
+  color-scheme: dark;
 
-  /* FAB：暗色主题用更亮的绿 + 深色字，避免白字/近黑底发灰 */
-  --acongm-fab-bg: #3eaf7c;
+  --background: #12141c;
+  --foreground: #e8eaef;
+  --card: #1a1d27;
+  --card-foreground: #e8eaef;
+  --popover: #1a1d27;
+  --popover-foreground: #e8eaef;
+  --primary: #3eaf7c;
+  --primary-foreground: #0b1f16;
+  --secondary: #222633;
+  --secondary-foreground: #e8eaef;
+  --muted: #222633;
+  --muted-foreground: #9aa3b5;
+  --accent: #20392d;
+  --accent-foreground: #bcebd4;
+  --destructive: #ef6b6b;
+  --destructive-foreground: #2a0b0b;
+  --border: #2c3140;
+  --input: #3a4052;
+  --ring: #3eaf7c;
+
+  --acongm-surface-ink: #0f1118;
+  --acongm-surface-ink-soft: #1a1d27;
+  --acongm-accent-hover: #7ee0b0;
+  --acongm-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
+  --acongm-overlay: rgba(0, 0, 0, 0.58);
+
+  --acongm-fab-bg: var(--primary);
   --acongm-fab-bg-soft: #2f9a6a;
-  --acongm-fab-fg: #0b1f16;
+  --acongm-fab-fg: var(--primary-foreground);
   --acongm-fab-border: color-mix(in oklab, #ffffff 30%, transparent);
   --acongm-fab-icon-bg: color-mix(in oklab, #0b1f16 14%, transparent);
   --acongm-fab-shadow: 0 12px 32px rgba(62, 175, 124, 0.4);
   --acongm-fab-glow: color-mix(in oklab, #7ee0b0 45%, transparent);
+}
+
+/* System fallback for apps that have not installed a theme runtime yet. */
+@media (prefers-color-scheme: dark) {
+  :root:not(.light):not(.dark):not([data-theme='light']):not([data-theme='dark']) {
+    color-scheme: dark;
+
+    --background: #12141c;
+    --foreground: #e8eaef;
+    --card: #1a1d27;
+    --card-foreground: #e8eaef;
+    --popover: #1a1d27;
+    --popover-foreground: #e8eaef;
+    --primary: #3eaf7c;
+    --primary-foreground: #0b1f16;
+    --secondary: #222633;
+    --secondary-foreground: #e8eaef;
+    --muted: #222633;
+    --muted-foreground: #9aa3b5;
+    --accent: #20392d;
+    --accent-foreground: #bcebd4;
+    --destructive: #ef6b6b;
+    --destructive-foreground: #2a0b0b;
+    --border: #2c3140;
+    --input: #3a4052;
+    --ring: #3eaf7c;
+
+    --acongm-surface-ink: #0f1118;
+    --acongm-surface-ink-soft: #1a1d27;
+    --acongm-accent-hover: #7ee0b0;
+    --acongm-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
+    --acongm-overlay: rgba(0, 0, 0, 0.58);
+    --acongm-fab-bg: var(--primary);
+    --acongm-fab-bg-soft: #2f9a6a;
+    --acongm-fab-fg: var(--primary-foreground);
+    --acongm-fab-border: color-mix(in oklab, #ffffff 30%, transparent);
+    --acongm-fab-icon-bg: color-mix(in oklab, #0b1f16 14%, transparent);
+    --acongm-fab-shadow: 0 12px 32px rgba(62, 175, 124, 0.4);
+    --acongm-fab-glow: color-mix(in oklab, #7ee0b0 45%, transparent);
+  }
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+
+  --radius-sm: calc(var(--radius) - 0.25rem);
+  --radius-md: var(--radius);
+  --radius-lg: calc(var(--radius) + 0.25rem);
+  --radius-xl: calc(var(--radius) + 0.5rem);
 }
