@@ -159,6 +159,13 @@ export async function streamChatV1(
   const conversationId =
     payload.conversationId || getConversationId(pagePath);
 
+  const context = { ...payload.context };
+  if (!context.content?.trim()) {
+    delete context.content;
+  } else {
+    context.content = context.content.trim();
+  }
+
   const response = await fetch(options.url || resolveChatStreamUrl(), {
     method: 'POST',
     headers: {
@@ -169,6 +176,7 @@ export async function streamChatV1(
     body: JSON.stringify({
       ...payload,
       conversationId,
+      context,
     }),
     signal: options.signal,
   });

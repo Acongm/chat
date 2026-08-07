@@ -29,6 +29,8 @@ export type UseChatThreadsResult = {
     title?: string;
     moduleKey?: string;
     pagePath?: string;
+    /** 首条消息中途建会话时保留当前 seed，避免打断流式 */
+    preserveSeed?: boolean;
   }) => Promise<ChatThreadRecord>;
   selectThread: (id: string) => Promise<void>;
   removeThread: (id: string) => Promise<void>;
@@ -135,6 +137,7 @@ export function useChatThreads(
       title?: string;
       moduleKey?: string;
       pagePath?: string;
+      preserveSeed?: boolean;
     } = {}) => {
       const thread = await createChatThread(
         {
@@ -146,7 +149,9 @@ export function useChatThreads(
       );
       setThreads((prev) => [thread, ...prev.filter((t) => t.id !== thread.id)]);
       setActiveThreadId(thread.id);
-      setSeedMessages([]);
+      if (!input.preserveSeed) {
+        setSeedMessages([]);
+      }
       return thread;
     },
     [accessToken],

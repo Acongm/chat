@@ -20,6 +20,19 @@ export type DocChatContext = {
   defaultScope?: 'article' | 'module';
   /** x-call-source 前缀，如 portal / chat-site */
   callSourcePrefix?: string;
-  /** Threads API 会话 id；有则本地历史按 thread 隔离 */
+  /** Threads API 会话 id；有则走 `/api/chat/threads/:id/messages/stream` */
   threadId?: string;
+  /**
+   * 稳定 runtime 键（chat 站 draft→thread 晋升时保持不变，避免中途 remount）。
+   * 未设时回退到 threadId / pagePath。
+   */
+  runtimeKey?: string;
+  /** Threads BFF / 上游根路径，默认 `/api/chat/threads` */
+  threadsBaseUrl?: string;
+  /** 登录后的 Supabase access token，供 threads API 鉴权 */
+  accessToken?: string | null;
+  /** 无 threadId 时首次发消息前创建会话，返回新 thread id */
+  ensureThread?: () => Promise<string>;
+  /** thread 消息落库后回调（刷新侧栏标题等） */
+  onThreadPersisted?: (threadId: string) => void;
 };
