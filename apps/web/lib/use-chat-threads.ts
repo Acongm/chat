@@ -17,12 +17,19 @@ export type UseChatThreadsOptions = {
   initialThreadId?: string | null;
 };
 
+export type SeedStatus = 'idle' | 'loading' | 'ready';
+
 export type UseChatThreadsResult = {
   threads: ChatThreadRecord[];
   activeThreadId: string | null;
   activeThread: ChatThreadRecord | null;
   seedMessages: ChatUiMessage[] | null;
+  /** 详情 seed 是否已就绪（避免 /t/id 首屏用 sessionStorage 抢跑） */
+  seedStatus: SeedStatus;
+  /** 首屏列表加载中 */
   loading: boolean;
+  /** 后台刷新中（不禁用「新对话」） */
+  refreshing: boolean;
   error: string | null;
   refresh: () => Promise<void>;
   createThread: (input?: {
@@ -68,7 +75,11 @@ export function useChatThreads(
     initialThreadId,
   );
   const [seedMessages, setSeedMessages] = useState<ChatUiMessage[] | null>(null);
+  const [seedStatus, setSeedStatus] = useState<SeedStatus>(
+    initialThreadId ? 'loading' : 'idle',
+  );
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const requestOpts = {
@@ -77,8 +88,8 @@ export function useChatThreads(
   };
 
   const refresh = useCallback(async () => {
-    setLoading(true);
     setError(null);
+    setRefreshing(true);
     try {
       const list = await listChatThreads(requestOpts);
       const sorted = [...list].sort((a, b) => {
@@ -90,6 +101,7 @@ export function useChatThreads(
     } catch (err) {
       setError(err instanceof Error ? err.message : '加载会话失败');
     } finally {
+      setRefreshing(false);
       setLoading(false);
     }
   }, [accessToken]);
@@ -100,11 +112,16 @@ export function useChatThreads(
 
   useEffect(() => {
     setActiveThreadId(initialThreadId);
+    if (!initialThreadId) {
+      setSeedMessages(null);
+      setSeedStatus('idle');
+    }
   }, [initialThreadId]);
 
   const selectThread = useCallback(
     async (id: string) => {
       setActiveThreadId(id);
+      setSeedStatus('loading');
       setError(null);
       try {
         const detail = await getChatThread(id, requestOpts);
@@ -116,8 +133,10 @@ export function useChatThreads(
           }
           return [detail.thread, ...prev];
         });
+        setSeedStatus('ready');
       } catch (err) {
-        setSeedMessages(null);
+        setSeedMessages([]);
+        setSeedStatus('ready');
         setError(err instanceof Error ? err.message : '加载会话详情失败');
       }
     },
@@ -125,10 +144,7 @@ export function useChatThreads(
   );
 
   useEffect(() => {
-    if (!initialThreadId) {
-      setSeedMessages(null);
-      return;
-    }
+    if (!initialThreadId) return;
     void selectThread(initialThreadId);
   }, [initialThreadId, selectThread]);
 
@@ -151,6 +167,7 @@ export function useChatThreads(
       setActiveThreadId(thread.id);
       if (!input.preserveSeed) {
         setSeedMessages([]);
+        setSeedStatus('ready');
       }
       return thread;
     },
@@ -164,6 +181,7 @@ export function useChatThreads(
       if (activeThreadId === id) {
         setActiveThreadId(null);
         setSeedMessages(null);
+        setSeedStatus('idle');
       }
     },
     [accessToken, activeThreadId],
@@ -172,6 +190,7 @@ export function useChatThreads(
   const clearActive = useCallback(() => {
     setActiveThreadId(null);
     setSeedMessages(null);
+    setSeedStatus('idle');
   }, []);
 
   const activeThread =
@@ -182,7 +201,9 @@ export function useChatThreads(
     activeThreadId,
     activeThread,
     seedMessages,
+    seedStatus,
     loading,
+    refreshing,
     error,
     refresh,
     createThread,
