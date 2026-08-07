@@ -240,6 +240,16 @@ function DocChatRuntimeInner({
   );
 }
 
+function seedFingerprint(seed: ChatUiMessage[] | null | undefined): string {
+  if (seed == null) return 'null';
+  return seed
+    .map(
+      (m) =>
+        `${m.id}\0${m.role}\0${m.content}\0${m.thinking ?? ''}\0${m.isSummary ? 1 : 0}`,
+    )
+    .join('\n');
+}
+
 /**
  * ChatV1 SSE（agent-session-sdk）→ assistant-ui LocalRuntime。
  * portal Drawer 与 chat Fullscreen 共用。
@@ -253,26 +263,54 @@ export function DocChatRuntimeProvider({
   const { pagePath, summariesUrl, threadId } = context;
   const storageKey = historyKey(context);
   const [seed, setSeed] = useState<readonly ThreadMessageLike[] | null>(null);
+  const seedKey = seedFingerprint(seedMessages);
+  const seedMessagesRef = useRef(seedMessages);
+  seedMessagesRef.current = seedMessages;
+  const threadIdRef = useRef(threadId);
+  threadIdRef.current = threadId;
+  const prevStorageKeyRef = useRef(storageKey);
 
   useEffect(() => {
     let cancelled = false;
-    setSeed(null);
-    if (!active) return;
+    if (!active) {
+      setSeed(null);
+      return;
+    }
+
+    // 仅在会话身份变化时卸掉 runtime；seed 引用抖动（如 ?? []）不得清空进行中的流。
+    const storageChanged = prevStorageKeyRef.current !== storageKey;
+    prevStorageKeyRef.current = storageKey;
+    if (storageChanged) {
+      setSeed(null);
+    }
 
     const load = async () => {
-      if (seedMessages) {
-        return seedMessages;
+      const external = seedMessagesRef.current;
+      // null = 无外部 seed，从 sessionStorage bootstrap；[] = 明确空会话
+      if (external != null) {
+        return external;
       }
       // 通用对话 / 已有 thread：可跳过摘要卡
+      // threadId 用 ref：ensureThread 提升会话时不应重跑 bootstrap
       const skipSummary =
-        Boolean(threadId) || pagePath === '/' || context.moduleKey === '_general';
+        Boolean(threadIdRef.current) ||
+        pagePath === '/' ||
+        context.moduleKey === '_general';
       return bootstrapMessages(storageKey, pagePath, summariesUrl, skipSummary);
     };
 
     void load().then((messages) => {
       if (cancelled) return;
       if (typeof sessionStorage !== 'undefined') {
-        saveChatHistory(sessionStorage, storageKey, messages);
+        // 空外部 seed 抖动时不要把已有本地历史抹掉
+        if (messages.length > 0) {
+          saveChatHistory(sessionStorage, storageKey, messages);
+        } else {
+          const existing = loadChatHistory(sessionStorage, storageKey);
+          if (existing.length === 0) {
+            saveChatHistory(sessionStorage, storageKey, messages);
+          }
+        }
       }
       setSeed(messages.map(toThreadMessage));
     });
@@ -280,14 +318,7 @@ export function DocChatRuntimeProvider({
     return () => {
       cancelled = true;
     };
-  }, [
-    active,
-    pagePath,
-    summariesUrl,
-    storageKey,
-    context.moduleKey,
-    seedMessages,
-  ]);
+  }, [active, pagePath, summariesUrl, storageKey, context.moduleKey, seedKey]);
 
   if (!active || !seed) return null;
 
