@@ -7,7 +7,10 @@ import type { ChatThreadRecord } from '@acongm/kb-types';
 export type ThreadSidebarProps = {
   threads: ChatThreadRecord[];
   activeThreadId?: string | null;
+  /** 首屏列表加载 */
   loading?: boolean;
+  /** 后台刷新（转圈，不禁用新对话） */
+  refreshing?: boolean;
   error?: string | null;
   portalHref?: string;
   brand?: string;
@@ -34,6 +37,7 @@ export function ThreadSidebar({
   threads,
   activeThreadId,
   loading,
+  refreshing,
   error,
   portalHref,
   brand = 'Chat',
@@ -45,6 +49,9 @@ export function ThreadSidebar({
   onRefresh,
   onCloseMobile,
 }: ThreadSidebarProps) {
+  const showDraftRow = !activeThreadId;
+  const busy = Boolean(refreshing || loading);
+
   return (
     <div className="acongm-gpt-sidebar">
       <div className="acongm-gpt-sidebar__header">
@@ -56,9 +63,9 @@ export function ThreadSidebar({
           {onRefresh ? (
             <button
               type="button"
-              className="acongm-gpt-sidebar__icon"
+              className={`acongm-gpt-sidebar__icon${busy ? ' is-spinning' : ''}`}
               onClick={onRefresh}
-              disabled={loading}
+              disabled={busy}
               title="刷新"
               aria-label="刷新会话"
             >
@@ -82,8 +89,10 @@ export function ThreadSidebar({
       <button
         type="button"
         className="acongm-gpt-sidebar__new"
-        onClick={onNewThread}
-        disabled={loading}
+        onClick={() => {
+          onNewThread();
+          onCloseMobile?.();
+        }}
       >
         <Plus size={16} strokeWidth={2.25} aria-hidden />
         <span>新对话</span>
@@ -94,11 +103,25 @@ export function ThreadSidebar({
         {loading && threads.length === 0 ? (
           <p className="acongm-gpt-sidebar__hint">加载会话…</p>
         ) : null}
-        {!loading && !error && threads.length === 0 ? (
+        {!loading && !error && threads.length === 0 && !showDraftRow ? (
           <p className="acongm-gpt-sidebar__hint">还没有会话</p>
+        ) : null}
+        {!loading && !error && threads.length === 0 && showDraftRow ? (
+          <p className="acongm-gpt-sidebar__hint">发送第一条消息后会出现在这里</p>
         ) : null}
 
         <ul>
+          {showDraftRow ? (
+            <li>
+              <button
+                type="button"
+                className="acongm-gpt-sidebar__item is-active is-draft"
+                aria-current="page"
+              >
+                <span className="acongm-gpt-sidebar__item-title">新对话</span>
+              </button>
+            </li>
+          ) : null}
           {threads.map((thread) => {
             const active = thread.id === activeThreadId;
             return (
@@ -106,7 +129,10 @@ export function ThreadSidebar({
                 <button
                   type="button"
                   className={`acongm-gpt-sidebar__item${active ? ' is-active' : ''}`}
-                  onClick={() => onSelectThread(thread.id)}
+                  onClick={() => {
+                    onSelectThread(thread.id);
+                    onCloseMobile?.();
+                  }}
                 >
                   <span className="acongm-gpt-sidebar__item-title">
                     {formatThreadTitle(thread)}

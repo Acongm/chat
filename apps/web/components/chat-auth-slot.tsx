@@ -22,7 +22,7 @@ export function ChatAuthSlot({
   onAccessTokenChange,
   onClaimed,
 }: ChatAuthSlotProps) {
-  const { session, loading, configured } = useSession();
+  const { session } = useSession();
   const claimedFor = useRef<string | null>(null);
 
   useEffect(() => {
@@ -42,23 +42,15 @@ export function ChatAuthSlot({
       clientId: getClientId(),
       accessToken: session.access_token,
     })
-      .then((result) => {
-        if ((result.claimedThreads ?? result.claimed) > 0) {
-          onClaimed?.();
-        }
+      .then(() => {
+        // 无论认领条数，登录后都刷新列表（用户历史会话）
+        onClaimed?.();
       })
       .catch(() => {
-        // 认领失败不阻断对话
+        // 认领失败仍刷新，避免侧栏停在匿名列表
+        onClaimed?.();
       });
   }, [session?.access_token, apiBase, onClaimed]);
-
-  if (!configured && !loading) {
-    return (
-      <p className="workspace-panel__hint">
-        未配置 Supabase 环境变量，登录不可用。
-      </p>
-    );
-  }
 
   return <AuthAccountButton variant="sidebar" />;
 }

@@ -248,6 +248,7 @@ function WorkspaceInner({
           threads={threads.threads}
           activeThreadId={threads.activeThreadId}
           loading={threads.loading}
+          refreshing={threads.refreshing}
           error={threads.error}
           portalHref={portalBase}
           authSlot={
@@ -273,13 +274,21 @@ function WorkspaceInner({
         />
       }
       main={
-        <ChatFullscreen
-          key={runtimeKey}
-          context={context}
-          forceOpen
-          seedMessages={threads.activeThreadId ? threads.seedMessages : null}
-          emptyTitle={emptyTitle}
-        />
+        threads.activeThreadId && threads.seedStatus === 'loading' ? (
+          <div className="acongm-gpt-thread-loading" aria-live="polite">
+            加载会话…
+          </div>
+        ) : (
+          <ChatFullscreen
+            key={runtimeKey}
+            context={context}
+            forceOpen
+            seedMessages={
+              threads.activeThreadId ? (threads.seedMessages ?? []) : null
+            }
+            emptyTitle={emptyTitle}
+          />
+        )
       }
       overlay={
         <MentionOverlay

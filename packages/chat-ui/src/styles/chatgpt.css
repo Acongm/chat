@@ -100,6 +100,29 @@ html[data-theme='dark'] .acongm-workspace[data-preset='siteFull'] {
   background: var(--gpt-sidebar-hover);
 }
 
+.acongm-gpt-sidebar__icon.is-spinning svg {
+  animation: acongm-gpt-spin 0.85s linear infinite;
+}
+
+@keyframes acongm-gpt-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.acongm-gpt-sidebar__item.is-draft {
+  opacity: 0.92;
+  font-style: italic;
+}
+
+.acongm-gpt-thread-loading {
+  display: grid;
+  place-items: center;
+  min-height: 40vh;
+  color: color-mix(in srgb, var(--gpt-fg, #0d0d0d) 55%, transparent);
+  font-size: 0.92rem;
+}
+
 .acongm-gpt-sidebar__icon.is-mobile-only {
   display: none;
 }

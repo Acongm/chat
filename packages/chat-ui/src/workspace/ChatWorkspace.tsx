@@ -1,6 +1,14 @@
 'use client';
 
-import { useCallback, useEffect, useState, type ReactNode } from 'react';
+import {
+  cloneElement,
+  isValidElement,
+  useCallback,
+  useEffect,
+  useState,
+  type ReactElement,
+  type ReactNode,
+} from 'react';
 import type { KnowledgeRef } from '@acongm/kb-catalog';
 import { KnowledgeUiProvider } from '../knowledge/KnowledgeUiContext';
 import { ChatEmptyState } from './ChatEmptyState';
@@ -118,6 +126,19 @@ export function ChatWorkspace({
     onOpenKnowledge?.();
   }, [onOpenKnowledge]);
 
+  const closeThreadsSheet = useCallback(() => {
+    setThreadsOpen(false);
+  }, []);
+
+  /** 注入 onCloseMobile，使侧栏选会话/新对话后自动收起移动端 sheet */
+  const threadNodeWithClose =
+    isValidElement(threadNode)
+      ? cloneElement(
+          threadNode as ReactElement<{ onCloseMobile?: () => void }>,
+          { onCloseMobile: closeThreadsSheet },
+        )
+      : threadNode;
+
   const columns = [
     showThreadColumn ? 'thread' : null,
     'main',
@@ -147,7 +168,7 @@ export function ChatWorkspace({
       >
         {showThreadColumn ? (
           <aside className="acongm-workspace__thread" aria-label="会话列表">
-            {threadNode}
+            {threadNodeWithClose}
           </aside>
         ) : null}
 
@@ -187,9 +208,9 @@ export function ChatWorkspace({
           <WorkspacePanelSheet
             open={threadsOpen}
             title="会话"
-            onClose={() => setThreadsOpen(false)}
+            onClose={closeThreadsSheet}
           >
-            {threadNode}
+            {threadNodeWithClose}
           </WorkspacePanelSheet>
         ) : null}
 
