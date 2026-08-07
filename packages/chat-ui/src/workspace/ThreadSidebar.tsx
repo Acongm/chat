@@ -1,6 +1,7 @@
 'use client';
 
 import type { ReactNode } from 'react';
+import { PanelLeft, Plus, RefreshCw, Trash2 } from 'lucide-react';
 import type { ChatThreadRecord } from '@acongm/kb-types';
 
 export type ThreadSidebarProps = {
@@ -9,14 +10,14 @@ export type ThreadSidebarProps = {
   loading?: boolean;
   error?: string | null;
   portalHref?: string;
-  /** 登录区插槽（Auth 接入后传入） */
+  brand?: string;
   authSlot?: ReactNode;
-  /** 设置入口插槽（账号、主题等宿主设置） */
   settingsSlot?: ReactNode;
   onNewThread: () => void;
   onSelectThread: (id: string) => void;
   onDeleteThread: (id: string) => void;
   onRefresh?: () => void;
+  onCloseMobile?: () => void;
 };
 
 function formatThreadTitle(thread: ChatThreadRecord): string {
@@ -26,20 +27,8 @@ function formatThreadTitle(thread: ChatThreadRecord): string {
   return '新对话';
 }
 
-function formatTime(value?: string): string {
-  if (!value) return '';
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return '';
-  return date.toLocaleString('zh-CN', {
-    month: 'numeric',
-    day: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit',
-  });
-}
-
 /**
- * ChatGPT 式左侧会话栏：列表 + 底部设置/登录。
+ * ChatGPT 式左侧会话栏：New Chat + 列表 + 底部设置/登录。
  */
 export function ThreadSidebar({
   threads,
@@ -47,27 +36,44 @@ export function ThreadSidebar({
   loading,
   error,
   portalHref,
+  brand = 'Chat',
   authSlot,
   settingsSlot,
   onNewThread,
   onSelectThread,
   onDeleteThread,
   onRefresh,
+  onCloseMobile,
 }: ThreadSidebarProps) {
   return (
-    <div className="acongm-thread-sidebar workspace-panel">
-      <div className="workspace-panel__head">
-        <strong className="acongm-thread-sidebar__brand">Chat</strong>
-        <div className="acongm-thread-sidebar__actions">
+    <div className="acongm-gpt-sidebar">
+      <div className="acongm-gpt-sidebar__header">
+        <div className="acongm-gpt-sidebar__brand">
+          <PanelLeft size={16} aria-hidden />
+          <strong>{brand}</strong>
+        </div>
+        <div className="acongm-gpt-sidebar__header-actions">
           {onRefresh ? (
             <button
               type="button"
-              className="workspace-panel__new"
+              className="acongm-gpt-sidebar__icon"
               onClick={onRefresh}
               disabled={loading}
               title="刷新"
+              aria-label="刷新会话"
             >
-              刷新
+              <RefreshCw size={15} aria-hidden />
+            </button>
+          ) : null}
+          {onCloseMobile ? (
+            <button
+              type="button"
+              className="acongm-gpt-sidebar__icon is-mobile-only"
+              onClick={onCloseMobile}
+              title="关闭"
+              aria-label="关闭侧栏"
+            >
+              ×
             </button>
           ) : null}
         </div>
@@ -75,42 +81,40 @@ export function ThreadSidebar({
 
       <button
         type="button"
-        className="acongm-thread-sidebar__new"
+        className="acongm-gpt-sidebar__new"
         onClick={onNewThread}
         disabled={loading}
       >
-        + 新对话
+        <Plus size={16} strokeWidth={2.25} aria-hidden />
+        <span>新对话</span>
       </button>
 
-      <div className="acongm-thread-sidebar__middle">
-        {error ? <p className="workspace-panel__hint is-error">{error}</p> : null}
+      <div className="acongm-gpt-sidebar__list">
+        {error ? <p className="acongm-gpt-sidebar__hint is-error">{error}</p> : null}
         {loading && threads.length === 0 ? (
-          <p className="workspace-panel__hint">加载会话…</p>
+          <p className="acongm-gpt-sidebar__hint">加载会话…</p>
         ) : null}
         {!loading && !error && threads.length === 0 ? (
-          <p className="workspace-panel__hint">还没有会话，点「新对话」开始。</p>
+          <p className="acongm-gpt-sidebar__hint">还没有会话</p>
         ) : null}
 
-        <ul className="acongm-thread-list">
+        <ul>
           {threads.map((thread) => {
             const active = thread.id === activeThreadId;
             return (
               <li key={thread.id}>
                 <button
                   type="button"
-                  className={`acongm-thread-item${active ? ' is-active' : ''}`}
+                  className={`acongm-gpt-sidebar__item${active ? ' is-active' : ''}`}
                   onClick={() => onSelectThread(thread.id)}
                 >
-                  <span className="acongm-thread-item__title">
+                  <span className="acongm-gpt-sidebar__item-title">
                     {formatThreadTitle(thread)}
-                  </span>
-                  <span className="acongm-thread-item__meta">
-                    {formatTime(thread.updatedAt || thread.createdAt)}
                   </span>
                 </button>
                 <button
                   type="button"
-                  className="acongm-thread-item__delete"
+                  className="acongm-gpt-sidebar__item-delete"
                   title="删除会话"
                   aria-label="删除会话"
                   onClick={(event) => {
@@ -118,7 +122,7 @@ export function ThreadSidebar({
                     onDeleteThread(thread.id);
                   }}
                 >
-                  ×
+                  <Trash2 size={13} aria-hidden />
                 </button>
               </li>
             );
@@ -126,21 +130,19 @@ export function ThreadSidebar({
         </ul>
       </div>
 
-      {settingsSlot || authSlot || portalHref ? (
-        <div className="acongm-thread-sidebar__footer">
-          {settingsSlot ? (
-            <div className="acongm-thread-sidebar__settings">{settingsSlot}</div>
-          ) : null}
-          {authSlot ? (
-            <div className="acongm-thread-sidebar__auth">{authSlot}</div>
-          ) : null}
-          {portalHref ? (
-            <a className="workspace-panel__link" href={portalHref}>
-              返回文档站
-            </a>
-          ) : null}
-        </div>
-      ) : null}
+      <div className="acongm-gpt-sidebar__footer">
+        {settingsSlot ? (
+          <div className="acongm-gpt-sidebar__settings">{settingsSlot}</div>
+        ) : null}
+        {authSlot ? (
+          <div className="acongm-gpt-sidebar__auth">{authSlot}</div>
+        ) : null}
+        {portalHref ? (
+          <a className="acongm-gpt-sidebar__link" href={portalHref}>
+            返回文档站
+          </a>
+        ) : null}
+      </div>
     </div>
   );
 }

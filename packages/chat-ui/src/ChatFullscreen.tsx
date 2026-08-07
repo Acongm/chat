@@ -10,13 +10,17 @@ export type ChatFullscreenProps = {
   context: DocChatContext;
   forceOpen?: boolean;
   seedMessages?: ChatUiMessage[] | null;
+  emptyTitle?: string;
+  placeholder?: string;
 };
 
-/** 独立 Chat 全页：chat.acongm.com 可复用 */
+/** 独立 Chat 全页：ChatGPT demo 风格 Thread */
 export function ChatFullscreen({
   context,
   forceOpen = true,
   seedMessages = null,
+  emptyTitle,
+  placeholder,
 }: ChatFullscreenProps) {
   const { open, mode } = useChatUi();
   const active = forceOpen || open;
@@ -31,7 +35,10 @@ export function ChatFullscreen({
             active={active}
             seedMessages={seedMessages}
           >
-            <AssistantThread />
+            <AssistantThread
+              emptyTitle={emptyTitle}
+              placeholder={placeholder}
+            />
           </DocChatRuntimeProvider>
         </div>
       </aside>

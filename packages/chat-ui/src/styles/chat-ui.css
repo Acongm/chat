@@ -1,6 +1,7 @@
 /* 宿主需引入 @acongm/assistant-ui-theme/assistant-ui.css（含 tokens） */
 /* 本文件：rc-drawer 壳 + FAB + assistant-ui Thread 布局 */
 @import 'rc-drawer/assets/index.css';
+@import './chatgpt.css';
 
 /* —— FAB 入口 —— */
 
