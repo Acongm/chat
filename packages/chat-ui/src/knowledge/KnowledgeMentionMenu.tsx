@@ -3,19 +3,35 @@
 import { useEffect, useMemo, useState } from 'react';
 import type { KnowledgeRef } from '@acongm/kb-catalog';
 import type { KnowledgeSearchHit } from '@acongm/kb-catalog';
+import type { KnowledgePickerSource } from './KnowledgeUiContext';
 
 export type KnowledgeMentionMenuProps = {
   open: boolean;
   query: string;
+  source?: KnowledgePickerSource;
   hits: KnowledgeSearchHit[];
   onSelect: (ref: KnowledgeRef) => void;
   onClose: () => void;
   anchor?: { top: number; left: number } | null;
 };
 
+function titleForSource(source: KnowledgePickerSource): string {
+  switch (source) {
+    case 'at':
+      return '引用知识';
+    case 'plus':
+      return '关联知识';
+    default: {
+      const _exhaustive: never = source;
+      return _exhaustive;
+    }
+  }
+}
+
 export function KnowledgeMentionMenu({
   open,
   query,
+  source = 'at',
   hits,
   onSelect,
   onClose,
@@ -23,6 +39,7 @@ export function KnowledgeMentionMenu({
 }: KnowledgeMentionMenuProps) {
   const [active, setActive] = useState(0);
   const visible = useMemo(() => hits.slice(0, 12), [hits]);
+  const title = titleForSource(source);
 
   useEffect(() => {
     setActive(0);
@@ -62,14 +79,16 @@ export function KnowledgeMentionMenu({
       className="acongm-mention-menu"
       style={
         anchor
-          ? { top: anchor.top, left: anchor.left }
+          ? { top: anchor.top, left: anchor.left, transform: 'none' }
           : undefined
       }
+      data-source={source}
       role="listbox"
-      aria-label="引用知识"
+      aria-label={title}
     >
       <div className="acongm-mention-menu__head">
-        引用知识{query ? ` · ${query}` : ''}
+        {title}
+        {query ? ` · ${query}` : ''}
         <button type="button" onClick={onClose}>
           关闭
         </button>

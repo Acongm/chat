@@ -34,6 +34,12 @@ export { KnowledgePanel } from './knowledge/KnowledgePanel';
 export type { KnowledgeMentionMenuProps } from './knowledge/KnowledgeMentionMenu';
 export { KnowledgeMentionMenu } from './knowledge/KnowledgeMentionMenu';
 export { KnowledgeUiProvider, useKnowledgeUi } from './knowledge/KnowledgeUiContext';
+export type {
+  KnowledgePickerSource,
+  KnowledgeUiContextValue,
+  KnowledgeUiProviderProps,
+  MentionState,
+} from './knowledge/KnowledgeUiContext';
 export type { ThreadSidebarProps } from './workspace/ThreadSidebar';
 export { ThreadSidebar } from './workspace/ThreadSidebar';
 

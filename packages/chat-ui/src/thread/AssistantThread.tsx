@@ -6,17 +6,12 @@ import {
   ComposerPrimitive,
   MessagePrimitive,
   ThreadPrimitive,
-  useAui,
   useMessagePartReasoning,
 } from '@assistant-ui/react';
 import { MarkdownTextPrimitive } from '@assistant-ui/react-markdown';
 import remarkGfm from 'remark-gfm';
-import { Brain, ChevronDown, Copy, Square, ArrowUp } from 'lucide-react';
-import {
-  CHAT_V1_TAGS,
-  insertChatTag,
-  type ChatTagKey,
-} from '@acongm/agent-session-sdk';
+import { ArrowUp, Brain, ChevronDown, Copy, Plus, Square } from 'lucide-react';
+import { ContextChipBar } from '../knowledge/ContextChipBar';
 import { useKnowledgeUi } from '../knowledge/KnowledgeUiContext';
 
 function AssistantMarkdown() {
@@ -102,14 +97,14 @@ function AssistantMessage() {
 }
 
 function Composer() {
-  const aui = useAui();
-  const { openMention, setMentionQuery, closeMention, mention } =
-    useKnowledgeUi();
-
-  const applyTag = (key: ChatTagKey) => {
-    const current = aui.composer().getState().text;
-    aui.composer().setText(insertChatTag(current, key));
-  };
+  const {
+    chips,
+    removeChip,
+    openAttachPicker,
+    setMentionQuery,
+    closeMention,
+    mention,
+  } = useKnowledgeUi();
 
   const onInputChange = (event: FormEvent<HTMLTextAreaElement>) => {
     const value = event.currentTarget.value;
@@ -123,29 +118,22 @@ function Composer() {
 
   return (
     <ComposerPrimitive.Root className="acongm-aui-composer">
-      <div className="acongm-aui-composer__topline">
-        <div className="acongm-chat-quick-tags" aria-label="提问快捷选项">
-          <button type="button" onClick={() => openMention('')}>
-            @ 引用
-          </button>
-          {CHAT_V1_TAGS.map((tag) => (
-            <button key={tag.key} type="button" onClick={() => applyTag(tag.key)}>
-              {tag.label}
-            </button>
-          ))}
-        </div>
-        <button
-          type="button"
-          className="acongm-chat-clear"
-          onClick={() => window.dispatchEvent(new Event('acongm-chat-clear'))}
-        >
-          清空
-        </button>
+      <div className="acongm-aui-composer__chips">
+        <ContextChipBar chips={chips} onRemove={removeChip} />
       </div>
       <div className="acongm-aui-composer__box">
+        <button
+          type="button"
+          className="acongm-aui-composer__tool"
+          onClick={openAttachPicker}
+          title="关联知识"
+          aria-label="关联知识"
+        >
+          <Plus size={18} strokeWidth={2} aria-hidden />
+        </button>
         <ComposerPrimitive.Input
           rows={2}
-          placeholder="结合文档提问，输入 @ 引用知识…"
+          placeholder="有什么可以帮忙的？输入 @ 引用知识…"
           className="acongm-aui-composer__input"
           onChange={onInputChange}
         />
@@ -171,9 +159,9 @@ export function AssistantThread() {
       <ThreadPrimitive.Viewport className="acongm-aui-thread__viewport">
         <ThreadPrimitive.Empty>
           <div className="acongm-aui-empty">
-            <p className="acongm-aui-empty__title">文档阅读助手</p>
+            <p className="acongm-aui-empty__title">有什么可以帮忙的？</p>
             <p className="acongm-aui-empty__desc">
-              打开后加载构建期摘要；发送问题才会调用 AI。
+              可以直接提问，也可以用 @ 或 + 关联知识上下文。
             </p>
           </div>
         </ThreadPrimitive.Empty>

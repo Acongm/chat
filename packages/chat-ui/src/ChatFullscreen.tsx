@@ -25,12 +25,6 @@ export function ChatFullscreen({
   return (
     <div className="acongm-chat-fullscreen acongm-chat-root acongm-aui-root">
       <aside className="acongm-chat-shell is-fullscreen" aria-label="AI 对话">
-        <div className="acongm-chat-shell__header">
-          <div>
-            <h3>AI 对话</h3>
-            <p>{context.title || '知识库助手'}</p>
-          </div>
-        </div>
         <div className="acongm-chat-shell__body">
           <DocChatRuntimeProvider
             context={context}

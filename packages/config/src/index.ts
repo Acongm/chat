@@ -55,7 +55,7 @@ const DEFAULT_CONFIG: SiteConfig = {
     user: { chatPerDay: 200 },
   },
   oauth: {
-    providers: ["github"],
+    providers: ["github", "google"],
     claimThreads: true,
   },
 };
