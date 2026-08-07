@@ -111,7 +111,11 @@ export function createDocChatModelAdapter(
 
       let threadId = ctx.threadId?.trim() || '';
       if (!threadId && ensureThread) {
-        threadId = (await ensureThread()).trim();
+        threadId = (
+          await ensureThread({
+            title: question.replace(/\s+/g, ' ').trim().slice(0, 80) || undefined,
+          })
+        ).trim();
       }
 
       const events = threadId

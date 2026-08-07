@@ -31,8 +31,11 @@ export type DocChatContext = {
   threadsBaseUrl?: string;
   /** 登录后的 Supabase access token，供 threads API 鉴权 */
   accessToken?: string | null;
-  /** 无 threadId 时首次发消息前创建会话，返回新 thread id */
-  ensureThread?: () => Promise<string>;
+  /**
+   * 无 threadId 时首次发消息前创建会话，返回新 thread id。
+   * 可传入首条用户消息作为侧栏标题（ChatGPT 风格）。
+   */
+  ensureThread?: (input?: { title?: string }) => Promise<string>;
   /** thread 消息落库后回调（刷新侧栏标题等） */
   onThreadPersisted?: (threadId: string) => void;
 };

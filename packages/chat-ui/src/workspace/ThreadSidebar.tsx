@@ -145,6 +145,12 @@ export function ThreadSidebar({
                   aria-label="删除会话"
                   onClick={(event) => {
                     event.stopPropagation();
+                    if (
+                      typeof window !== 'undefined' &&
+                      !window.confirm('删除这个会话？此操作不可撤销。')
+                    ) {
+                      return;
+                    }
                     onDeleteThread(thread.id);
                   }}
                 >
