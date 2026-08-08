@@ -16,6 +16,21 @@ export {
 } from './chat-stream';
 
 export {
+  DEFAULT_CHATS_PROXY,
+  DEFAULT_CHATS_UPSTREAM,
+  resolveChatsBaseUrl,
+  listChatsV2,
+  createChatV2,
+  getChatV2,
+  listChatMessagesV2,
+  updateChatV2,
+  deleteChatV2,
+  streamChatMessageV2,
+  type ChatV2RequestOptions,
+} from './chats';
+
+/** Legacy compatibility only. New chat consumers must use Chat v2 above. */
+export {
   DEFAULT_THREADS_PROXY,
   DEFAULT_THREADS_UPSTREAM,
   resolveThreadsBaseUrl,
