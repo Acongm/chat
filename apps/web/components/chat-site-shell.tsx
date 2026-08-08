@@ -6,6 +6,8 @@ import {
   ChatUiProvider,
   type DocChatContext,
 } from '@acongm/chat-ui';
+import { Badge } from '@/components/ui/badge';
+import { buttonVariants } from '@/components/ui/button';
 import { portalDocUrl } from '@/lib/portal-links';
 import type { ModuleEntry } from '@/lib/module-catalog';
 
@@ -31,21 +33,28 @@ export function ChatSiteShell({
       <div className="chat-site-layout">
         <header className="chat-site-header">
           <div>
-            <Link href="/">← 模块目录</Link>
-            <div style={{ marginTop: '0.35rem', fontSize: '0.9rem', opacity: 0.85 }}>
-              <strong>{entry.title}</strong>
-              <span style={{ margin: '0 0.5rem' }}>·</span>
+            <Link href="/" className="text-sm text-muted-foreground hover:text-foreground">
+              ← 模块目录
+            </Link>
+            <div className="mt-1.5 text-sm text-muted-foreground">
+              <strong className="text-foreground">{entry.title}</strong>
+              <span className="mx-2">·</span>
               <span>{context.title}</span>
             </div>
           </div>
-          <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
-            <span
-              className={`isolation-badge ${enforceModuleBoundary ? '' : 'is-off'}`}
+          <div className="flex items-center gap-2">
+            <Badge
+              variant={enforceModuleBoundary ? 'default' : 'secondary'}
               title={isolationLabel}
             >
               {enforceModuleBoundary ? '模块隔离 ON' : '模块隔离 OFF'}
-            </span>
-            <a href={portalUrl} target="_blank" rel="noreferrer">
+            </Badge>
+            <a
+              href={portalUrl}
+              target="_blank"
+              rel="noreferrer"
+              className={buttonVariants({ variant: 'outline', size: 'sm' })}
+            >
               在 portal 阅读
             </a>
           </div>
