@@ -20,6 +20,24 @@ export type {
   ChatUiMessage,
 } from './chat-v1';
 
+export {
+  CHAT_V2_CAPABILITIES,
+  type ChatV2Part,
+  type ChatV2Record,
+  type ChatV2Message,
+  type ChatV2Page,
+  type ChatV2Detail,
+  type CreateChatV2Request,
+  type UpdateChatV2Request,
+  type CreateChatV2MessageRequest,
+  type ChatV2UserPersistedEvent,
+  type ChatV2PersistedEvent,
+  type ChatV2DoneEvent,
+  type ChatV2ErrorEvent,
+  type ChatV2StreamEvent,
+  type ChatV2Capabilities,
+} from './chat-v2';
+
 export type {
   ChatThreadRecord,
   ChatThreadMessageRecord,
