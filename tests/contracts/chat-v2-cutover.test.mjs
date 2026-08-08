@@ -53,7 +53,11 @@ test('ThreadSidebar visibly exposes cursor load-more and workspace wires the nex
   assert.match(sidebar, /hasMore\?:\s*boolean/);
   assert.match(sidebar, /loadingMore\?:\s*boolean/);
   assert.match(sidebar, /onLoadMore\?:\s*\(\)\s*=>\s*void/);
-  assert.match(sidebar, />加载更多</);
+  assert.match(sidebar, /data-action=['"]load-more['"]/);
+  assert.match(sidebar, /hasMore\s*&&\s*onLoadMore/);
+  assert.match(sidebar, /onClick=\{onLoadMore\}/);
+  assert.match(sidebar, /loadingMore\s*\?\s*['"]加载中…['"]\s*:\s*['"]加载更多['"]/);
+  assert.match(sidebar, /disabled=\{Boolean\(loadingMore \|\| busy\)\}/);
   assert.match(workspace, /hasMore=\{threads\.hasMore\}/);
   assert.match(workspace, /loadingMore=\{threads\.loadingMore\}/);
   assert.match(workspace, /void threads\.loadMore\(\)/);
