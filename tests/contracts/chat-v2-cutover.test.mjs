@@ -65,6 +65,14 @@ test('ThreadSidebar visibly exposes cursor load-more and workspace wires the nex
   assert.match(hook, /mergeUniqueChats\(prev, page\.items\)/);
 });
 
+test('stale cursor pages cannot append after refresh or Supabase identity change', () => {
+  const hook = source('apps/web/lib/use-chat-threads.ts');
+  assert.match(hook, /refreshGen\.current \+= 1/);
+  assert.match(hook, /const gen = refreshGen\.current/);
+  assert.match(hook, /if \(gen !== refreshGen\.current\) return;/);
+  assert.match(hook, /setLoadingMore\(false\)/);
+});
+
 test('assistant-ui model adapter sends stable v2 ids and never calls streamThreadMessage', () => {
   const text = source(
     'packages/chat-ui/src/runtime/createDocChatModelAdapter.ts',
