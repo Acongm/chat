@@ -1,0 +1,119 @@
+/*
+ * Semantic adapter loaded after the legacy ChatGPT structural stylesheet.
+ * Keep its spacing/layout behavior, but make every foundational surface obey
+ * the shared Acongm shadcn-style theme contract.
+ */
+.acongm-workspace[data-preset='siteFocus'],
+.acongm-workspace[data-preset='siteFull'],
+html.dark .acongm-workspace[data-preset='siteFocus'],
+html.dark .acongm-workspace[data-preset='siteFull'],
+html[data-theme='dark'] .acongm-workspace[data-preset='siteFocus'],
+html[data-theme='dark'] .acongm-workspace[data-preset='siteFull'] {
+  --gpt-bg: var(--background);
+  --gpt-fg: var(--foreground);
+  --gpt-muted: var(--muted-foreground);
+  --gpt-border: var(--border);
+  --gpt-sidebar: var(--card);
+  --gpt-sidebar-hover: var(--accent);
+  --gpt-sidebar-active: color-mix(in oklab, var(--accent) 82%, var(--foreground) 4%);
+  --gpt-user-bubble: var(--muted);
+  --gpt-composer-bg: var(--card);
+  --gpt-composer-shadow: 0 1px 2px color-mix(in oklab, var(--foreground) 8%, transparent);
+  --gpt-send-bg: var(--primary);
+  --gpt-send-fg: var(--primary-foreground);
+}
+
+.acongm-gpt-sidebar__hint.is-error {
+  color: var(--destructive);
+}
+
+.acongm-gpt-thread-loading {
+  color: var(--muted-foreground);
+}
+
+.acongm-gpt-sidebar__icon,
+.acongm-gpt-sidebar__item,
+.acongm-gpt-sidebar__item-delete,
+.acongm-gpt-icon-btn,
+html.dark .acongm-gpt-icon-btn,
+html[data-theme='dark'] .acongm-gpt-icon-btn {
+  color: var(--muted-foreground);
+}
+
+.acongm-gpt-sidebar__icon:hover,
+.acongm-gpt-sidebar__item:hover,
+.acongm-gpt-sidebar__item.is-active,
+.acongm-gpt-sidebar__item-delete:hover,
+.acongm-gpt-icon-btn:hover,
+html.dark .acongm-gpt-icon-btn:hover,
+html[data-theme='dark'] .acongm-gpt-icon-btn:hover {
+  background: var(--accent);
+  color: var(--accent-foreground);
+}
+
+.acongm-gpt-sidebar__new,
+.acongm-workspace__mobile-bar button {
+  border-color: var(--border);
+  background: var(--background);
+  color: var(--foreground);
+}
+
+.acongm-gpt-sidebar__new:hover:not(:disabled),
+.acongm-workspace__mobile-bar button:hover {
+  border-color: color-mix(in oklab, var(--primary) 35%, var(--border));
+  background: var(--accent);
+  color: var(--accent-foreground);
+}
+
+.acongm-gpt-sidebar__footer {
+  border-color: var(--border);
+}
+
+.acongm-gpt-sidebar__link {
+  color: var(--muted-foreground);
+}
+
+.acongm-gpt-sidebar__link:hover {
+  color: var(--foreground);
+}
+
+.acongm-gpt-composer,
+html.dark .acongm-gpt-composer,
+html[data-theme='dark'] .acongm-gpt-composer {
+  border-color: var(--border);
+  background: var(--card);
+  color: var(--card-foreground);
+}
+
+.acongm-gpt-composer:focus-within,
+html.dark .acongm-gpt-composer:focus-within,
+html[data-theme='dark'] .acongm-gpt-composer:focus-within {
+  border-color: var(--ring);
+  box-shadow: 0 0 0 1px color-mix(in oklab, var(--ring) 28%, transparent);
+}
+
+.acongm-gpt-composer textarea,
+.acongm-gpt-composer input {
+  color: var(--foreground);
+}
+
+.acongm-gpt-composer textarea::placeholder,
+.acongm-gpt-composer input::placeholder {
+  color: var(--muted-foreground);
+}
+
+.acongm-gpt-msg__bubble {
+  background: var(--muted);
+  color: var(--foreground);
+}
+
+.acongm-workspace-sheet,
+.acongm-workspace-sheet__panel {
+  background: var(--background);
+  color: var(--foreground);
+  border-color: var(--border);
+}
+
+.acongm-workspace-sheet__backdrop {
+  background: color-mix(in oklab, #000 45%, transparent);
+}

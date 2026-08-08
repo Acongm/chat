@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 import './global.css';
+import { ACONGM_THEME_BOOT_SCRIPT } from '@/lib/theme';
 
 export const metadata: Metadata = {
   metadataBase: new URL(
@@ -17,6 +18,9 @@ export const metadata: Metadata = {
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="zh-CN" suppressHydrationWarning>
+      <head>
+        <script dangerouslySetInnerHTML={{ __html: ACONGM_THEME_BOOT_SCRIPT }} />
+      </head>
       <body>{children}</body>
     </html>
   );
