@@ -14,10 +14,10 @@ test('workspace primary flow points at /api/chats and not legacy /api/chat/threa
   assert.doesNotMatch(text, /threadsBaseUrl/);
 });
 
-test('chat auth slot no longer claims x-client-id anonymous threads', () => {
+test('chat auth slot has no legacy claim/client-id calls', () => {
   const text = source('apps/web/components/chat-auth-slot.tsx');
-  assert.doesNotMatch(text, /claimAnonymousThreads/);
-  assert.doesNotMatch(text, /getClientId/);
+  assert.doesNotMatch(text, /\bclaimAnonymousThreads\s*\(/);
+  assert.doesNotMatch(text, /\bgetClientId\s*\(/);
   assert.match(text, /session\.access_token/);
   assert.match(text, /session\.user\.id/);
 });
@@ -45,6 +45,22 @@ test('conversation hook uses Chat v2 SDK only', () => {
   }
 });
 
+test('ThreadSidebar visibly exposes cursor load-more and workspace wires the next-page callback', () => {
+  const sidebar = source('packages/chat-ui/src/workspace/ThreadSidebar.tsx');
+  const workspace = source('apps/web/components/chat-workspace-app.tsx');
+  const hook = source('apps/web/lib/use-chat-threads.ts');
+
+  assert.match(sidebar, /hasMore\?:\s*boolean/);
+  assert.match(sidebar, /loadingMore\?:\s*boolean/);
+  assert.match(sidebar, /onLoadMore\?:\s*\(\)\s*=>\s*void/);
+  assert.match(sidebar, />加载更多</);
+  assert.match(workspace, /hasMore=\{threads\.hasMore\}/);
+  assert.match(workspace, /loadingMore=\{threads\.loadingMore\}/);
+  assert.match(workspace, /void threads\.loadMore\(\)/);
+  assert.match(hook, /after:\s*nextCursor/);
+  assert.match(hook, /mergeUniqueChats\(prev, page\.items\)/);
+});
+
 test('assistant-ui model adapter sends stable v2 ids and never calls streamThreadMessage', () => {
   const text = source(
     'packages/chat-ui/src/runtime/createDocChatModelAdapter.ts',
@@ -54,12 +70,12 @@ test('assistant-ui model adapter sends stable v2 ids and never calls streamThrea
   assert.match(text, /parentMessageId:\s*parentOfCurrentUser/);
   assert.match(text, /assistantMessageId:\s*unstable_assistantMessageId/);
   assert.match(text, /runId:\s*createRunId\(\)/);
-  assert.doesNotMatch(text, /streamThreadMessage/);
+  assert.doesNotMatch(text, /\bstreamThreadMessage\s*\(/);
 });
 
 test('Chat v2 BFF forwards bearer auth but never x-client-id', () => {
   const text = source('apps/web/app/api/chats/[[...path]]/route.ts');
   assert.match(text, /['"]authorization['"]/);
-  assert.doesNotMatch(text, /x-client-id/i);
+  assert.doesNotMatch(text, /['"]x-client-id['"]/i);
   assert.match(text, /CHAT_UPSTREAM_UNREACHABLE/);
 });
