@@ -4,11 +4,55 @@
   "installRef": "c4dbd6d7ae129bef36f6ae43dc0e8050e54927d1",
   "workspace": "apps/web",
   "items": [
-    {"name":"ui-cn","source":"registry/acongm/lib/ui-cn.ts","local":"apps/web/lib/ui-cn.ts","sourceSha":"38ac1f3368aa52eb62945514ce418f988233f3bc","localSha":"38ac1f3368aa52eb62945514ce418f988233f3bc","policy":"managed"},
-    {"name":"theme-runtime","source":"registry/acongm/lib/theme.ts","local":"apps/web/lib/theme.ts","sourceSha":"ef9fc423f005013153986e8cc0674b645e8d2c2f","localSha":"1fd03fbd83de0ce2551978a2e5edaff08239f37b","policy":"customized","note":"Acongm platform integration remains app-local while preserving the shared theme contract."},
-    {"name":"button","source":"registry/acongm/ui/button.tsx","local":"apps/web/components/ui/button.tsx","sourceSha":"48615129cac55b68c236b1c78f55269e26ee772f","localSha":"48615129cac55b68c236b1c78f55269e26ee772f","policy":"managed"},
-    {"name":"badge","source":"registry/acongm/ui/badge.tsx","local":"apps/web/components/ui/badge.tsx","sourceSha":"045059e2501487e1df4aa0fa3a1cc62b701ee9cb","localSha":"045059e2501487e1df4aa0fa3a1cc62b701ee9cb","policy":"managed"},
-    {"name":"skeleton","source":"registry/acongm/ui/skeleton.tsx","local":"apps/web/components/ui/skeleton.tsx","sourceSha":"558466259bbe675ebe64a365be5f0581e7d09e77","localSha":"558466259bbe675ebe64a365be5f0581e7d09e77","policy":"managed"},
-    {"name":"theme-toggle","source":"registry/acongm/ui/theme-toggle.tsx","local":"apps/web/components/ui/theme-toggle.tsx","sourceSha":"e39cd5c29ee0667fec04d7c7f29b1f7110ebdb0b","localSha":"79dee09e3c9d7b546dcfc62244df256854eef70e","policy":"customized","note":"Platform recipe stays app-local; generic core primitives are managed separately."}
+    {
+      "name": "ui-cn",
+      "source": "registry/acongm/lib/ui-cn.ts",
+      "local": "apps/web/lib/ui-cn.ts",
+      "sourceSha": "38ac1f3368aa52eb62945514ce418f988233f3bc",
+      "localSha": "38ac1f3368aa52eb62945514ce418f988233f3bc",
+      "policy": "managed"
+    },
+    {
+      "name": "theme-runtime",
+      "source": "registry/acongm/lib/theme.ts",
+      "local": "apps/web/lib/theme.ts",
+      "sourceSha": "ef9fc423f005013153986e8cc0674b645e8d2c2f",
+      "localSha": "1fd03fbd83de0ce2551978a2e5edaff08239f37b",
+      "policy": "customized",
+      "note": "Acongm platform integration remains app-local while preserving the shared theme contract."
+    },
+    {
+      "name": "button",
+      "source": "registry/acongm/ui/button.tsx",
+      "local": "apps/web/components/ui/button.tsx",
+      "sourceSha": "48615129cac55b68c236b1c78f55269e26ee772f",
+      "localSha": "48615129cac55b68c236b1c78f55269e26ee772f",
+      "policy": "managed"
+    },
+    {
+      "name": "badge",
+      "source": "registry/acongm/ui/badge.tsx",
+      "local": "apps/web/components/ui/badge.tsx",
+      "sourceSha": "045059e2501487e1df4aa0fa3a1cc62b701ee9cb",
+      "localSha": "045059e2501487e1df4aa0fa3a1cc62b701ee9cb",
+      "policy": "managed"
+    },
+    {
+      "name": "skeleton",
+      "source": "registry/acongm/ui/skeleton.tsx",
+      "local": "apps/web/components/ui/skeleton.tsx",
+      "sourceSha": "558466259bbe675ebe64a365be5f0581e7d09e77",
+      "localSha": "558466259bbe675ebe64a365be5f0581e7d09e77",
+      "policy": "managed"
+    },
+    {
+      "name": "theme-toggle",
+      "source": "registry/acongm/ui/theme-toggle.tsx",
+      "local": "apps/web/components/ui/theme-toggle.tsx",
+      "sourceSha": "e39cd5c29ee0667fec04d7c7f29b1f7110ebdb0b",
+      "localSha": "79dee09e3c9d7b546dcfc62244df256854eef70e",
+      "policy": "customized",
+      "note": "Platform recipe stays app-local; generic core primitives are managed separately."
+    }
   ]
 }
