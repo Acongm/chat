@@ -306,7 +306,8 @@ function WorkspaceInner({
             context={context}
             forceOpen
             seedMessages={
-              threads.activeThreadId ? (threads.seedMessages ?? []) : null
+              // preserveSeed 时 null 必须原样下传；不要制造新的 [] 引用触发 runtime seed reset。
+              threads.activeThreadId ? threads.seedMessages : null
             }
             emptyTitle={emptyTitle}
           />
