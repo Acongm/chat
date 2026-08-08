@@ -29,6 +29,8 @@ export {
   type ChatV2RequestOptions,
 } from './chats';
 
+export { selectActiveChatBranch } from './chat-v2-history';
+
 /** Legacy compatibility only. New chat consumers must use Chat v2 above. */
 export {
   DEFAULT_THREADS_PROXY,
