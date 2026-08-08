@@ -5,6 +5,7 @@ import type { AuthChangeEvent, Session, User } from '@supabase/supabase-js';
 import {
   claimAnonymousThreads,
   createBrowserClient,
+  ensureAnonymousSession,
   getOAuthLoginUrl,
   isAuthConfigured,
   signOut,
@@ -25,25 +26,45 @@ export function useSession() {
       return;
     }
     let mounted = true;
+    let generation = 0;
 
-    void client.auth.getSession().then(({ data }) => {
-      if (mounted) {
-        setSession(data.session);
-        setLoading(false);
-      }
-    });
+    const bootstrap = async () => {
+      const currentGeneration = ++generation;
+      const nextSession = await ensureAnonymousSession(client);
+      if (!mounted || currentGeneration !== generation) return;
+      setSession(nextSession);
+      setLoading(false);
+    };
+
+    void bootstrap();
 
     const {
       data: { subscription },
     } = client.auth.onAuthStateChange(
-      (_event: AuthChangeEvent, nextSession: Session | null) => {
-        setSession(nextSession);
+      (event: AuthChangeEvent, nextSession: Session | null) => {
+        if (!mounted) return;
+        generation += 1;
+        if (nextSession) {
+          setSession(nextSession);
+          setLoading(false);
+          return;
+        }
+
+        setSession(null);
+        if (event === 'SIGNED_OUT') {
+          // Return to a real Supabase anonymous identity after explicit logout.
+          // No x-client-id compatibility claim is used by Chat v2.
+          setLoading(true);
+          void bootstrap();
+          return;
+        }
         setLoading(false);
       },
     );
 
     return () => {
       mounted = false;
+      generation += 1;
       subscription.unsubscribe();
     };
   }, [client]);
@@ -79,4 +100,9 @@ export function useAuthActions() {
   return { login, logout, client, configured };
 }
 
-export { claimAnonymousThreads, getOAuthLoginUrl, isAuthConfigured };
+export {
+  claimAnonymousThreads,
+  ensureAnonymousSession,
+  getOAuthLoginUrl,
+  isAuthConfigured,
+};
