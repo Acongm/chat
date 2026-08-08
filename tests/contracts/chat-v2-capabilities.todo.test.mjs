@@ -3,8 +3,6 @@ import test from 'node:test';
 // These TODOs are intentionally part of the executable Chat v2 contract suite.
 // Remove one only after replacing it with a real passing contract/E2E test.
 
-test.todo('ThreadSidebar visibly exposes cursor load-more and appends the next server page');
-
 test.todo(
   'anonymous Supabase identity upgrades to authenticated identity without losing owned chats',
 );
