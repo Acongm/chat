@@ -10,7 +10,10 @@
     "dev": "pnpm --filter web dev",
     "build": "pnpm --filter web build",
     "start": "pnpm --filter web start",
-    "types:check": "pnpm -r --filter @acongm/* --filter web types:check"
+    "types:check": "pnpm -r --filter @acongm/* --filter web types:check",
+    "ui:list": "pnpm dlx shadcn@latest list Acongm/shadcn-ui",
+    "ui:view": "pnpm dlx shadcn@latest view Acongm/shadcn-ui/core-ui",
+    "ui:add": "pnpm -C apps/web dlx shadcn@latest add Acongm/shadcn-ui/core-ui"
   },
   "dependencies": {
     "next": "^16.2.12",
