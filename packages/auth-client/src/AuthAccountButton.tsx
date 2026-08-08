@@ -1,5 +1,6 @@
 'use client';
 
+import { isAnonymousUser } from './client';
 import { useAuthActions, useSession } from './hooks';
 
 export type AuthAccountButtonProps = {
@@ -161,8 +162,9 @@ export function AuthAccountButton({
     );
   }
 
-  // 未配置 Supabase 时仍可跳转 SSO（login 带 return_to）
-  if (!configured || !session) {
+  // Anonymous Supabase sessions are transport identities for RLS, not signed-in
+  // accounts. Keep the product UI as "登录" while Chat v2 uses the JWT.
+  if (!configured || !session || isAnonymousUser(session.user)) {
     return (
       <LoginControl
         className={className}
