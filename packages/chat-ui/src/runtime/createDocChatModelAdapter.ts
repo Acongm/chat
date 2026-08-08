@@ -201,7 +201,7 @@ export function createDocChatModelAdapter(
         }
         if (event.type === 'error') {
           const error = new Error(event.message || '回答失败');
-          if (event.code) error.name = event.code;
+          if ('code' in event && event.code) error.name = event.code;
           throw error;
         }
       }
