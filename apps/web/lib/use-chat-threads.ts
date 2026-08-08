@@ -200,6 +200,8 @@ export function useChatThreads(
     setSeedStatus(initialThreadId ? 'loading' : 'idle');
     setError(null);
     setLoading(true);
+    setRefreshing(false);
+    setLoadingMore(false);
   }, [identityKey, initialThreadId]);
 
   const refresh = useCallback(async () => {
@@ -241,6 +243,9 @@ export function useChatThreads(
 
   const loadMore = useCallback(async () => {
     if (!accessToken || !identityKey || !nextCursor || loadingMore) return;
+    // Share the list generation with refresh/identity changes so an older
+    // principal/page can never append into a newer principal's sidebar.
+    const gen = refreshGen.current;
     setLoadingMore(true);
     setError(null);
     try {
@@ -248,12 +253,16 @@ export function useChatThreads(
         { limit: CHAT_PAGE_SIZE, after: nextCursor },
         requestOptions,
       );
+      if (gen !== refreshGen.current) return;
       setThreads((prev) => mergeUniqueChats(prev, page.items));
       setNextCursor(page.nextCursor || null);
     } catch (err) {
+      if (gen !== refreshGen.current) return;
       setError(err instanceof Error ? err.message : '加载更多会话失败');
     } finally {
-      setLoadingMore(false);
+      if (gen === refreshGen.current) {
+        setLoadingMore(false);
+      }
     }
   }, [accessToken, identityKey, loadingMore, nextCursor, requestOptions]);
 
