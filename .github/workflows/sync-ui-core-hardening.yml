@@ -27,10 +27,10 @@ jobs:
         run: pnpm install --frozen-lockfile
       - name: Sync reviewed core primitives from Registry
         run: |
-          pnpm -C apps/web dlx shadcn@latest add Acongm/shadcn-ui/ui-cn --yes --overwrite
-          pnpm -C apps/web dlx shadcn@latest add Acongm/shadcn-ui/button --yes --overwrite
-          pnpm -C apps/web dlx shadcn@latest add Acongm/shadcn-ui/badge --yes --overwrite
-          pnpm -C apps/web dlx shadcn@latest add Acongm/shadcn-ui/skeleton --yes --overwrite
+          pnpm dlx shadcn@latest add Acongm/shadcn-ui/ui-cn -c apps/web --yes --overwrite
+          pnpm dlx shadcn@latest add Acongm/shadcn-ui/button -c apps/web --yes --overwrite
+          pnpm dlx shadcn@latest add Acongm/shadcn-ui/badge -c apps/web --yes --overwrite
+          pnpm dlx shadcn@latest add Acongm/shadcn-ui/skeleton -c apps/web --yes --overwrite
       - name: Commit generated source and lockfile
         run: |
           git config user.name "github-actions[bot]"
