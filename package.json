@@ -13,7 +13,9 @@
     "types:check": "pnpm -r --filter @acongm/* --filter web types:check",
     "ui:list": "pnpm dlx shadcn@latest list Acongm/shadcn-ui",
     "ui:view": "pnpm dlx shadcn@latest view Acongm/shadcn-ui/core-ui",
-    "ui:add": "pnpm -C apps/web dlx shadcn@latest add Acongm/shadcn-ui/core-ui"
+    "ui:add": "pnpm -C apps/web dlx shadcn@latest add Acongm/shadcn-ui/core-ui",
+    "ui:diff": "pnpm -C apps/web dlx shadcn@latest add Acongm/shadcn-ui/core-ui --dry-run --diff",
+    "ui:drift": "node scripts/check-ui-drift.mjs"
   },
   "dependencies": {
     "next": "^16.2.12",
