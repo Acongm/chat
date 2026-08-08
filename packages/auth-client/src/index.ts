@@ -1,8 +1,10 @@
 export {
   claimAnonymousThreads,
   createBrowserClient,
+  ensureAnonymousSession,
   getAuthBaseUrl,
   getOAuthLoginUrl,
+  isAnonymousUser,
   isAuthConfigured,
   isSocialAuthProvider,
   signInWithGitHub,
@@ -25,8 +27,4 @@ export { createServerClient } from './server';
 export type { CookieStore, ServerClientOptions } from './server';
 export { AuthAccountButton } from './AuthAccountButton';
 export type { AuthAccountButtonProps } from './AuthAccountButton';
-export {
-  useSession,
-  useUser,
-  useAuthActions,
-} from './hooks';
+export { useSession, useUser, useAuthActions } from './hooks';
