@@ -3,10 +3,11 @@ import fs from 'node:fs';
 import path from 'node:path';
 
 const root = process.cwd();
-const manifestPath = path.join(root, '.acongm-ui.json');
-const manifest = JSON.parse(fs.readFileSync(manifestPath, 'utf8'));
+const manifest = JSON.parse(fs.readFileSync(path.join(root, '.acongm-ui.json'), 'utf8'));
+const packageJson = JSON.parse(fs.readFileSync(path.join(root, 'package.json'), 'utf8'));
 const registry = manifest.registry ?? 'Acongm/shadcn-ui';
 const ref = manifest.ref ?? 'main';
+const installRef = manifest.installRef;
 const entries = Array.isArray(manifest.items) ? manifest.items : [];
 const errors = [];
 
@@ -15,8 +16,8 @@ function gitBlobSha(buffer) {
   return crypto.createHash('sha1').update(header).update(buffer).digest('hex');
 }
 
-async function loadRegistryTree() {
-  const url = `https://api.github.com/repos/${registry}/git/trees/${encodeURIComponent(ref)}?recursive=1`;
+async function loadRegistryTree(treeRef) {
+  const url = `https://api.github.com/repos/${registry}/git/trees/${encodeURIComponent(treeRef)}?recursive=1`;
   const response = await fetch(url, {
     headers: {
       Accept: 'application/vnd.github+json',
@@ -24,21 +25,31 @@ async function loadRegistryTree() {
     },
   });
   if (!response.ok) {
-    throw new Error(`failed to read ${registry}#${ref}: ${response.status} ${response.statusText}`);
+    throw new Error(`failed to read ${registry}#${treeRef}: ${response.status} ${response.statusText}`);
   }
   const payload = await response.json();
-  if (payload.truncated) {
-    throw new Error(`${registry} tree response was truncated`);
-  }
+  if (payload.truncated) throw new Error(`${registry}#${treeRef} tree response was truncated`);
   return new Map((payload.tree ?? []).filter((item) => item.type === 'blob').map((item) => [item.path, item.sha]));
 }
 
+if (!/^[0-9a-f]{40}$/.test(installRef ?? '')) {
+  errors.push('installRef must be a full 40-character commit SHA');
+}
 if (entries.length === 0) {
-  console.error('.acongm-ui.json must declare at least one managed item');
-  process.exit(1);
+  errors.push('.acongm-ui.json must declare at least one managed item');
 }
 
-const registryTree = await loadRegistryTree();
+for (const scriptName of ['ui:view', 'ui:add']) {
+  const script = packageJson.scripts?.[scriptName] ?? '';
+  if (!installRef || !script.includes(`#${installRef}`)) {
+    errors.push(`${scriptName} must install/view the reviewed installRef ${installRef ?? '<missing>'}`);
+  }
+}
+
+const [registryTree, installTree] = await Promise.all([
+  loadRegistryTree(ref),
+  loadRegistryTree(installRef),
+]);
 const seenLocal = new Set();
 
 for (const entry of entries) {
@@ -64,6 +75,13 @@ for (const entry of entries) {
     errors.push(`${name}: local drift detected for ${local}\n  baseline ${localSha}\n  current  ${currentLocalSha}`);
   }
 
+  const reviewedSourceSha = installTree.get(source);
+  if (!reviewedSourceSha) {
+    errors.push(`${name}: source missing from reviewed ${registry}#${installRef}:${source}`);
+  } else if (reviewedSourceSha !== sourceSha) {
+    errors.push(`${name}: sourceSha does not match installRef\n  manifest ${sourceSha}\n  pinned   ${reviewedSourceSha}`);
+  }
+
   const currentSourceSha = registryTree.get(source);
   if (!currentSourceSha) {
     errors.push(`${name}: registry source missing at ${registry}#${ref}:${source}`);
@@ -81,10 +99,10 @@ for (const entry of entries) {
 if (errors.length > 0) {
   console.error('Acongm UI drift gate failed:');
   console.error(errors.map((error) => `- ${error}`).join('\n'));
-  console.error('\nReview with `pnpm ui:diff`, then explicitly update .acongm-ui.json after accepting/syncing the change.');
+  console.error('\nReview latest Registry changes with `pnpm ui:diff`, then explicitly update code, installRef and .acongm-ui.json after accepting the upgrade.');
   process.exit(1);
 }
 
 const managed = entries.filter((entry) => (entry.policy ?? 'managed') === 'managed').length;
 const customized = entries.length - managed;
-console.log(`Acongm UI drift OK: ${entries.length} files locked to ${registry}#${ref} (${managed} managed, ${customized} customized).`);
+console.log(`Acongm UI drift OK: ${entries.length} files pinned to ${registry}#${installRef}, watching #${ref} (${managed} managed, ${customized} customized).`);
