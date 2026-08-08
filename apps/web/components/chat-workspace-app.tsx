@@ -265,6 +265,8 @@ function WorkspaceInner({
           activeThreadId={threads.activeThreadId}
           loading={threads.loading}
           refreshing={threads.refreshing}
+          loadingMore={threads.loadingMore}
+          hasMore={threads.hasMore}
           error={threads.error}
           portalHref={portalBase}
           authSlot={
@@ -283,6 +285,9 @@ function WorkspaceInner({
           }}
           onRefresh={() => {
             void threads.refresh();
+          }}
+          onLoadMore={() => {
+            void threads.loadMore();
           }}
         />
       }
