@@ -1,18 +1,25 @@
 'use client';
 
-import { useCallback, useEffect, useRef, useState } from 'react';
-import type { ChatThreadRecord, ChatUiMessage } from '@acongm/kb-types';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import type { ChatUiMessage, ChatV2Message, ChatV2Record } from '@acongm/kb-types';
 import {
-  createChatThread,
-  deleteChatThread,
-  getChatThread,
-  listChatThreads,
+  createChatV2,
+  deleteChatV2,
+  getChatV2,
+  listChatMessagesV2,
+  listChatsV2,
+  selectActiveChatBranch,
 } from '@acongm/agent-session-sdk';
 
-const THREADS_BASE = '/api/chat/threads';
+const CHATS_BASE = '/api/chats';
+const CHAT_PAGE_SIZE = 50;
+const MESSAGE_PAGE_SIZE = 100;
+const MAX_RESTORED_MESSAGES = 5000;
 
 export type UseChatThreadsOptions = {
   accessToken?: string | null;
+  /** Supabase auth.uid()，只用于 UI 缓存隔离；真正鉴权始终使用 access token。 */
+  identityKey?: string | null;
   /** 初始选中（来自 /t/[id]） */
   initialThreadId?: string | null;
 };
@@ -20,48 +27,128 @@ export type UseChatThreadsOptions = {
 export type SeedStatus = 'idle' | 'loading' | 'ready';
 
 export type UseChatThreadsResult = {
-  threads: ChatThreadRecord[];
+  threads: ChatV2Record[];
   activeThreadId: string | null;
-  activeThread: ChatThreadRecord | null;
+  activeThread: ChatV2Record | null;
   seedMessages: ChatUiMessage[] | null;
-  /** 详情 seed 是否已就绪（避免 /t/id 首屏用 sessionStorage 抢跑） */
+  /** 详情 seed 是否已从 server durable history 就绪。 */
   seedStatus: SeedStatus;
   /** 首屏列表加载中 */
   loading: boolean;
   /** 后台刷新中（不禁用「新对话」） */
   refreshing: boolean;
+  /** 侧栏继续分页加载 */
+  loadingMore: boolean;
+  hasMore: boolean;
   error: string | null;
   refresh: () => Promise<void>;
+  loadMore: () => Promise<void>;
   createThread: (input?: {
     title?: string;
     moduleKey?: string;
     pagePath?: string;
-    /** 首条消息中途建会话时保留当前 seed，避免打断流式 */
+    /** 首条消息中途建 chat 时保留当前 seed，避免打断流式 */
     preserveSeed?: boolean;
-  }) => Promise<ChatThreadRecord>;
+  }) => Promise<ChatV2Record>;
   selectThread: (id: string) => Promise<void>;
   removeThread: (id: string) => Promise<void>;
   clearActive: () => void;
 };
 
-function mapThreadMessages(raw: unknown[]): ChatUiMessage[] {
+function textParts(message: ChatV2Message): string {
+  return message.parts
+    .filter(
+      (part): part is { type: 'text'; text: string } =>
+        part.type === 'text' &&
+        'text' in part &&
+        typeof part.text === 'string',
+    )
+    .map((part) => part.text)
+    .join('\n');
+}
+
+function reasoningParts(message: ChatV2Message): string {
+  return message.parts
+    .filter(
+      (part): part is { type: 'reasoning'; text: string } =>
+        part.type === 'reasoning' &&
+        'text' in part &&
+        typeof part.text === 'string',
+    )
+    .map((part) => part.text)
+    .join('');
+}
+
+function mapDurableBranch(messages: readonly ChatV2Message[]): ChatUiMessage[] {
+  const branch = selectActiveChatBranch(messages);
   const result: ChatUiMessage[] = [];
-  for (let index = 0; index < raw.length; index += 1) {
-    const item = raw[index];
-    if (!item || typeof item !== 'object') continue;
-    const row = item as Record<string, unknown>;
-    const role = row.role === 'assistant' ? 'assistant' : 'user';
-    const content = typeof row.content === 'string' ? row.content : '';
-    if (!content.trim()) continue;
-    const message: ChatUiMessage = {
-      id: typeof row.id === 'string' ? row.id : `thread-msg-${index}`,
-      role,
+
+  for (const message of branch) {
+    if (message.role !== 'user' && message.role !== 'assistant') continue;
+    const content = textParts(message);
+    const thinking = reasoningParts(message);
+    if (!content.trim() && !thinking.trim()) continue;
+
+    result.push({
+      // assistant-ui should keep using its stable client-side id when available.
+      // Server UUID remains available in ChatV2Message for parent traversal only.
+      id: message.clientMessageId || message.id,
+      role: message.role,
       content,
-    };
-    if (typeof row.thinking === 'string' && row.thinking.trim()) {
-      message.thinking = row.thinking;
+      ...(thinking.trim() ? { thinking } : {}),
+    });
+  }
+
+  return result;
+}
+
+async function loadDurableHistory(
+  chatId: string,
+  accessToken: string,
+): Promise<{ chat: ChatV2Record; messages: ChatUiMessage[] }> {
+  const requestOptions = { baseUrl: CHATS_BASE, accessToken };
+  const detail = await getChatV2(chatId, requestOptions);
+  const allMessages = [...detail.messages];
+  let cursor = detail.nextCursor;
+  const seenCursors = new Set<string>();
+
+  while (cursor) {
+    if (allMessages.length >= MAX_RESTORED_MESSAGES) {
+      throw new Error(
+        `会话历史超过 ${MAX_RESTORED_MESSAGES} 条，当前版本不会静默截断分支历史。`,
+      );
     }
-    result.push(message);
+    if (seenCursors.has(cursor)) {
+      throw new Error('会话历史分页游标重复，已停止恢复以避免错误历史。');
+    }
+    seenCursors.add(cursor);
+
+    const remaining = MAX_RESTORED_MESSAGES - allMessages.length;
+    const page = await listChatMessagesV2(
+      chatId,
+      { limit: Math.min(MESSAGE_PAGE_SIZE, remaining), after: cursor },
+      requestOptions,
+    );
+    allMessages.push(...page.items);
+    cursor = page.nextCursor;
+  }
+
+  return {
+    chat: detail.chat,
+    messages: mapDurableBranch(allMessages),
+  };
+}
+
+function mergeUniqueChats(
+  current: ChatV2Record[],
+  incoming: ChatV2Record[],
+): ChatV2Record[] {
+  const seen = new Set<string>();
+  const result: ChatV2Record[] = [];
+  for (const chat of [...current, ...incoming]) {
+    if (seen.has(chat.id)) continue;
+    seen.add(chat.id);
+    result.push(chat);
   }
   return result;
 }
@@ -69,8 +156,13 @@ function mapThreadMessages(raw: unknown[]): ChatUiMessage[] {
 export function useChatThreads(
   options: UseChatThreadsOptions = {},
 ): UseChatThreadsResult {
-  const { accessToken, initialThreadId = null } = options;
-  const [threads, setThreads] = useState<ChatThreadRecord[]>([]);
+  const {
+    accessToken = null,
+    identityKey = null,
+    initialThreadId = null,
+  } = options;
+  const [threads, setThreads] = useState<ChatV2Record[]>([]);
+  const [nextCursor, setNextCursor] = useState<string | null>(null);
   const [activeThreadId, setActiveThreadId] = useState<string | null>(
     initialThreadId,
   );
@@ -80,32 +172,49 @@ export function useChatThreads(
   );
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [loadingMore, setLoadingMore] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const requestOpts = {
-    baseUrl: THREADS_BASE,
-    accessToken: accessToken ?? undefined,
-  };
-
   const refreshGen = useRef(0);
+  const selectGen = useRef(0);
+  const previousIdentity = useRef<string | null>(null);
+
+  const requestOptions = useMemo(
+    () => ({
+      baseUrl: CHATS_BASE,
+      accessToken: accessToken || undefined,
+    }),
+    [accessToken],
+  );
+
+  useEffect(() => {
+    if (previousIdentity.current === identityKey) return;
+    previousIdentity.current = identityKey;
+    refreshGen.current += 1;
+    selectGen.current += 1;
+    // Never display one Supabase principal's chats under another principal.
+    setThreads([]);
+    setNextCursor(null);
+    setActiveThreadId(initialThreadId);
+    setSeedMessages(null);
+    setSeedStatus(initialThreadId ? 'loading' : 'idle');
+    setError(null);
+    setLoading(true);
+  }, [identityKey, initialThreadId]);
 
   const refresh = useCallback(async () => {
+    if (!accessToken || !identityKey) return;
     const gen = ++refreshGen.current;
     setError(null);
     setRefreshing(true);
     try {
-      const list = await listChatThreads({
-        baseUrl: THREADS_BASE,
-        accessToken: accessToken ?? undefined,
-      });
-      // 丢弃过期响应，避免登录前后并发 list 互相覆盖
+      const page = await listChatsV2(
+        { limit: CHAT_PAGE_SIZE },
+        requestOptions,
+      );
       if (gen !== refreshGen.current) return;
-      const sorted = [...list].sort((a, b) => {
-        const ta = new Date(a.updatedAt || a.createdAt || 0).getTime();
-        const tb = new Date(b.updatedAt || b.createdAt || 0).getTime();
-        return tb - ta;
-      });
-      setThreads(sorted);
+      setThreads(page.items);
+      setNextCursor(page.nextCursor || null);
     } catch (err) {
       if (gen !== refreshGen.current) return;
       setError(err instanceof Error ? err.message : '加载会话失败');
@@ -115,11 +224,12 @@ export function useChatThreads(
         setLoading(false);
       }
     }
-  }, [accessToken]);
+  }, [accessToken, identityKey, requestOptions]);
 
   useEffect(() => {
+    if (!accessToken || !identityKey) return;
     void refresh();
-  }, [refresh]);
+  }, [accessToken, identityKey, refresh]);
 
   useEffect(() => {
     setActiveThreadId(initialThreadId);
@@ -129,35 +239,62 @@ export function useChatThreads(
     }
   }, [initialThreadId]);
 
+  const loadMore = useCallback(async () => {
+    if (!accessToken || !identityKey || !nextCursor || loadingMore) return;
+    setLoadingMore(true);
+    setError(null);
+    try {
+      const page = await listChatsV2(
+        { limit: CHAT_PAGE_SIZE, after: nextCursor },
+        requestOptions,
+      );
+      setThreads((prev) => mergeUniqueChats(prev, page.items));
+      setNextCursor(page.nextCursor || null);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : '加载更多会话失败');
+    } finally {
+      setLoadingMore(false);
+    }
+  }, [accessToken, identityKey, loadingMore, nextCursor, requestOptions]);
+
   const selectThread = useCallback(
     async (id: string) => {
+      if (!accessToken || !identityKey) {
+        setError('正在准备安全会话身份，请稍后重试。');
+        return;
+      }
+      const gen = ++selectGen.current;
       setActiveThreadId(id);
       setSeedStatus('loading');
       setError(null);
       try {
-        const detail = await getChatThread(id, requestOpts);
-        setSeedMessages(mapThreadMessages(detail.messages ?? []));
+        const detail = await loadDurableHistory(id, accessToken);
+        if (gen !== selectGen.current) return;
+        setSeedMessages(detail.messages);
         setThreads((prev) => {
-          const exists = prev.some((t) => t.id === id);
+          const exists = prev.some((chat) => chat.id === id);
           if (exists) {
-            return prev.map((t) => (t.id === id ? { ...t, ...detail.thread } : t));
+            return prev.map((chat) =>
+              chat.id === id ? { ...chat, ...detail.chat } : chat,
+            );
           }
-          return [detail.thread, ...prev];
+          return [detail.chat, ...prev];
         });
         setSeedStatus('ready');
       } catch (err) {
+        if (gen !== selectGen.current) return;
         setSeedMessages([]);
         setSeedStatus('ready');
         setError(err instanceof Error ? err.message : '加载会话详情失败');
       }
     },
-    [accessToken],
+    [accessToken, identityKey],
   );
 
   useEffect(() => {
-    if (!initialThreadId) return;
+    if (!initialThreadId || !accessToken || !identityKey) return;
     void selectThread(initialThreadId);
-  }, [initialThreadId, selectThread]);
+  }, [accessToken, identityKey, initialThreadId, selectThread]);
 
   const createThread = useCallback(
     async (input: {
@@ -166,46 +303,54 @@ export function useChatThreads(
       pagePath?: string;
       preserveSeed?: boolean;
     } = {}) => {
-      const thread = await createChatThread(
+      if (!accessToken || !identityKey) {
+        throw new Error('正在准备安全会话身份，请稍后重试。');
+      }
+      const chat = await createChatV2(
         {
           title: input.title,
           moduleKey: input.moduleKey,
           pagePath: input.pagePath,
         },
-        requestOpts,
+        requestOptions,
       );
-      setThreads((prev) => [thread, ...prev.filter((t) => t.id !== thread.id)]);
-      setActiveThreadId(thread.id);
+      setThreads((prev) => [chat, ...prev.filter((item) => item.id !== chat.id)]);
+      setActiveThreadId(chat.id);
       if (!input.preserveSeed) {
         setSeedMessages([]);
         setSeedStatus('ready');
       }
-      return thread;
+      return chat;
     },
-    [accessToken],
+    [accessToken, identityKey, requestOptions],
   );
 
   const removeThread = useCallback(
     async (id: string) => {
-      await deleteChatThread(id, requestOpts);
-      setThreads((prev) => prev.filter((t) => t.id !== id));
+      if (!accessToken || !identityKey) {
+        throw new Error('正在准备安全会话身份，请稍后重试。');
+      }
+      await deleteChatV2(id, requestOptions);
+      setThreads((prev) => prev.filter((chat) => chat.id !== id));
       if (activeThreadId === id) {
+        selectGen.current += 1;
         setActiveThreadId(null);
         setSeedMessages(null);
         setSeedStatus('idle');
       }
     },
-    [accessToken, activeThreadId],
+    [accessToken, activeThreadId, identityKey, requestOptions],
   );
 
   const clearActive = useCallback(() => {
+    selectGen.current += 1;
     setActiveThreadId(null);
     setSeedMessages(null);
     setSeedStatus('idle');
   }, []);
 
   const activeThread =
-    threads.find((t) => t.id === activeThreadId) ?? null;
+    threads.find((chat) => chat.id === activeThreadId) ?? null;
 
   return {
     threads,
@@ -215,8 +360,11 @@ export function useChatThreads(
     seedStatus,
     loading,
     refreshing,
+    loadingMore,
+    hasMore: Boolean(nextCursor),
     error,
     refresh,
+    loadMore,
     createThread,
     selectThread,
     removeThread,
