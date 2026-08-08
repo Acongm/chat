@@ -11,6 +11,10 @@ export type ThreadSidebarProps = {
   loading?: boolean;
   /** 后台刷新（转圈，不禁用新对话） */
   refreshing?: boolean;
+  /** cursor 下一页加载中 */
+  loadingMore?: boolean;
+  /** server 仍有下一页 */
+  hasMore?: boolean;
   error?: string | null;
   portalHref?: string;
   brand?: string;
@@ -20,6 +24,7 @@ export type ThreadSidebarProps = {
   onSelectThread: (id: string) => void;
   onDeleteThread: (id: string) => void;
   onRefresh?: () => void;
+  onLoadMore?: () => void;
   onCloseMobile?: () => void;
 };
 
@@ -31,13 +36,15 @@ function formatThreadTitle(thread: ChatThreadRecord): string {
 }
 
 /**
- * ChatGPT 式左侧会话栏：New Chat + 列表 + 底部设置/登录。
+ * ChatGPT 式左侧会话栏：New Chat + cursor 会话列表 + 底部设置/登录。
  */
 export function ThreadSidebar({
   threads,
   activeThreadId,
   loading,
   refreshing,
+  loadingMore,
+  hasMore,
   error,
   portalHref,
   brand = 'Chat',
@@ -47,6 +54,7 @@ export function ThreadSidebar({
   onSelectThread,
   onDeleteThread,
   onRefresh,
+  onLoadMore,
   onCloseMobile,
 }: ThreadSidebarProps) {
   const showDraftRow = !activeThreadId;
@@ -160,6 +168,18 @@ export function ThreadSidebar({
             );
           })}
         </ul>
+
+        {hasMore && onLoadMore ? (
+          <button
+            type="button"
+            className="acongm-gpt-sidebar__new"
+            data-action="load-more"
+            onClick={onLoadMore}
+            disabled={Boolean(loadingMore || busy)}
+          >
+            <span>{loadingMore ? '加载中…' : '加载更多'}</span>
+          </button>
+        ) : null}
       </div>
 
       <div className="acongm-gpt-sidebar__footer">
