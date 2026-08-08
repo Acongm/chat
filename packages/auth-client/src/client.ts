@@ -85,6 +85,25 @@ export function createBrowserClient(options?: Partial<AuthClientOptions>) {
   });
 }
 
+export function isAnonymousUser(user: User | null | undefined): boolean {
+  return Boolean(user?.is_anonymous);
+}
+
+/**
+ * Chat v2 requires a verified Supabase principal even for guests. Create a
+ * first-class anonymous Supabase identity instead of falling back to x-client-id.
+ */
+export async function ensureAnonymousSession(
+  client: ReturnType<typeof createBrowserClient>,
+): Promise<Session | null> {
+  const current = await client.auth.getSession();
+  if (current.data.session) return current.data.session;
+
+  const { data, error } = await client.auth.signInAnonymously();
+  if (error) return null;
+  return data.session;
+}
+
 export function isSocialAuthProvider(
   value: string,
 ): value is SocialAuthProvider {
@@ -178,18 +197,21 @@ export async function signOut(
   if (error) throw error;
 }
 
+/** @deprecated Stage 1 legacy compatibility only. Chat v2 must not call this. */
 export interface ClaimAnonymousThreadsInput {
   apiBase: string;
   clientId: string;
   accessToken: string;
 }
 
+/** @deprecated Stage 1 legacy compatibility only. */
 export interface ClaimAnonymousThreadsResult {
   claimed: number;
   claimedThreads?: number;
   threadIds?: string[];
 }
 
+/** @deprecated Stage 1 legacy compatibility only. */
 export async function claimAnonymousThreads(
   input: ClaimAnonymousThreadsInput,
 ): Promise<ClaimAnonymousThreadsResult> {

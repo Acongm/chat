@@ -53,9 +53,9 @@ export function resolveChatStreamUrl(configured?: string): string {
   return value.replace(/\/api\/ai\/chat\/?$/, '/api/ai/v1/chat/stream');
 }
 
-export async function* parseSseStream(
+export async function* parseSseStream<TEvent = ChatV1StreamEvent>(
   stream: ReadableStream<Uint8Array>,
-): AsyncGenerator<ChatV1StreamEvent> {
+): AsyncGenerator<TEvent> {
   const reader = stream.getReader();
   const decoder = new TextDecoder();
   let buffer = '';
@@ -73,7 +73,7 @@ export async function* parseSseStream(
         .join('\n');
       if (!data) continue;
       try {
-        yield JSON.parse(data) as ChatV1StreamEvent;
+        yield JSON.parse(data) as TEvent;
       } catch {
         // ignore malformed frames
       }
@@ -186,5 +186,5 @@ export async function streamChatV1(
     throwFromFailedResponse(response, body);
   }
 
-  return parseSseStream(response.body);
+  return parseSseStream<ChatV1StreamEvent>(response.body);
 }

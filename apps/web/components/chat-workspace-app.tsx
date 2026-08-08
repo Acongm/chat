@@ -20,7 +20,10 @@ import {
 } from '@acongm/kb-catalog';
 import { useChatThreads } from '@/lib/use-chat-threads';
 import { useArticleIndex } from '@/lib/use-article-index';
-import { ChatAuthSlot } from '@/components/chat-auth-slot';
+import {
+  ChatAuthSlot,
+  type ChatAuthIdentity,
+} from '@/components/chat-auth-slot';
 import { ChatSettingsSlot } from '@/components/chat-settings-slot';
 
 export type ChatWorkspaceAppProps = {
@@ -32,17 +35,18 @@ export type ChatWorkspaceAppProps = {
   summariesUrl: string;
   emptyTitle: string;
   portalBase: string;
-  apiBase: string;
+  /** @deprecated Chat v2 uses same-origin `/api/chats` BFF. */
+  apiBase?: string;
   initialThreadId?: string | null;
 };
 
 function buildDocContext(
   refs: KnowledgeRef[],
   summariesUrl: string,
-  threadId?: string | null,
+  chatId?: string | null,
 ): Omit<
   DocChatContext,
-  'runtimeKey' | 'ensureThread' | 'accessToken' | 'onThreadPersisted'
+  'runtimeKey' | 'ensureChat' | 'accessToken' | 'onChatPersisted'
 > {
   const base = resolveChatV1Context(refs);
   return {
@@ -55,8 +59,8 @@ function buildDocContext(
     defaultScope: base.scope,
     callSourcePrefix: 'chat-site',
     streamUrl: '/api/ai/v1/chat/stream',
-    threadsBaseUrl: '/api/chat/threads',
-    threadId: threadId ?? undefined,
+    chatsBaseUrl: '/api/chats',
+    chatId: chatId ?? undefined,
   };
 }
 
@@ -127,16 +131,15 @@ function WorkspaceInner({
   summariesUrl,
   emptyTitle,
   portalBase,
-  apiBase,
   initialThreadId = null,
 }: ChatWorkspaceAppProps) {
   const searchParams = useSearchParams();
   const router = useRouter();
-  const [accessToken, setAccessToken] = useState<string | null>(null);
+  const [authIdentity, setAuthIdentity] = useState<ChatAuthIdentity | null>(null);
   const [runtimeKey, setRuntimeKey] = useState(
     () =>
       initialThreadId
-        ? `thread:${initialThreadId}`
+        ? `chat:${initialThreadId}`
         : `draft-${Date.now()}`,
   );
 
@@ -154,7 +157,8 @@ function WorkspaceInner({
   const [chips, setChips] = useState<KnowledgeRef[]>(initialChips);
 
   const threads = useChatThreads({
-    accessToken,
+    accessToken: authIdentity?.accessToken,
+    identityKey: authIdentity?.userId,
     initialThreadId,
   });
 
@@ -177,14 +181,14 @@ function WorkspaceInner({
     [navigateWithChips, threads.activeThreadId],
   );
 
-  const ensureThread = useCallback(
+  const ensureChat = useCallback(
     async (input?: { title?: string }) => {
       if (threads.activeThreadId) return threads.activeThreadId;
       const primary =
         chips.find((c) => c.level === 'article') ??
         chips.find((c) => c.moduleKey);
       const title = input?.title?.trim().slice(0, 80) || undefined;
-      const thread = await threads.createThread({
+      const chat = await threads.createThread({
         title,
         moduleKey: primary?.moduleKey,
         pagePath:
@@ -193,9 +197,9 @@ function WorkspaceInner({
         preserveSeed: true,
       });
       // Soft URL update — avoid Next remount mid-stream (runtimeKey stays stable).
-      const nextPath = `/t/${thread.id}${chipsQuery(chips)}`;
+      const nextPath = `/t/${chat.id}${chipsQuery(chips)}`;
       window.history.replaceState(window.history.state, '', nextPath);
-      return thread.id;
+      return chat.id;
     },
     [chips, threads.activeThreadId, threads.createThread],
   );
@@ -204,9 +208,9 @@ function WorkspaceInner({
     (): DocChatContext => ({
       ...buildDocContext(chips, summariesUrl, threads.activeThreadId),
       runtimeKey,
-      accessToken,
-      ensureThread,
-      onThreadPersisted: () => {
+      accessToken: authIdentity?.accessToken ?? null,
+      ensureChat,
+      onChatPersisted: () => {
         void threads.refresh();
       },
     }),
@@ -216,8 +220,8 @@ function WorkspaceInner({
       threads.activeThreadId,
       threads.refresh,
       runtimeKey,
-      accessToken,
-      ensureThread,
+      authIdentity?.accessToken,
+      ensureChat,
     ],
   );
 
@@ -229,7 +233,7 @@ function WorkspaceInner({
 
   const handleSelectThread = async (id: string) => {
     await threads.selectThread(id);
-    setRuntimeKey(`thread:${id}`);
+    setRuntimeKey(`chat:${id}`);
     navigateWithChips(`/t/${id}`, chips);
   };
 
@@ -243,7 +247,7 @@ function WorkspaceInner({
   };
 
   const handleSignedOut = useCallback(() => {
-    setAccessToken(null);
+    setAuthIdentity(null);
     threads.clearActive();
     setRuntimeKey(`draft-${Date.now()}`);
     navigateWithChips('/', chips);
@@ -261,12 +265,13 @@ function WorkspaceInner({
           activeThreadId={threads.activeThreadId}
           loading={threads.loading}
           refreshing={threads.refreshing}
+          loadingMore={threads.loadingMore}
+          hasMore={threads.hasMore}
           error={threads.error}
           portalHref={portalBase}
           authSlot={
             <ChatAuthSlot
-              apiBase={apiBase}
-              onAccessTokenChange={setAccessToken}
+              onIdentityChange={setAuthIdentity}
               onSignedOut={handleSignedOut}
             />
           }
@@ -281,10 +286,17 @@ function WorkspaceInner({
           onRefresh={() => {
             void threads.refresh();
           }}
+          onLoadMore={() => {
+            void threads.loadMore();
+          }}
         />
       }
       main={
-        threads.activeThreadId && threads.seedStatus === 'loading' ? (
+        !authIdentity ? (
+          <div className="acongm-gpt-thread-loading" aria-live="polite">
+            正在准备安全会话…
+          </div>
+        ) : threads.activeThreadId && threads.seedStatus === 'loading' ? (
           <div className="acongm-gpt-thread-loading" aria-live="polite">
             加载会话…
           </div>
@@ -294,7 +306,8 @@ function WorkspaceInner({
             context={context}
             forceOpen
             seedMessages={
-              threads.activeThreadId ? (threads.seedMessages ?? []) : null
+              // preserveSeed 时 null 必须原样下传；不要制造新的 [] 引用触发 runtime seed reset。
+              threads.activeThreadId ? threads.seedMessages : null
             }
             emptyTitle={emptyTitle}
           />

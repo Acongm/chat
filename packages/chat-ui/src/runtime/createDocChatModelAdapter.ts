@@ -3,8 +3,8 @@ import {
   deriveTagOptions,
   modelHistory,
   resolveCallSource,
+  streamChatMessageV2,
   streamChatV1,
-  streamThreadMessage,
 } from '@acongm/agent-session-sdk';
 import type { ChatUiMessage, ChatV1Context } from '@acongm/kb-types';
 import type { DocChatContext } from '../types';
@@ -59,15 +59,51 @@ function buildRequestContext(
   return context;
 }
 
+function findLastUser(messages: readonly ThreadMessage[]) {
+  for (let index = messages.length - 1; index >= 0; index -= 1) {
+    if (messages[index]?.role === 'user') {
+      return { index, message: messages[index]! };
+    }
+  }
+  return null;
+}
+
 /**
- * 薄 ChatModelAdapter：ChatV1 / Threads SSE（含 thinking）→ reasoning + text parts。
- * chat 站有 threadId（或 ensureThread）时走 Threads 持久化流。
+ * assistant-ui LocalRuntime 的 `unstable_parentId` 指向“本次 assistant 的 parent”
+ * （通常就是当前 user），而 Chat v2 `parentMessageId` 表示“当前 user 的 parent”。
+ * 因此从 active message branch 中取当前 user 前一条消息，而不能直接透传
+ * `unstable_parentId`。
+ */
+function parentOfCurrentUser(
+  messages: readonly ThreadMessage[],
+  userIndex: number,
+): string | undefined {
+  if (userIndex <= 0) return undefined;
+  return messages[userIndex - 1]?.id || undefined;
+}
+
+function createRunId(): string {
+  if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
+    return crypto.randomUUID();
+  }
+  throw new Error('Chat v2 requires crypto.randomUUID() for durable run ids.');
+}
+
+/**
+ * ChatModelAdapter：
+ * - chatId 存在时走 Chat v2 durable API；
+ * - portal 等无 durable chat 场景继续走 ChatV1 short stream；
+ * - 不从 Chat v2 静默回退到 legacy `/api/chat/threads`。
  */
 export function createDocChatModelAdapter(
   getContext: () => DocChatContext,
 ): ChatModelAdapter {
   return {
-    async *run({ messages, abortSignal }) {
+    async *run({
+      messages,
+      abortSignal,
+      unstable_assistantMessageId,
+    }) {
       const ctx = getContext();
       const {
         pagePath,
@@ -79,17 +115,15 @@ export function createDocChatModelAdapter(
         enableThinking = true,
         maxTokens,
         historyMode = 'short',
-        threadsBaseUrl,
+        chatsBaseUrl,
         accessToken,
-        ensureThread,
-        onThreadPersisted,
+        ensureChat,
+        onChatPersisted,
       } = ctx;
 
-      const lastUser = [...messages]
-        .reverse()
-        .find((message) => message.role === 'user');
-      const question = textFromMessage(lastUser).trim();
-      if (!question) {
+      const currentUser = findLastUser(messages);
+      const question = textFromMessage(currentUser?.message).trim();
+      if (!currentUser || !question) {
         yield { content: [{ type: 'text', text: '' }] };
         return;
       }
@@ -109,20 +143,24 @@ export function createDocChatModelAdapter(
         content,
       );
 
-      let threadId = ctx.threadId?.trim() || '';
-      if (!threadId && ensureThread) {
-        threadId = (
-          await ensureThread({
+      let chatId = ctx.chatId?.trim() || '';
+      if (!chatId && ensureChat) {
+        chatId = (
+          await ensureChat({
             title: question.replace(/\s+/g, ' ').trim().slice(0, 80) || undefined,
           })
         ).trim();
       }
 
-      const events = threadId
-        ? await streamThreadMessage(
-            threadId,
+      const events = chatId
+        ? await streamChatMessageV2(
+            chatId,
             {
               content: question,
+              clientMessageId: currentUser.message.id,
+              parentMessageId: parentOfCurrentUser(messages, currentUser.index),
+              assistantMessageId: unstable_assistantMessageId,
+              runId: createRunId(),
               enableWebSearch: tagOptions.enableWebSearch,
               enableThinking,
               maxTokens,
@@ -131,7 +169,7 @@ export function createDocChatModelAdapter(
             {
               signal: abortSignal,
               accessToken: accessToken ?? undefined,
-              baseUrl: threadsBaseUrl,
+              baseUrl: chatsBaseUrl,
             },
           )
         : await streamChatV1(
@@ -158,11 +196,13 @@ export function createDocChatModelAdapter(
           text += event.content || '';
           yield yieldParts(thinking, text);
         }
-        if (event.type === 'persisted' && event.threadId) {
-          onThreadPersisted?.(event.threadId);
+        if (event.type === 'persisted' && 'chatId' in event && event.chatId) {
+          onChatPersisted?.(event.chatId);
         }
         if (event.type === 'error') {
-          throw new Error(event.message || '回答失败');
+          const error = new Error(event.message || '回答失败');
+          if ('code' in event && event.code) error.name = event.code;
+          throw error;
         }
       }
 
