@@ -2,7 +2,7 @@
   "name": "@acongm/ui-theme",
   "version": "0.1.0",
   "private": true,
-  "description": "Shared CSS theme tokens for chat / dochub (Codex-inspired)",
+  "description": "Shared semantic CSS theme tokens and cross-app UI styles",
   "type": "module",
   "sideEffects": ["**/*.css"],
   "exports": {
@@ -11,6 +11,7 @@
       "default": "./src/index.ts"
     },
     "./tokens.css": "./src/tokens.css",
+    "./auth.css": "./src/auth.css",
     "./chat.css": "./src/chat.css"
   },
   "files": ["src"],
