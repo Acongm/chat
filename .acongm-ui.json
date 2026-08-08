@@ -1,7 +1,7 @@
 {
   "registry": "Acongm/shadcn-ui",
   "ref": "main",
-  "installRef": "8c5b4a3472e3501cab8299229a2eb6320e384118",
+  "installRef": "c4dbd6d7ae129bef36f6ae43dc0e8050e54927d1",
   "workspace": "apps/web",
   "items": [
     {
