@@ -1,18 +1,16 @@
 @import 'tailwindcss';
 @import '@acongm/ui-theme/tokens.css';
+@import '@acongm/ui-theme/auth.css';
 @import '@acongm/ui-theme/chat.css';
 @import '@acongm/assistant-ui-theme/assistant-ui.css';
 @import '@acongm/chat-ui/styles.css';
 
-:root {
-  color-scheme: light dark;
-}
-
 body {
   margin: 0;
   min-height: 100vh;
-  background: var(--acongm-bg, #f7f7f8);
-  color: var(--acongm-fg, #0d0d0d);
+  background: var(--background);
+  color: var(--foreground);
+  font-family: var(--acongm-font-sans);
 }
 
 .workspace-loading {
@@ -111,88 +109,4 @@ body {
 
 .workspace-main-chat .acongm-chat-shell__header {
   display: none;
-}
-
-.acongm-auth-btn {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.35rem;
-  min-height: 30px;
-  padding: 0 0.7rem;
-  border: 1px solid color-mix(in srgb, currentColor 18%, transparent);
-  border-radius: 999px;
-  background: transparent;
-  color: inherit;
-  font-size: 0.8rem;
-  cursor: pointer;
-  text-decoration: none;
-}
-
-.acongm-auth-user {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 0.5rem;
-}
-
-.acongm-auth-user__identity {
-  display: flex;
-  align-items: center;
-  gap: 0.55rem;
-  min-width: 0;
-  flex: 1;
-}
-
-.acongm-auth-user__meta {
-  display: flex;
-  flex-direction: column;
-  min-width: 0;
-  gap: 0.1rem;
-}
-
-.acongm-auth-user__name {
-  font-size: 0.8rem;
-  font-weight: 600;
-  opacity: 0.92;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.acongm-auth-user__account {
-  font-size: 0.68rem;
-  opacity: 0.55;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.acongm-auth-avatar {
-  display: inline-flex;
-  width: 1.6rem;
-  height: 1.6rem;
-  align-items: center;
-  justify-content: center;
-  border-radius: 999px;
-  border: 1px solid color-mix(in srgb, currentColor 18%, transparent);
-  background: color-mix(in srgb, currentColor 10%, transparent);
-  font-size: 0.72rem;
-  font-weight: 650;
-  flex-shrink: 0;
-  object-fit: cover;
-  overflow: hidden;
-}
-
-.acongm-auth-avatar img,
-.acongm-auth-icon-btn__photo {
-  width: 100%;
-  height: 100%;
-  border-radius: inherit;
-  object-fit: cover;
-  display: block;
-}
-
-.acongm-auth-icon-btn__photo {
-  width: 1.35rem;
-  height: 1.35rem;
 }
