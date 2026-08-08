@@ -1,12 +1,14 @@
-import type { HTMLAttributes } from 'react';
-import { cn } from '@/lib/ui-cn';
+import * as React from "react";
 
-export function Skeleton({ className, ...props }: HTMLAttributes<HTMLDivElement>) {
+import { cn } from "@/lib/ui-cn";
+
+export type SkeletonProps = React.ComponentProps<"div">;
+
+export function Skeleton({ className, ...props }: SkeletonProps) {
   return (
     <div
       data-slot="skeleton"
-      aria-hidden="true"
-      className={cn('animate-pulse rounded-md bg-muted', className)}
+      className={cn("animate-pulse rounded-md bg-muted", className)}
       {...props}
     />
   );
