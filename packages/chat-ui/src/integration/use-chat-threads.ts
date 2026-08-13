@@ -243,6 +243,8 @@ export function useChatThreads(
     async (id: string) => {
       if (!accessToken || !identityKey) {
         setError('正在准备安全会话身份，请稍后重试。');
+        setHistorySyncing(false);
+        setSeedStatus((status) => (status === 'loading' ? 'idle' : status));
         return;
       }
       const gen = ++selectGen.current;

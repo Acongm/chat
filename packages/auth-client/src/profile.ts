@@ -55,6 +55,11 @@ export type ProfileUpdateResult = {
   userInfo: UserInfoView;
 };
 
+export type UserProfileResult = {
+  profile: ApplicationProfile | null;
+  userInfo: UserInfoView;
+};
+
 export type SettingsUpdateResult = {
   settings: UserSettingsView;
   userInfo: UserInfoView;
@@ -195,7 +200,9 @@ function normalizeUserMe(body: Record<string, unknown>): UserMe {
   };
 }
 
-async function readJson(response: Response): Promise<Record<string, unknown>> {
+async function readJson(
+  response: Response,
+): Promise<Record<string, unknown>> {
   const body = (await response.json().catch(() => ({}))) as Record<
     string,
     unknown
@@ -212,17 +219,48 @@ async function readJson(response: Response): Promise<Record<string, unknown>> {
   return body;
 }
 
+async function userFetch(
+  path: string,
+  options: {
+    accessToken: string;
+    baseUrl?: string;
+    method?: string;
+    body?: unknown;
+  },
+): Promise<Record<string, unknown>> {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), 8000);
+  try {
+    const response = await fetch(`${options.baseUrl || DEFAULT_USER_API}${path}`, {
+      method: options.method || 'GET',
+      headers: {
+        Authorization: `Bearer ${options.accessToken}`,
+        Accept: 'application/json',
+        ...(options.body
+          ? { 'Content-Type': 'application/json' }
+          : {}),
+      },
+      body: options.body ? JSON.stringify(options.body) : undefined,
+      signal: controller.signal,
+    });
+    return readJson(response);
+  } catch (error) {
+    if (error instanceof UserApiError) throw error;
+    throw new UserApiError(
+      error instanceof Error ? error.message : 'Account request failed',
+      0,
+      'USER_REQUEST_FAILED',
+    );
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
 export async function getUserMe(options: {
   accessToken: string;
   baseUrl?: string;
 }): Promise<UserMe> {
-  const response = await fetch(`${options.baseUrl || DEFAULT_USER_API}/me`, {
-    headers: {
-      Authorization: `Bearer ${options.accessToken}`,
-      Accept: 'application/json',
-    },
-  });
-  return normalizeUserMe(await readJson(response));
+  return normalizeUserMe(await userFetch('/me', options));
 }
 
 /** Explicit getUserInfo — same payload as /me, preferred for login-state UI. */
@@ -230,26 +268,26 @@ export async function getUserInfo(options: {
   accessToken: string;
   baseUrl?: string;
 }): Promise<UserMe> {
-  const response = await fetch(`${options.baseUrl || DEFAULT_USER_API}/info`, {
-    headers: {
-      Authorization: `Bearer ${options.accessToken}`,
-      Accept: 'application/json',
-    },
-  });
-  return normalizeUserMe(await readJson(response));
+  return normalizeUserMe(await userFetch('/info', options));
+}
+
+export async function getUserProfile(options: {
+  accessToken: string;
+  baseUrl?: string;
+}): Promise<UserProfileResult> {
+  const result = await userFetch('/profile', options);
+  return {
+    profile: normalizeProfile(result.profile),
+    userInfo: normalizeUserInfo(result.userInfo, result),
+  };
 }
 
 export async function getUserSettings(options: {
   accessToken: string;
   baseUrl?: string;
 }): Promise<UserSettingsView> {
-  const response = await fetch(`${options.baseUrl || DEFAULT_USER_API}/settings`, {
-    headers: {
-      Authorization: `Bearer ${options.accessToken}`,
-      Accept: 'application/json',
-    },
-  });
-  return normalizeSettings(await readJson(response));
+  const result = await userFetch('/settings', options);
+  return normalizeSettings(result);
 }
 
 export async function updateUserSettings(
@@ -265,19 +303,11 @@ export async function updateUserSettings(
     throw new UserApiError('Settings patch is empty.', 400, 'SETTINGS_PATCH_EMPTY');
   }
 
-  const response = await fetch(
-    `${options.baseUrl || DEFAULT_USER_API}/settings`,
-    {
-      method: 'PATCH',
-      headers: {
-        Authorization: `Bearer ${options.accessToken}`,
-        'Content-Type': 'application/json',
-        Accept: 'application/json',
-      },
-      body: JSON.stringify(body),
-    },
-  );
-  const result = await readJson(response);
+  const result = await userFetch('/settings', {
+    ...options,
+    method: 'PATCH',
+    body,
+  });
   const profile = normalizeProfile(result.profile);
   return {
     settings: normalizeSettings(result.settings ?? result),
@@ -302,19 +332,11 @@ export async function updateUserProfile(
     throw new UserApiError('Profile patch is empty.', 400, 'PROFILE_PATCH_EMPTY');
   }
 
-  const response = await fetch(
-    `${options.baseUrl || DEFAULT_USER_API}/profile`,
-    {
-      method: 'PATCH',
-      headers: {
-        Authorization: `Bearer ${options.accessToken}`,
-        'Content-Type': 'application/json',
-        Accept: 'application/json',
-      },
-      body: JSON.stringify(body),
-    },
-  );
-  const result = await readJson(response);
+  const result = await userFetch('/profile', {
+    ...options,
+    method: 'PATCH',
+    body,
+  });
   const profile = normalizeProfile(result.profile ?? result);
   if (!profile) {
     throw new UserApiError('Invalid profile response.', 502, 'INVALID_PROFILE_RESPONSE');

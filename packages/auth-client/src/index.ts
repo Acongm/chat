@@ -37,6 +37,7 @@ export type { AuthAccountMenuProps } from './AuthAccountMenu';
 export {
   getUserInfo,
   getUserMe,
+  getUserProfile,
   getUserSettings,
   updateUserProfile,
   updateUserSettings,
@@ -50,6 +51,7 @@ export type {
   UpdateUserSettings,
   UserInfoView,
   UserMe,
+  UserProfileResult,
   UserSettingsView,
 } from './profile';
 export {

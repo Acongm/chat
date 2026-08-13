@@ -233,8 +233,11 @@ function WorkspaceInner({
     if (threads.activeThreadId && threads.seedStatus === 'loading') {
       return '正在加载会话历史…';
     }
+    if (threads.error) {
+      return threads.error;
+    }
     return '有什么可以帮忙的？输入 @ 引用知识…';
-  }, [authIdentity, threads.activeThreadId, threads.seedStatus]);
+  }, [authIdentity, threads.activeThreadId, threads.error, threads.seedStatus]);
 
   const handleNewThread = () => {
     threads.clearActive();

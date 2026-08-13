@@ -8,7 +8,8 @@
 |---|------|------|------|
 | **36** | Chat v2 consumer | **已完成 ✅** | merged `edb980e` |
 | **41** | 用户菜单 + getUserInfo | OPEN Phase 2 | Phase 2：AuthAccountMenu ✅；theme 在 menuFooter |
-| **40** | 非阻塞启动 | **Phase 2 ✅** | tail-first + composer disabled + scroll-up lazy load；browser E2E → #37 |
+| **40** | 非阻塞启动 | **Phase 2 进行中** | tail-first + composer disabled + User BFF；browser E2E → #37 |
+| **41** | 用户菜单与登录态 | **进行中** | 补 `/api/user` BFF，登录后可查 getUserInfo |
 | **39** | Chat 产品优化 | OPEN | 父 Epic，执行入口 #40 |
 | **1** | Chat v2 Epic | OPEN | #36 代码完成；剩 #40/#37 |
 
