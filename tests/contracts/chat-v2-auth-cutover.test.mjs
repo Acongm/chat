@@ -29,6 +29,8 @@ test('real chat auth slot exposes Supabase uid plus bearer token without legacy 
   const text = source('packages/chat-ui/src/integration/chat-auth-slot.tsx');
   assert.match(text, /userId:\s*session\.user\.id/);
   assert.match(text, /accessToken:\s*session\.access_token/);
+  assert.match(text, /status === 'error'/);
+  assert.match(text, /onClick=\{retry\}/);
   assert.doesNotMatch(text, /\bclaimAnonymousThreads\s*\(/);
   assert.doesNotMatch(text, /\bgetClientId\s*\(/);
   assert.doesNotMatch(text, /['"]x-client-id['"]/i);
