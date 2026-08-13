@@ -102,7 +102,6 @@ export function usePageBoundChat(
         setRestoreError(
           error instanceof Error ? error.message : '会话历史恢复失败，请稍后重试。',
         );
-        setSeedMessages([]);
         setReady(true);
       });
 

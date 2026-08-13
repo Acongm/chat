@@ -7,25 +7,40 @@ import {
   createBrowserClient,
   ensureAnonymousSession,
   getOAuthLoginUrl,
+  isAnonymousSession,
   isAuthConfigured,
   signOut,
 } from './client';
 import { getUserInfo, type UserInfoView, type UserMe } from './profile';
+import {
+  resolveAuthSessionStatus,
+  type AuthSessionStatus,
+} from './session-status';
 
 export type UseSessionOptions = {
   /** Chat/Portal: bootstrap a Supabase anonymous session when none exists. */
   ensureAnonymous?: boolean;
 };
 
+export type { AuthSessionStatus };
+
 export function useSession(options?: UseSessionOptions) {
   const ensureAnonymous = options?.ensureAnonymous ?? false;
   const configured = isAuthConfigured();
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(configured);
+  const [error, setError] = useState<string | null>(null);
+  const [retryNonce, setRetryNonce] = useState(0);
   const client = useMemo(
     () => (configured ? createBrowserClient() : null),
     [configured],
   );
+
+  const retry = useCallback(() => {
+    setError(null);
+    setLoading(configured);
+    setRetryNonce((value) => value + 1);
+  }, [configured]);
 
   useEffect(() => {
     if (!client) {
@@ -37,12 +52,24 @@ export function useSession(options?: UseSessionOptions) {
 
     const bootstrap = async () => {
       const currentGeneration = ++generation;
-      const nextSession = ensureAnonymous
-        ? await ensureAnonymousSession(client)
-        : (await client.auth.getSession()).data.session;
-      if (!mounted || currentGeneration !== generation) return;
-      setSession(nextSession);
-      setLoading(false);
+      try {
+        const nextSession = ensureAnonymous
+          ? await ensureAnonymousSession(client)
+          : (await client.auth.getSession()).data.session;
+        if (!mounted || currentGeneration !== generation) return;
+        setSession(nextSession);
+        setError(
+          ensureAnonymous && !nextSession
+            ? '无法准备访客会话，请重试。'
+            : null,
+        );
+        setLoading(false);
+      } catch (err) {
+        if (!mounted || currentGeneration !== generation) return;
+        setSession(null);
+        setError(err instanceof Error ? err.message : '会话初始化失败');
+        setLoading(false);
+      }
     };
 
     void bootstrap();
@@ -55,6 +82,7 @@ export function useSession(options?: UseSessionOptions) {
         generation += 1;
         if (nextSession) {
           setSession(nextSession);
+          setError(null);
           setLoading(false);
           return;
         }
@@ -62,6 +90,7 @@ export function useSession(options?: UseSessionOptions) {
         setSession(null);
         if (ensureAnonymous && event === 'SIGNED_OUT') {
           setLoading(true);
+          setError(null);
           void bootstrap();
           return;
         }
@@ -74,9 +103,29 @@ export function useSession(options?: UseSessionOptions) {
       generation += 1;
       subscription.unsubscribe();
     };
-  }, [client, ensureAnonymous]);
+  }, [client, ensureAnonymous, retryNonce]);
 
-  return { session, loading, client, configured };
+  const isAnonymous = isAnonymousSession(session);
+  const status = resolveAuthSessionStatus({
+    configured,
+    loading,
+    hasSession: Boolean(session),
+    isAnonymous,
+    error,
+  });
+
+  return {
+    session,
+    loading,
+    client,
+    configured,
+    status,
+    error,
+    retry,
+    userId: session?.user?.id ?? null,
+    accessToken: session?.access_token ?? null,
+    isAnonymous,
+  };
 }
 
 export function useUser() {
@@ -93,7 +142,7 @@ export function useUser() {
  * Falls back to null on 401/network errors so buttons can keep session-based UI.
  */
 export function useUserInfo(options?: { baseUrl?: string; ensureAnonymous?: boolean }) {
-  const { session, loading: sessionLoading, client, configured } = useSession({
+  const { session, loading: sessionLoading, client, configured, status } = useSession({
     ensureAnonymous: options?.ensureAnonymous,
   });
   const [userMe, setUserMe] = useState<UserMe | null>(null);
@@ -147,6 +196,7 @@ export function useUserInfo(options?: { baseUrl?: string; ensureAnonymous?: bool
     error,
     configured,
     hasSession: Boolean(session),
+    status,
   };
 }
 
@@ -165,10 +215,13 @@ export function useAuthActions(options?: {
     window.location.href = href;
   }, []);
 
-  const logout = useCallback(async () => {
-    if (!client) return;
-    await signOut(client);
-  }, [client]);
+  const logout = useCallback(
+    async (scope?: 'local' | 'global' | 'others') => {
+      if (!client) return;
+      await signOut(client, scope ? { scope } : undefined);
+    },
+    [client],
+  );
 
   return { login, logout, client, configured };
 }
