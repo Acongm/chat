@@ -82,6 +82,7 @@ test('assistant-ui model adapter sends stable v2 ids and never calls streamThrea
   assert.match(text, /assistantMessageId:\s*unstable_assistantMessageId/);
   assert.match(text, /runId:\s*createRunId\(\)/);
   assert.doesNotMatch(text, /\bstreamThreadMessage\s*\(/);
+  assert.match(text, /模型没有返回内容/);
 });
 
 test('Chat v2 BFF forwards bearer auth but never x-client-id', () => {
