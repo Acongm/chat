@@ -44,6 +44,22 @@ export type UpdateApplicationProfile = {
   preferences?: Record<string, unknown>;
 };
 
+export type UpdateUserSettings = {
+  language?: string;
+  theme?: 'system' | 'light' | 'dark' | string;
+  preferences?: Record<string, unknown>;
+};
+
+export type ProfileUpdateResult = {
+  profile: ApplicationProfile;
+  userInfo: UserInfoView;
+};
+
+export type SettingsUpdateResult = {
+  settings: UserSettingsView;
+  userInfo: UserInfoView;
+};
+
 export class UserApiError extends Error {
   readonly status: number;
   readonly code?: string;
@@ -223,10 +239,60 @@ export async function getUserInfo(options: {
   return normalizeUserMe(await readJson(response));
 }
 
+export async function getUserSettings(options: {
+  accessToken: string;
+  baseUrl?: string;
+}): Promise<UserSettingsView> {
+  const response = await fetch(`${options.baseUrl || DEFAULT_USER_API}/settings`, {
+    headers: {
+      Authorization: `Bearer ${options.accessToken}`,
+      Accept: 'application/json',
+    },
+  });
+  return normalizeSettings(await readJson(response));
+}
+
+export async function updateUserSettings(
+  patch: UpdateUserSettings,
+  options: { accessToken: string; baseUrl?: string },
+): Promise<SettingsUpdateResult> {
+  const body: Record<string, unknown> = {};
+  if (patch.language !== undefined) body.language = patch.language;
+  if (patch.theme !== undefined) body.theme = patch.theme;
+  if (patch.preferences !== undefined) body.preferences = patch.preferences;
+
+  if (Object.keys(body).length === 0) {
+    throw new UserApiError('Settings patch is empty.', 400, 'SETTINGS_PATCH_EMPTY');
+  }
+
+  const response = await fetch(
+    `${options.baseUrl || DEFAULT_USER_API}/settings`,
+    {
+      method: 'PATCH',
+      headers: {
+        Authorization: `Bearer ${options.accessToken}`,
+        'Content-Type': 'application/json',
+        Accept: 'application/json',
+      },
+      body: JSON.stringify(body),
+    },
+  );
+  const result = await readJson(response);
+  const profile = normalizeProfile(result.profile);
+  return {
+    settings: normalizeSettings(result.settings ?? result),
+    userInfo: normalizeUserInfo(result.userInfo, {
+      ...result,
+      profile,
+      id: profile?.id,
+    }),
+  };
+}
+
 export async function updateUserProfile(
   patch: UpdateApplicationProfile,
   options: { accessToken: string; baseUrl?: string },
-): Promise<ApplicationProfile> {
+): Promise<ProfileUpdateResult> {
   const body: Record<string, unknown> = {};
   if (patch.displayName !== undefined) body.displayName = patch.displayName;
   if (patch.avatarUrl !== undefined) body.avatarUrl = patch.avatarUrl;
@@ -248,9 +314,17 @@ export async function updateUserProfile(
       body: JSON.stringify(body),
     },
   );
-  const result = normalizeProfile(await readJson(response));
-  if (!result) {
+  const result = await readJson(response);
+  const profile = normalizeProfile(result.profile ?? result);
+  if (!profile) {
     throw new UserApiError('Invalid profile response.', 502, 'INVALID_PROFILE_RESPONSE');
   }
-  return result;
+  return {
+    profile,
+    userInfo: normalizeUserInfo(result.userInfo, {
+      ...result,
+      profile,
+      id: profile.id,
+    }),
+  };
 }

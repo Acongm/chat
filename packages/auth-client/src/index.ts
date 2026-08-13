@@ -30,12 +30,17 @@ export type { AuthAccountButtonProps } from './AuthAccountButton';
 export {
   getUserInfo,
   getUserMe,
+  getUserSettings,
   updateUserProfile,
+  updateUserSettings,
   UserApiError,
 } from './profile';
 export type {
   ApplicationProfile,
+  ProfileUpdateResult,
+  SettingsUpdateResult,
   UpdateApplicationProfile,
+  UpdateUserSettings,
   UserInfoView,
   UserMe,
   UserSettingsView,
