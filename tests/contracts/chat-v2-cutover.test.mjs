@@ -28,7 +28,8 @@ test('conversation hook uses Chat v2 SDK only', () => {
     'listChatsV2',
     'createChatV2',
     'deleteChatV2',
-    'loadChatV2HistoryProgressive',
+    'getChatV2',
+    'listChatMessagesV2',
   ]) {
     assert.match(text, new RegExp(expected));
   }
@@ -88,4 +89,11 @@ test('Chat v2 BFF forwards bearer auth but never x-client-id', () => {
   assert.match(text, /['"]authorization['"]/);
   assert.doesNotMatch(text, /['"]x-client-id['"]/i);
   assert.match(text, /CHAT_UPSTREAM_UNREACHABLE/);
+});
+
+test('User BFF proxies /api/user to api.acongm.com so getUserInfo works after login', () => {
+  const text = source('apps/web/app/api/user/[[...path]]/route.ts');
+  assert.match(text, /https:\/\/api\.acongm\.com\/api\/user/);
+  assert.match(text, /['"]authorization['"]/);
+  assert.match(text, /USER_UPSTREAM_UNREACHABLE/);
 });

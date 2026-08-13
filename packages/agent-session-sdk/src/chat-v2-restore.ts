@@ -23,17 +23,17 @@ export type ChatV2HistoryProgress = ChatV2HistoryDetail & {
   complete: boolean;
 };
 
-async function paginateMessages(
+async function paginateOlderTailMessages(
   chatId: string,
   initialMessages: readonly ChatV2Message[],
-  initialCursor: string | null | undefined,
+  initialPrevCursor: string | null | undefined,
   options: LoadChatV2HistoryOptions,
 ): Promise<ChatV2Message[]> {
   const messagePageSize =
     options.messagePageSize ?? DEFAULT_CHAT_RESTORE_PAGE_SIZE;
   const maxMessages = options.maxMessages ?? DEFAULT_CHAT_RESTORE_MAX_MESSAGES;
-  const allMessages = [...initialMessages];
-  let cursor = initialCursor;
+  let allMessages = [...initialMessages];
+  let cursor = initialPrevCursor;
   const seenCursors = new Set<string>();
 
   while (cursor) {
@@ -51,28 +51,29 @@ async function paginateMessages(
     const page = await listChatMessagesV2(
       chatId,
       {
+        order: 'desc',
+        before: cursor,
         limit: Math.min(messagePageSize, remaining),
-        after: cursor,
       },
       options,
     );
-    allMessages.push(...page.items);
-    cursor = page.nextCursor;
+    allMessages = [...page.items, ...allMessages];
+    cursor = page.prevCursor;
   }
 
   return allMessages;
 }
 
-/** Load full durable history for one chat (all pages, active branch mapped to UI). */
+/** Load full durable history (tail-first pages, active branch mapped to UI). */
 export async function loadChatV2History(
   chatId: string,
   options: LoadChatV2HistoryOptions = {},
 ): Promise<ChatV2HistoryDetail> {
   const detail = await getChatV2(chatId, options);
-  const allMessages = await paginateMessages(
+  const allMessages = await paginateOlderTailMessages(
     chatId,
     detail.messages,
-    detail.nextCursor,
+    detail.prevCursor,
     options,
   );
 
@@ -83,8 +84,7 @@ export async function loadChatV2History(
 }
 
 /**
- * Progressive restore: emit after the first page, then after each pagination page.
- * Consumers can render immediately while older pages sync in the background.
+ * Progressive tail-first restore: emit after the latest page, then prepend older pages.
  */
 export async function loadChatV2HistoryProgressive(
   chatId: string,
@@ -99,8 +99,8 @@ export async function loadChatV2HistoryProgressive(
     requestOptions.messagePageSize ?? DEFAULT_CHAT_RESTORE_PAGE_SIZE;
   const maxMessages =
     requestOptions.maxMessages ?? DEFAULT_CHAT_RESTORE_MAX_MESSAGES;
-  const allMessages = [...detail.messages];
-  let cursor = detail.nextCursor;
+  let allMessages = [...detail.messages];
+  let cursor = detail.prevCursor;
   const seenCursors = new Set<string>();
 
   const emit = (complete: boolean) => {
@@ -129,12 +129,16 @@ export async function loadChatV2HistoryProgressive(
     const remaining = maxMessages - allMessages.length;
     const page = await listChatMessagesV2(
       chatId,
-      { limit: Math.min(messagePageSize, remaining), after: cursor },
+      {
+        order: 'desc',
+        before: cursor,
+        limit: Math.min(messagePageSize, remaining),
+      },
       requestOptions,
     );
     if (isCancelled()) return;
-    allMessages.push(...page.items);
-    cursor = page.nextCursor;
+    allMessages = [...page.items, ...allMessages];
+    cursor = page.prevCursor;
     emit(!cursor);
   }
 }

@@ -11,23 +11,24 @@ test('workspace always mounts ChatFullscreen instead of full-page auth/history g
   const workspace = source('apps/web/components/chat-workspace-app.tsx');
   assert.match(workspace, /main=\{\s*\n\s*<ChatFullscreen/);
   assert.doesNotMatch(workspace, /acongm-gpt-thread-loading/);
-  assert.doesNotMatch(workspace, /seedStatus === 'loading'/);
+  assert.match(workspace, /composerDisabled/);
   assert.match(workspace, /composerPlaceholder/);
   assert.match(workspace, /正在准备安全会话/);
 });
 
 const HOOK_PATH = 'packages/chat-ui/src/integration/use-chat-threads.ts';
 
-test('conversation hook uses progressive history load and preserves cache on errors', () => {
+test('conversation hook uses tail-first restore and scroll-up older pages', () => {
   const hook = source(HOOK_PATH);
-  assert.match(hook, /loadChatV2HistoryProgressive/);
-  assert.match(hook, /historySyncing/);
+  assert.match(hook, /getChatV2/);
+  assert.match(hook, /loadOlderMessages/);
+  assert.match(hook, /hasOlderMessages/);
   assert.match(hook, /threadSeedCache/);
   assert.match(
     hook,
     /catch \(err\) \{[\s\S]*?setSeedStatus\('ready'\);[\s\S]*?setError\(/,
   );
-  assert.doesNotMatch(hook, /loadDurableHistory/);
+  assert.doesNotMatch(hook, /loadChatV2HistoryProgressive/);
 });
 
 test('chat sidebar no longer shows default portal return link', () => {

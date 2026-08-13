@@ -544,6 +544,17 @@ html[data-theme='dark'] .acongm-gpt-composer:focus-within {
   line-height: 1.35;
 }
 
+.acongm-gpt-disclaimer--thread {
+  padding: 0.35rem 1rem 0.75rem;
+}
+
+.acongm-gpt-history-load {
+  padding: 0.5rem 1rem;
+  text-align: center;
+  font-size: 0.75rem;
+  color: var(--gpt-muted);
+}
+
 .acongm-gpt-scroll-bottom {
   position: absolute;
   left: 50%;

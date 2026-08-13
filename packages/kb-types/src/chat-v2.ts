@@ -32,12 +32,15 @@ export type ChatV2Message = {
 export type ChatV2Page<T> = {
   items: T[];
   nextCursor?: string;
+  /** Tail-first pagination: cursor for older messages. */
+  prevCursor?: string;
 };
 
 export type ChatV2Detail = {
   chat: ChatV2Record;
   messages: ChatV2Message[];
   nextCursor?: string;
+  prevCursor?: string;
 };
 
 export type CreateChatV2Request = {
