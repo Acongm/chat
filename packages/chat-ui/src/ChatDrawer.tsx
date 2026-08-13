@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import Drawer from 'rc-drawer';
 import { X } from 'lucide-react';
+import type { ChatUiMessage } from '@acongm/kb-types';
 import { DocChatRuntimeProvider } from './runtime/DocChatRuntimeProvider';
 import { AssistantThread } from './thread/AssistantThread';
 import { useChatUi } from './ChatUiProvider';
@@ -10,6 +11,7 @@ import type { DocChatContext } from './types';
 
 export type ChatDrawerProps = {
   context: DocChatContext;
+  seedMessages?: ChatUiMessage[] | null;
 };
 
 type DrawerLayout = 'desktop' | 'tablet' | 'mobile';
@@ -40,10 +42,12 @@ function useDrawerLayout(): DrawerLayout {
 
 function ChatDrawerPanel({
   context,
+  seedMessages,
   open,
   onClose,
 }: {
   context: DocChatContext;
+  seedMessages?: ChatUiMessage[] | null;
   open: boolean;
   onClose: () => void;
 }) {
@@ -68,7 +72,11 @@ function ChatDrawerPanel({
         </button>
       </div>
       <div className="acongm-chat-shell__body">
-        <DocChatRuntimeProvider context={context} active={open}>
+        <DocChatRuntimeProvider
+          context={context}
+          active={open}
+          seedMessages={seedMessages}
+        >
           <AssistantThread />
         </DocChatRuntimeProvider>
       </div>
@@ -83,7 +91,10 @@ function ChatDrawerPanel({
  * 注意：不要把 acongm-aui-root 挂在 rc-drawer 根上——该 class 带纯色 background，
  * 而 rc-drawer 根是 inset:0 全屏层，会整页挡住正文。
  */
-export function ChatDrawer({ context }: ChatDrawerProps) {
+export function ChatDrawer({
+  context,
+  seedMessages = null,
+}: ChatDrawerProps) {
   const { open, closePanel, mode } = useChatUi();
   const layout = useDrawerLayout();
   const [mounted, setMounted] = useState(false);
@@ -130,7 +141,12 @@ export function ChatDrawer({ context }: ChatDrawerProps) {
           : undefined,
       }}
     >
-      <ChatDrawerPanel context={context} open={open} onClose={closePanel} />
+      <ChatDrawerPanel
+        context={context}
+        seedMessages={seedMessages}
+        open={open}
+        onClose={closePanel}
+      />
     </Drawer>
   );
 }

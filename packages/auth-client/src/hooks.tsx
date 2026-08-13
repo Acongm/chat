@@ -173,4 +173,3 @@ export function useAuthActions(options?: {
 }
 
 export { claimAnonymousThreads, ensureAnonymousSession, getOAuthLoginUrl, isAuthConfigured };
-export type { UseSessionOptions };

@@ -12,6 +12,10 @@
       "types": "./src/index.ts",
       "default": "./src/index.ts"
     },
+    "./integration": {
+      "types": "./src/integration/index.ts",
+      "default": "./src/integration/index.ts"
+    },
     "./styles.css": "./src/styles/index.css"
   },
   "main": "./src/index.ts",

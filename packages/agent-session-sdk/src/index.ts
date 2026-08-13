@@ -31,6 +31,30 @@ export {
 
 export { selectActiveChatBranch } from './chat-v2-history';
 
+export {
+  mapDurableBranchToUiMessages,
+  reasoningParts,
+  textParts,
+} from './chat-v2-ui';
+
+export {
+  DEFAULT_CHAT_RESTORE_MAX_MESSAGES,
+  DEFAULT_CHAT_RESTORE_PAGE_SIZE,
+  loadChatV2History,
+  loadChatV2HistoryProgressive,
+  type ChatV2HistoryDetail,
+  type ChatV2HistoryProgress,
+  type LoadChatV2HistoryOptions,
+} from './chat-v2-restore';
+
+export {
+  buildChatV2PageUrl,
+  normalizeChatV2Message,
+  normalizeChatV2Record,
+  type RawChatV2Message,
+  type RawChatV2Record,
+} from './chat-v2-normalize';
+
 /** Legacy compatibility only. New chat consumers must use Chat v2 above. */
 export {
   DEFAULT_THREADS_PROXY,

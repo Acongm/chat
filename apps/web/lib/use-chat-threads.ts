@@ -5,16 +5,13 @@ import type { ChatUiMessage, ChatV2Message, ChatV2Record } from '@acongm/kb-type
 import {
   createChatV2,
   deleteChatV2,
-  getChatV2,
-  listChatMessagesV2,
   listChatsV2,
-  selectActiveChatBranch,
+  loadChatV2HistoryProgressive,
+  mapDurableBranchToUiMessages,
 } from '@acongm/agent-session-sdk';
 
 const CHATS_BASE = '/api/chats';
 const CHAT_PAGE_SIZE = 50;
-const MESSAGE_PAGE_SIZE = 100;
-const MAX_RESTORED_MESSAGES = 5000;
 
 export type UseChatThreadsOptions = {
   accessToken?: string | null;
@@ -57,51 +54,8 @@ export type UseChatThreadsResult = {
   clearActive: () => void;
 };
 
-function textParts(message: ChatV2Message): string {
-  return message.parts
-    .filter(
-      (part): part is { type: 'text'; text: string } =>
-        part.type === 'text' &&
-        'text' in part &&
-        typeof part.text === 'string',
-    )
-    .map((part) => part.text)
-    .join('\n');
-}
-
-function reasoningParts(message: ChatV2Message): string {
-  return message.parts
-    .filter(
-      (part): part is { type: 'reasoning'; text: string } =>
-        part.type === 'reasoning' &&
-        'text' in part &&
-        typeof part.text === 'string',
-    )
-    .map((part) => part.text)
-    .join('');
-}
-
 function mapDurableBranch(messages: readonly ChatV2Message[]): ChatUiMessage[] {
-  const branch = selectActiveChatBranch(messages);
-  const result: ChatUiMessage[] = [];
-
-  for (const message of branch) {
-    if (message.role !== 'user' && message.role !== 'assistant') continue;
-    const content = textParts(message);
-    const thinking = reasoningParts(message);
-    if (!content.trim() && !thinking.trim()) continue;
-
-    result.push({
-      // assistant-ui should keep using its stable client-side id when available.
-      // Server UUID remains available in ChatV2Message for parent traversal only.
-      id: message.clientMessageId || message.id,
-      role: message.role,
-      content,
-      ...(thinking.trim() ? { thinking } : {}),
-    });
-  }
-
-  return result;
+  return mapDurableBranchToUiMessages(messages);
 }
 
 async function loadHistoryProgressive(
@@ -114,48 +68,15 @@ async function loadHistoryProgressive(
   }) => void,
   isCancelled: () => boolean,
 ): Promise<void> {
-  const requestOptions = { baseUrl: CHATS_BASE, accessToken };
-  const detail = await getChatV2(chatId, requestOptions);
-  if (isCancelled()) return;
-
-  const allMessages = [...detail.messages];
-  let cursor = detail.nextCursor;
-  const seenCursors = new Set<string>();
-
-  const emit = (complete: boolean) => {
-    if (isCancelled()) return;
-    onUpdate({
-      chat: detail.chat,
-      messages: mapDurableBranch(allMessages),
-      complete,
-    });
-  };
-
-  emit(!cursor);
-
-  while (cursor) {
-    if (isCancelled()) return;
-    if (allMessages.length >= MAX_RESTORED_MESSAGES) {
-      throw new Error(
-        `会话历史超过 ${MAX_RESTORED_MESSAGES} 条，当前版本不会静默截断分支历史。`,
-      );
-    }
-    if (seenCursors.has(cursor)) {
-      throw new Error('会话历史分页游标重复，已停止恢复以避免错误历史。');
-    }
-    seenCursors.add(cursor);
-
-    const remaining = MAX_RESTORED_MESSAGES - allMessages.length;
-    const page = await listChatMessagesV2(
-      chatId,
-      { limit: Math.min(MESSAGE_PAGE_SIZE, remaining), after: cursor },
-      requestOptions,
-    );
-    if (isCancelled()) return;
-    allMessages.push(...page.items);
-    cursor = page.nextCursor;
-    emit(!cursor);
-  }
+  await loadChatV2HistoryProgressive(
+    chatId,
+    (detail) => onUpdate(detail),
+    {
+      baseUrl: CHATS_BASE,
+      accessToken,
+      isCancelled,
+    },
+  );
 }
 
 function mergeUniqueChats(

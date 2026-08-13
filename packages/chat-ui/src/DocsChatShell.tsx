@@ -2,6 +2,7 @@
 
 import { useEffect } from 'react';
 import type { KnowledgeRef, KnowledgeSearchHit } from '@acongm/kb-catalog';
+import type { ChatUiMessage } from '@acongm/kb-types';
 import { ChatDrawer } from './ChatDrawer';
 import { ChatTrigger } from './ChatTrigger';
 import { ChatUiProvider, useChatUi } from './ChatUiProvider';
@@ -14,6 +15,7 @@ import type { DocChatContext } from './types';
 
 export type DocsChatShellProps = {
   context: DocChatContext;
+  seedMessages?: ChatUiMessage[] | null;
   chips?: KnowledgeRef[];
   onChipsChange?: (chips: KnowledgeRef[]) => void;
   /** 按当前 @/+ 查询返回知识命中（宿主注入 catalog 搜索） */
@@ -24,12 +26,13 @@ export type DocsChatShellProps = {
 
 function DocsChatShellContent({
   context,
+  seedMessages,
   mentionHits,
   resolveMentionHits,
   onSelect,
 }: Pick<
   DocsChatShellProps,
-  'context' | 'mentionHits' | 'resolveMentionHits' | 'onSelect'
+  'context' | 'seedMessages' | 'mentionHits' | 'resolveMentionHits' | 'onSelect'
 >) {
   const { mention, toggleChip, closeMention, openAttachPicker } =
     useKnowledgeUi();
@@ -60,7 +63,7 @@ function DocsChatShellContent({
   return (
     <>
       <ChatTrigger />
-      <ChatDrawer context={context} />
+      <ChatDrawer context={context} seedMessages={seedMessages} />
       <KnowledgeMentionMenu
         open={mention.open}
         query={mention.query}
@@ -79,6 +82,7 @@ function DocsChatShellContent({
  */
 export function DocsChatShell({
   context,
+  seedMessages,
   chips,
   onChipsChange,
   mentionHits,
@@ -90,6 +94,7 @@ export function DocsChatShell({
       <KnowledgeUiProvider chips={chips} onChipsChange={onChipsChange}>
         <DocsChatShellContent
           context={context}
+          seedMessages={seedMessages}
           mentionHits={mentionHits}
           resolveMentionHits={resolveMentionHits}
           onSelect={onSelect}
