@@ -25,7 +25,7 @@ export function ChatAuthSlot({
   onSignedOut,
   menuFooter,
 }: ChatAuthSlotProps) {
-  const { session } = useSession({ ensureAnonymous: true });
+  const { session, status, error, retry } = useSession({ ensureAnonymous: true });
   const onIdentityRef = useRef(onIdentityChange);
   onIdentityRef.current = onIdentityChange;
 
@@ -41,6 +41,17 @@ export function ChatAuthSlot({
       anonymous: Boolean(session.user.is_anonymous),
     });
   }, [session?.access_token, session?.user.id, session?.user.is_anonymous]);
+
+  if (status === 'error') {
+    return (
+      <div className="acongm-chat-auth-error">
+        <p>{error || '无法准备访客会话'}</p>
+        <button type="button" onClick={retry}>
+          重试
+        </button>
+      </div>
+    );
+  }
 
   return (
     <AuthAccountButton
