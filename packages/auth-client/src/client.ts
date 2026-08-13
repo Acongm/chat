@@ -52,12 +52,27 @@ function getCookieDomain(): string | undefined {
   return process.env.NEXT_PUBLIC_AUTH_COOKIE_DOMAIN ?? '.acongm.com';
 }
 
+function providerLabel(provider: string): string {
+  if (provider === 'google') return 'Google';
+  if (provider === 'github') return 'GitHub';
+  return provider;
+}
+
 function formatProviderError(provider: string, message: string): Error {
+  const label = providerLabel(provider);
   if (/provider is not enabled/i.test(message)) {
-    const label =
-      provider === 'google' ? 'Google' : provider === 'github' ? 'GitHub' : provider;
     return new Error(
       `${label} 登录未启用：请在 Supabase Dashboard → Authentication → Providers → ${label} 开启，并填写 Client ID / Secret。`,
+    );
+  }
+  if (/manual linking.*disabled|identity linking.*disabled|manual identity linking/i.test(message)) {
+    return new Error(
+      '访客账号升级尚未启用：需要先在 Supabase Authentication 中开启 Manual Linking。当前访客会话不会被自动切换或丢弃。',
+    );
+  }
+  if (/identity.*already.*exists|already.*linked|identity.*taken/i.test(message)) {
+    return new Error(
+      '该第三方身份已经属于另一个账号。当前访客会话不会自动合并到已有账号；请切换到“登录”进入已有账号，或等待显式数据合并能力。',
     );
   }
   return new Error(message || `${provider} OAuth failed`);
@@ -87,6 +102,12 @@ export function createBrowserClient(options?: Partial<AuthClientOptions>) {
 
 export function isAnonymousUser(user: User | null | undefined): boolean {
   return Boolean(user?.is_anonymous);
+}
+
+export function isAnonymousSession(
+  session: Session | null | undefined,
+): boolean {
+  return isAnonymousUser(session?.user);
 }
 
 /**
@@ -123,6 +144,67 @@ export async function signInWithOAuth(
   if (error) {
     throw formatProviderError(options.provider, error.message);
   }
+}
+
+export async function linkOAuthIdentity(
+  client: ReturnType<typeof createBrowserClient>,
+  options: { provider: SocialAuthProvider; redirectTo?: string },
+): Promise<void> {
+  const { error } = await client.auth.linkIdentity({
+    provider: options.provider as Provider,
+    options: {
+      redirectTo: options.redirectTo,
+    },
+  });
+  if (error) {
+    throw formatProviderError(options.provider, error.message);
+  }
+}
+
+export type OAuthIntent = 'sign-in' | 'sign-up';
+export type OAuthStartMode = 'sign-in' | 'link-anonymous';
+
+/**
+ * Start social auth with an explicit product intent.
+ *
+ * - sign-up + anonymous session: link identity to preserve auth.uid() and all
+ *   RLS-owned application data.
+ * - sign-in: always enter the selected existing account through ordinary OAuth,
+ *   even when the browser currently owns an anonymous session. The consumer is
+ *   responsible for treating the changed auth.uid() as an explicit identity
+ *   switch; no legacy x-client-id claim or silent data merge is allowed.
+ * - sign-up without an anonymous session: ordinary OAuth creates/signs into the
+ *   provider-backed account as usual.
+ */
+export async function startOAuthFlow(
+  client: ReturnType<typeof createBrowserClient>,
+  options: {
+    provider: SocialAuthProvider;
+    redirectTo?: string;
+    intent?: OAuthIntent;
+  },
+): Promise<OAuthStartMode> {
+  const {
+    data: { session },
+    error: sessionError,
+  } = await client.auth.getSession();
+
+  if (sessionError) {
+    throw new Error(sessionError.message || '无法读取当前登录状态');
+  }
+
+  const authOptions = {
+    provider: options.provider,
+    redirectTo: options.redirectTo,
+  };
+
+  if (options.intent === 'sign-up' && isAnonymousSession(session)) {
+    await linkOAuthIdentity(client, authOptions);
+    return 'link-anonymous';
+  }
+
+  await signInWithOAuth(client, authOptions);
+  return 'sign-in';
 }
 
 export async function signInWithGitHub(
@@ -197,21 +279,19 @@ export async function signOut(
   if (error) throw error;
 }
 
-/** @deprecated Stage 1 legacy compatibility only. Chat v2 must not call this. */
 export interface ClaimAnonymousThreadsInput {
   apiBase: string;
   clientId: string;
   accessToken: string;
 }
 
-/** @deprecated Stage 1 legacy compatibility only. */
 export interface ClaimAnonymousThreadsResult {
   claimed: number;
   claimedThreads?: number;
   threadIds?: string[];
 }
 
-/** @deprecated Stage 1 legacy compatibility only. */
+/** @deprecated Legacy thread migration only. New Chat v2 uses Supabase auth.uid(). */
 export async function claimAnonymousThreads(
   input: ClaimAnonymousThreadsInput,
 ): Promise<ClaimAnonymousThreadsResult> {

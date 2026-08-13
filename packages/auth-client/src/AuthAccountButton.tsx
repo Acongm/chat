@@ -1,6 +1,6 @@
 'use client';
 
-import { isAnonymousUser } from './client';
+import { getAuthBaseUrl, isAnonymousSession } from './client';
 import { useAuthActions, useUserInfo } from './hooks';
 import type { UserInfoView } from './profile';
 
@@ -14,6 +14,8 @@ export type AuthAccountButtonProps = {
   onSignedOut?: () => void;
   /** Override User API base (defaults to same-origin /api/user) */
   userApiBaseUrl?: string;
+  /** Chat/Portal embedded surfaces: bootstrap Supabase anonymous session. */
+  ensureAnonymous?: boolean;
 };
 
 type AuthSession = NonNullable<ReturnType<typeof useUserInfo>['session']>;
@@ -54,7 +56,7 @@ function resolveDisplay(session: AuthSession, userInfo: UserInfoView | null) {
     label: String(sessionFallbackLabel(session)),
     photo: sessionFallbackAvatar(session),
     email,
-    isAnonymous: isAnonymousUser(session.user),
+    isAnonymous: isAnonymousSession(session),
   };
 }
 
@@ -157,9 +159,17 @@ export function AuthAccountButton({
   variant = 'nav',
   onSignedOut,
   userApiBaseUrl,
+  ensureAnonymous,
 }: AuthAccountButtonProps) {
-  const { session, client, userInfo, loading, configured } = useUserInfo({
+  const {
+    session,
+    client,
+    userInfo,
+    loading,
+    configured,
+  } = useUserInfo({
     baseUrl: userApiBaseUrl,
+    ensureAnonymous,
   });
   const { login, logout } = useAuthActions({ client });
 
@@ -216,15 +226,15 @@ export function AuthAccountButton({
   const photo = display.photo;
   const email = display.email;
   const title = email && email !== label ? `${label} · ${email}` : label;
+  const accountHref = `${getAuthBaseUrl().replace(/\/$/, '')}/account`;
 
   if (variant === 'avatar') {
     return (
-      <button
-        type="button"
+      <a
         className={className ?? 'acongm-auth-avatar'}
-        title={`${title} · 点击退出`}
-        aria-label={`${title}，点击退出登录`}
-        onClick={handleLogout}
+        href={accountHref}
+        title={`${title} · 账号`}
+        aria-label={`${title}，打开账号`}
       >
         {photo ? (
           // eslint-disable-next-line @next/next/no-img-element
@@ -239,18 +249,17 @@ export function AuthAccountButton({
         ) : (
           avatarChar(label)
         )}
-      </button>
+      </a>
     );
   }
 
   if (variant === 'icon') {
     return (
-      <button
-        type="button"
+      <a
         className={className ?? 'acongm-auth-icon-btn'}
-        title={`${title} · 点击退出`}
-        aria-label={`${title}，点击退出登录`}
-        onClick={handleLogout}
+        href={accountHref}
+        title={`${title} · 账号`}
+        aria-label={`${title}，打开账号`}
       >
         {photo ? (
           // eslint-disable-next-line @next/next/no-img-element
@@ -268,13 +277,13 @@ export function AuthAccountButton({
             {avatarChar(label)}
           </span>
         )}
-      </button>
+      </a>
     );
   }
 
   return (
     <div className="acongm-auth-user" data-variant={variant}>
-      <div className="acongm-auth-user__identity">
+      <a className="acongm-auth-user__identity" href={accountHref} title="账号设置">
         <UserAvatar label={label} src={photo} />
         <div className="acongm-auth-user__meta">
           <span className="acongm-auth-user__name" title={title}>
@@ -286,7 +295,7 @@ export function AuthAccountButton({
             </span>
           ) : null}
         </div>
-      </div>
+      </a>
       <button
         type="button"
         className={className ?? 'acongm-auth-btn'}

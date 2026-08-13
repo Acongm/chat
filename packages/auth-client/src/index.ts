@@ -4,21 +4,26 @@ export {
   ensureAnonymousSession,
   getAuthBaseUrl,
   getOAuthLoginUrl,
+  isAnonymousSession,
   isAnonymousUser,
   isAuthConfigured,
   isSocialAuthProvider,
+  linkOAuthIdentity,
   signInWithGitHub,
   signInWithGoogle,
   signInWithOAuth,
   signInWithPassword,
   signOut,
   signUpWithPassword,
+  startOAuthFlow,
 } from './client';
 export type {
   AuthClientOptions,
   ClaimAnonymousThreadsInput,
   ClaimAnonymousThreadsResult,
   EmailAuthResult,
+  OAuthIntent,
+  OAuthStartMode,
   Session,
   SocialAuthProvider,
   User,
@@ -45,4 +50,10 @@ export type {
   UserMe,
   UserSettingsView,
 } from './profile';
-export { useSession, useUser, useUserInfo, useAuthActions } from './hooks';
+export {
+  useSession,
+  useUser,
+  useUserInfo,
+  useAuthActions,
+} from './hooks';
+export type { UseSessionOptions } from './hooks';

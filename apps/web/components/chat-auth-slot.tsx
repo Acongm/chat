@@ -23,7 +23,7 @@ export function ChatAuthSlot({
   onIdentityChange,
   onSignedOut,
 }: ChatAuthSlotProps) {
-  const { session } = useSession();
+  const { session } = useSession({ ensureAnonymous: true });
   const onIdentityRef = useRef(onIdentityChange);
   onIdentityRef.current = onIdentityChange;
 
@@ -41,6 +41,10 @@ export function ChatAuthSlot({
   }, [session?.access_token, session?.user.id, session?.user.is_anonymous]);
 
   return (
-    <AuthAccountButton variant="sidebar" onSignedOut={onSignedOut} />
+    <AuthAccountButton
+      variant="sidebar"
+      ensureAnonymous
+      onSignedOut={onSignedOut}
+    />
   );
 }
