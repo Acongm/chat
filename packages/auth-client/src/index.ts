@@ -61,3 +61,5 @@ export {
   useAuthActions,
 } from './hooks';
 export type { UseSessionOptions } from './hooks';
+export { resolveAuthSessionStatus } from './session-status';
+export type { AuthSessionStatus } from './session-status';

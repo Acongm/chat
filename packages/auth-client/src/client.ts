@@ -274,8 +274,11 @@ export async function signUpWithPassword(
 
 export async function signOut(
   client: ReturnType<typeof createBrowserClient>,
+  options?: { scope?: 'local' | 'global' | 'others' },
 ): Promise<void> {
-  const { error } = await client.auth.signOut();
+  const { error } = await client.auth.signOut(
+    options?.scope ? { scope: options.scope } : undefined,
+  );
   if (error) throw error;
 }
 

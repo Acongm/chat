@@ -98,3 +98,9 @@ test('User BFF proxies /api/user to api.acongm.com so getUserInfo works after lo
   assert.match(text, /['"]authorization['"]/);
   assert.match(text, /USER_UPSTREAM_UNREACHABLE/);
 });
+
+test('page-bound history restore does not wipe transcript with an empty seed on failure', () => {
+  const hook = source('packages/chat-ui/src/integration/use-page-bound-chat.ts');
+  assert.match(hook, /setRestoreError\(/);
+  assert.doesNotMatch(hook, /setSeedMessages\(\[\]\)/);
+});
