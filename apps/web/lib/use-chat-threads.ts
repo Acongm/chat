@@ -31,8 +31,10 @@ export type UseChatThreadsResult = {
   activeThreadId: string | null;
   activeThread: ChatV2Record | null;
   seedMessages: ChatUiMessage[] | null;
-  /** 详情 seed 是否已从 server durable history 就绪。 */
+  /** 详情 seed 是否已从 server durable history 就绪（首屏即可 ready，后台可继续同步）。 */
   seedStatus: SeedStatus;
+  /** 后台仍在拉取更早/更多分页时为 true */
+  historySyncing: boolean;
   /** 首屏列表加载中 */
   loading: boolean;
   /** 后台刷新中（不禁用「新对话」） */
@@ -102,17 +104,37 @@ function mapDurableBranch(messages: readonly ChatV2Message[]): ChatUiMessage[] {
   return result;
 }
 
-async function loadDurableHistory(
+async function loadHistoryProgressive(
   chatId: string,
   accessToken: string,
-): Promise<{ chat: ChatV2Record; messages: ChatUiMessage[] }> {
+  onUpdate: (detail: {
+    chat: ChatV2Record;
+    messages: ChatUiMessage[];
+    complete: boolean;
+  }) => void,
+  isCancelled: () => boolean,
+): Promise<void> {
   const requestOptions = { baseUrl: CHATS_BASE, accessToken };
   const detail = await getChatV2(chatId, requestOptions);
+  if (isCancelled()) return;
+
   const allMessages = [...detail.messages];
   let cursor = detail.nextCursor;
   const seenCursors = new Set<string>();
 
+  const emit = (complete: boolean) => {
+    if (isCancelled()) return;
+    onUpdate({
+      chat: detail.chat,
+      messages: mapDurableBranch(allMessages),
+      complete,
+    });
+  };
+
+  emit(!cursor);
+
   while (cursor) {
+    if (isCancelled()) return;
     if (allMessages.length >= MAX_RESTORED_MESSAGES) {
       throw new Error(
         `会话历史超过 ${MAX_RESTORED_MESSAGES} 条，当前版本不会静默截断分支历史。`,
@@ -129,14 +151,11 @@ async function loadDurableHistory(
       { limit: Math.min(MESSAGE_PAGE_SIZE, remaining), after: cursor },
       requestOptions,
     );
+    if (isCancelled()) return;
     allMessages.push(...page.items);
     cursor = page.nextCursor;
+    emit(!cursor);
   }
-
-  return {
-    chat: detail.chat,
-    messages: mapDurableBranch(allMessages),
-  };
 }
 
 function mergeUniqueChats(
@@ -170,6 +189,7 @@ export function useChatThreads(
   const [seedStatus, setSeedStatus] = useState<SeedStatus>(
     initialThreadId ? 'loading' : 'idle',
   );
+  const [historySyncing, setHistorySyncing] = useState(false);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [loadingMore, setLoadingMore] = useState(false);
@@ -178,6 +198,9 @@ export function useChatThreads(
   const refreshGen = useRef(0);
   const selectGen = useRef(0);
   const previousIdentity = useRef<string | null>(null);
+  const threadSeedCache = useRef(
+    new Map<string, { messages: ChatUiMessage[]; complete: boolean }>(),
+  );
 
   const requestOptions = useMemo(
     () => ({
@@ -192,12 +215,14 @@ export function useChatThreads(
     previousIdentity.current = identityKey;
     refreshGen.current += 1;
     selectGen.current += 1;
+    threadSeedCache.current.clear();
     // Never display one Supabase principal's chats under another principal.
     setThreads([]);
     setNextCursor(null);
     setActiveThreadId(initialThreadId);
     setSeedMessages(null);
     setSeedStatus(initialThreadId ? 'loading' : 'idle');
+    setHistorySyncing(false);
     setError(null);
     setLoading(true);
     setRefreshing(false);
@@ -274,25 +299,48 @@ export function useChatThreads(
       }
       const gen = ++selectGen.current;
       setActiveThreadId(id);
-      setSeedStatus('loading');
       setError(null);
-      try {
-        const detail = await loadDurableHistory(id, accessToken);
-        if (gen !== selectGen.current) return;
-        setSeedMessages(detail.messages);
-        setThreads((prev) => {
-          const exists = prev.some((chat) => chat.id === id);
-          if (exists) {
-            return prev.map((chat) =>
-              chat.id === id ? { ...chat, ...detail.chat } : chat,
-            );
-          }
-          return [detail.chat, ...prev];
-        });
+
+      const cached = threadSeedCache.current.get(id);
+      if (cached) {
+        setSeedMessages(cached.messages);
         setSeedStatus('ready');
+        setHistorySyncing(!cached.complete);
+      } else {
+        setSeedStatus('loading');
+        setHistorySyncing(true);
+      }
+
+      try {
+        await loadHistoryProgressive(
+          id,
+          accessToken,
+          (detail) => {
+            if (gen !== selectGen.current) return;
+            setSeedMessages(detail.messages);
+            setSeedStatus('ready');
+            setHistorySyncing(!detail.complete);
+            threadSeedCache.current.set(id, {
+              messages: detail.messages,
+              complete: detail.complete,
+            });
+            setThreads((prev) => {
+              const exists = prev.some((chat) => chat.id === id);
+              if (exists) {
+                return prev.map((chat) =>
+                  chat.id === id ? { ...chat, ...detail.chat } : chat,
+                );
+              }
+              return [detail.chat, ...prev];
+            });
+          },
+          () => gen !== selectGen.current,
+        );
+        if (gen !== selectGen.current) return;
+        setHistorySyncing(false);
       } catch (err) {
         if (gen !== selectGen.current) return;
-        setSeedMessages([]);
+        setHistorySyncing(false);
         setSeedStatus('ready');
         setError(err instanceof Error ? err.message : '加载会话详情失败');
       }
@@ -340,6 +388,7 @@ export function useChatThreads(
         throw new Error('正在准备安全会话身份，请稍后重试。');
       }
       await deleteChatV2(id, requestOptions);
+      threadSeedCache.current.delete(id);
       setThreads((prev) => prev.filter((chat) => chat.id !== id));
       if (activeThreadId === id) {
         selectGen.current += 1;
@@ -367,6 +416,7 @@ export function useChatThreads(
     activeThread,
     seedMessages,
     seedStatus,
+    historySyncing,
     loading,
     refreshing,
     loadingMore,

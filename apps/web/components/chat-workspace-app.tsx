@@ -130,7 +130,6 @@ function WorkspaceInner({
   isolation,
   summariesUrl,
   emptyTitle,
-  portalBase,
   initialThreadId = null,
 }: ChatWorkspaceAppProps) {
   const searchParams = useSearchParams();
@@ -225,6 +224,16 @@ function WorkspaceInner({
     ],
   );
 
+  const composerPlaceholder = useMemo(() => {
+    if (!authIdentity) {
+      return '正在准备安全会话…';
+    }
+    if (threads.activeThreadId && threads.historySyncing) {
+      return '正在同步会话历史…';
+    }
+    return '有什么可以帮忙的？输入 @ 引用知识…';
+  }, [authIdentity, threads.activeThreadId, threads.historySyncing]);
+
   const handleNewThread = () => {
     threads.clearActive();
     setRuntimeKey(`draft-${Date.now()}`);
@@ -268,7 +277,6 @@ function WorkspaceInner({
           loadingMore={threads.loadingMore}
           hasMore={threads.hasMore}
           error={threads.error}
-          portalHref={portalBase}
           authSlot={
             <ChatAuthSlot
               onIdentityChange={setAuthIdentity}
@@ -292,26 +300,17 @@ function WorkspaceInner({
         />
       }
       main={
-        !authIdentity ? (
-          <div className="acongm-gpt-thread-loading" aria-live="polite">
-            正在准备安全会话…
-          </div>
-        ) : threads.activeThreadId && threads.seedStatus === 'loading' ? (
-          <div className="acongm-gpt-thread-loading" aria-live="polite">
-            加载会话…
-          </div>
-        ) : (
-          <ChatFullscreen
-            key={runtimeKey}
-            context={context}
-            forceOpen
-            seedMessages={
-              // preserveSeed 时 null 必须原样下传；不要制造新的 [] 引用触发 runtime seed reset。
-              threads.activeThreadId ? threads.seedMessages : null
-            }
-            emptyTitle={emptyTitle}
-          />
-        )
+        <ChatFullscreen
+          key={runtimeKey}
+          context={context}
+          forceOpen
+          seedMessages={
+            // preserveSeed 时 null 必须原样下传；不要制造新的 [] 引用触发 runtime seed reset。
+            threads.activeThreadId ? threads.seedMessages : null
+          }
+          emptyTitle={emptyTitle}
+          placeholder={composerPlaceholder}
+        />
       }
       overlay={
         <MentionOverlay
