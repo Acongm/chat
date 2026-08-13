@@ -1,7 +1,9 @@
 'use client';
 
 import { getAuthBaseUrl, isAnonymousSession } from './client';
+import { AuthAccountMenu } from './AuthAccountMenu';
 import { useAuthActions, useUserInfo } from './hooks';
+import type { ReactNode } from 'react';
 import type { UserInfoView } from './profile';
 
 export type AuthAccountButtonProps = {
@@ -16,6 +18,10 @@ export type AuthAccountButtonProps = {
   userApiBaseUrl?: string;
   /** Chat/Portal embedded surfaces: bootstrap Supabase anonymous session. */
   ensureAnonymous?: boolean;
+  /** Dropdown with account / settings / logout (Phase 2 user menu). */
+  menu?: boolean;
+  /** Rendered below menu actions (e.g. local theme toggle). */
+  menuFooter?: ReactNode;
 };
 
 type AuthSession = NonNullable<ReturnType<typeof useUserInfo>['session']>;
@@ -160,6 +166,8 @@ export function AuthAccountButton({
   onSignedOut,
   userApiBaseUrl,
   ensureAnonymous,
+  menu = false,
+  menuFooter,
 }: AuthAccountButtonProps) {
   const {
     session,
@@ -227,6 +235,20 @@ export function AuthAccountButton({
   const email = display.email;
   const title = email && email !== label ? `${label} · ${email}` : label;
   const accountHref = `${getAuthBaseUrl().replace(/\/$/, '')}/account`;
+
+  if (menu) {
+    return (
+      <AuthAccountMenu
+        label={label}
+        photo={photo}
+        email={email}
+        variant={variant}
+        className={className}
+        onLogout={handleLogout}
+        menuFooter={menuFooter}
+      />
+    );
+  }
 
   if (variant === 'avatar') {
     return (

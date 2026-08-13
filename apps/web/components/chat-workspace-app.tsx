@@ -277,9 +277,9 @@ function WorkspaceInner({
             <ChatAuthSlot
               onIdentityChange={setAuthIdentity}
               onSignedOut={handleSignedOut}
+              menuFooter={<ChatSettingsSlot />}
             />
           }
-          settingsSlot={<ChatSettingsSlot />}
           onNewThread={handleNewThread}
           onSelectThread={(id) => {
             void handleSelectThread(id);

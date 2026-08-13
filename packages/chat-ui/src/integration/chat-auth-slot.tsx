@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, type ReactNode } from 'react';
 import { AuthAccountButton, useSession } from '@acongm/auth-client';
 
 export type ChatAuthIdentity = {
@@ -13,6 +13,7 @@ export type ChatAuthSlotProps = {
   onIdentityChange?: (identity: ChatAuthIdentity | null) => void;
   /** Called after signOut; useSession re-bootstraps anonymous identity. */
   onSignedOut?: () => void;
+  menuFooter?: ReactNode;
 };
 
 /**
@@ -22,6 +23,7 @@ export type ChatAuthSlotProps = {
 export function ChatAuthSlot({
   onIdentityChange,
   onSignedOut,
+  menuFooter,
 }: ChatAuthSlotProps) {
   const { session } = useSession({ ensureAnonymous: true });
   const onIdentityRef = useRef(onIdentityChange);
@@ -44,6 +46,8 @@ export function ChatAuthSlot({
     <AuthAccountButton
       variant="sidebar"
       ensureAnonymous
+      menu
+      menuFooter={menuFooter}
       onSignedOut={onSignedOut}
     />
   );

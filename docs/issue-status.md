@@ -7,7 +7,7 @@
 | # | 标题 | 状态 | 说明 |
 |---|------|------|------|
 | **36** | Chat v2 consumer | **已完成 ✅** | merged `edb980e` |
-| **41** | 用户菜单 + getUserInfo | OPEN Phase 2 | Phase 1：侧栏 userInfo ✅ `d7cf211` |
+| **41** | 用户菜单 + getUserInfo | OPEN Phase 2 | Phase 2：AuthAccountMenu ✅；theme 在 menuFooter |
 | **40** | 非阻塞启动 | **P0 进行中** | Phase 1：shell 不阻塞 ✅；history 渐进加载 ✅ |
 | **39** | Chat 产品优化 | OPEN | 父 Epic，执行入口 #40 |
 | **1** | Chat v2 Epic | OPEN | #36 代码完成；剩 #40/#37 |

@@ -32,6 +32,8 @@ export { createServerClient } from './server';
 export type { CookieStore, ServerClientOptions } from './server';
 export { AuthAccountButton } from './AuthAccountButton';
 export type { AuthAccountButtonProps } from './AuthAccountButton';
+export { AuthAccountMenu } from './AuthAccountMenu';
+export type { AuthAccountMenuProps } from './AuthAccountMenu';
 export {
   getUserInfo,
   getUserMe,
