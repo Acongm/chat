@@ -51,7 +51,11 @@ const { chatId, seedMessages, ready, ensureChat } = usePageBoundChat({
 
 ### 独立 Chat 站（全屏工作台）
 
-使用 `ChatWorkspace` + `useChatThreads`（chat 仓 app 层）；线程列表逻辑在 `apps/web/lib/use-chat-threads.ts`，历史恢复走 SDK `loadChatV2HistoryProgressive`。
+```tsx
+import { ChatAuthSlot, useChatThreads } from '@acongm/chat-ui/integration';
+```
+
+`useChatThreads` 管理侧栏列表 + 渐进 history restore；`ChatAuthSlot` 桥接 Supabase anonymous session。
 
 ### BFF 代理
 
@@ -66,7 +70,7 @@ loadChatV2History, loadChatV2HistoryProgressive
 mapDurableBranchToUiMessages, selectActiveChatBranch
 
 // @acongm/chat-ui/integration
-usePageBoundChat
+usePageBoundChat, useChatThreads, ChatAuthSlot
 ```
 
 ## 变更流程

@@ -21,12 +21,12 @@ test('session hook recreates anonymous identity after explicit sign out', () => 
 
 test('anonymous Supabase identity remains visually logged out', () => {
   const text = source('packages/auth-client/src/AuthAccountButton.tsx');
-  assert.match(text, /isAnonymousUser\(session\.user\)/);
+  assert.match(text, /isAnonymousSession\(session\)/);
   assert.match(text, /<LoginControl/);
 });
 
 test('real chat auth slot exposes Supabase uid plus bearer token without legacy claim calls', () => {
-  const text = source('apps/web/components/chat-auth-slot.tsx');
+  const text = source('packages/chat-ui/src/integration/chat-auth-slot.tsx');
   assert.match(text, /userId:\s*session\.user\.id/);
   assert.match(text, /accessToken:\s*session\.access_token/);
   assert.doesNotMatch(text, /\bclaimAnonymousThreads\s*\(/);

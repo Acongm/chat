@@ -15,7 +15,7 @@ test('workspace primary flow points at /api/chats and not legacy /api/chat/threa
 });
 
 test('chat auth slot has no legacy claim/client-id calls', () => {
-  const text = source('apps/web/components/chat-auth-slot.tsx');
+  const text = source('packages/chat-ui/src/integration/chat-auth-slot.tsx');
   assert.doesNotMatch(text, /\bclaimAnonymousThreads\s*\(/);
   assert.doesNotMatch(text, /\bgetClientId\s*\(/);
   assert.match(text, /session\.access_token/);
@@ -23,14 +23,12 @@ test('chat auth slot has no legacy claim/client-id calls', () => {
 });
 
 test('conversation hook uses Chat v2 SDK only', () => {
-  const text = source('apps/web/lib/use-chat-threads.ts');
+  const text = source('packages/chat-ui/src/integration/use-chat-threads.ts');
   for (const expected of [
     'listChatsV2',
     'createChatV2',
-    'getChatV2',
-    'listChatMessagesV2',
     'deleteChatV2',
-    'selectActiveChatBranch',
+    'loadChatV2HistoryProgressive',
   ]) {
     assert.match(text, new RegExp(expected));
   }
@@ -48,7 +46,7 @@ test('conversation hook uses Chat v2 SDK only', () => {
 test('ThreadSidebar visibly exposes cursor load-more and workspace wires the next-page callback', () => {
   const sidebar = source('packages/chat-ui/src/workspace/ThreadSidebar.tsx');
   const workspace = source('apps/web/components/chat-workspace-app.tsx');
-  const hook = source('apps/web/lib/use-chat-threads.ts');
+  const hook = source('packages/chat-ui/src/integration/use-chat-threads.ts');
 
   assert.match(sidebar, /hasMore\?:\s*boolean/);
   assert.match(sidebar, /loadingMore\?:\s*boolean/);
@@ -66,7 +64,7 @@ test('ThreadSidebar visibly exposes cursor load-more and workspace wires the nex
 });
 
 test('stale cursor pages cannot append after refresh or Supabase identity change', () => {
-  const hook = source('apps/web/lib/use-chat-threads.ts');
+  const hook = source('packages/chat-ui/src/integration/use-chat-threads.ts');
   assert.match(hook, /refreshGen\.current \+= 1/);
   assert.match(hook, /const gen = refreshGen\.current/);
   assert.match(hook, /if \(gen !== refreshGen\.current\) return;/);

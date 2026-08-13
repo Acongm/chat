@@ -18,12 +18,8 @@ import {
   type DocModulesRegistry,
   type KnowledgeRef,
 } from '@acongm/kb-catalog';
-import { useChatThreads } from '@/lib/use-chat-threads';
+import { ChatAuthSlot, useChatThreads, type ChatAuthIdentity } from '@acongm/chat-ui/integration';
 import { useArticleIndex } from '@/lib/use-article-index';
-import {
-  ChatAuthSlot,
-  type ChatAuthIdentity,
-} from '@/components/chat-auth-slot';
 import { ChatSettingsSlot } from '@/components/chat-settings-slot';
 
 export type ChatWorkspaceAppProps = {

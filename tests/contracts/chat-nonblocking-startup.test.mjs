@@ -16,12 +16,13 @@ test('workspace always mounts ChatFullscreen instead of full-page auth/history g
   assert.match(workspace, /正在准备安全会话/);
 });
 
+const HOOK_PATH = 'packages/chat-ui/src/integration/use-chat-threads.ts';
+
 test('conversation hook uses progressive history load and preserves cache on errors', () => {
-  const hook = source('apps/web/lib/use-chat-threads.ts');
-  assert.match(hook, /loadHistoryProgressive/);
+  const hook = source(HOOK_PATH);
+  assert.match(hook, /loadChatV2HistoryProgressive/);
   assert.match(hook, /historySyncing/);
   assert.match(hook, /threadSeedCache/);
-  assert.match(hook, /emit\(!cursor\)/);
   assert.match(
     hook,
     /catch \(err\) \{[\s\S]*?setSeedStatus\('ready'\);[\s\S]*?setError\(/,
