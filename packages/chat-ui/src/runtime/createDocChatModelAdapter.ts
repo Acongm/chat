@@ -208,6 +208,10 @@ export function createDocChatModelAdapter(
 
       if (!text && thinking) {
         yield yieldParts(thinking, '');
+        return;
+      }
+      if (!text) {
+        throw new Error('模型没有返回内容，请重试。');
       }
     },
   };

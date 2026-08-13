@@ -188,7 +188,7 @@ export function AuthAccountButton({
     })();
   };
 
-  if (configured && loading) {
+  if (configured && loading && !session) {
     if (variant === 'avatar' || variant === 'icon') {
       return (
         <span
