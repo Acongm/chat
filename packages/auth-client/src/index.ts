@@ -27,4 +27,17 @@ export { createServerClient } from './server';
 export type { CookieStore, ServerClientOptions } from './server';
 export { AuthAccountButton } from './AuthAccountButton';
 export type { AuthAccountButtonProps } from './AuthAccountButton';
-export { useSession, useUser, useAuthActions } from './hooks';
+export {
+  getUserInfo,
+  getUserMe,
+  updateUserProfile,
+  UserApiError,
+} from './profile';
+export type {
+  ApplicationProfile,
+  UpdateApplicationProfile,
+  UserInfoView,
+  UserMe,
+  UserSettingsView,
+} from './profile';
+export { useSession, useUser, useUserInfo, useAuthActions } from './hooks';

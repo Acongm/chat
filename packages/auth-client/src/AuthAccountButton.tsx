@@ -1,7 +1,8 @@
 'use client';
 
 import { isAnonymousUser } from './client';
-import { useAuthActions, useSession } from './hooks';
+import { useAuthActions, useUserInfo } from './hooks';
+import type { UserInfoView } from './profile';
 
 export type AuthAccountButtonProps = {
   className?: string;
@@ -11,11 +12,13 @@ export type AuthAccountButtonProps = {
   variant?: 'nav' | 'sidebar' | 'icon' | 'avatar';
   /** 退出登录后的本地清理（如清除会话草稿），在 signOut 之后调用 */
   onSignedOut?: () => void;
+  /** Override User API base (defaults to same-origin /api/user) */
+  userApiBaseUrl?: string;
 };
 
-type AuthSession = NonNullable<ReturnType<typeof useSession>['session']>;
+type AuthSession = NonNullable<ReturnType<typeof useUserInfo>['session']>;
 
-function displayLabel(session: AuthSession) {
+function sessionFallbackLabel(session: AuthSession) {
   return (
     session.user.user_metadata?.display_name ||
     session.user.user_metadata?.full_name ||
@@ -27,11 +30,32 @@ function displayLabel(session: AuthSession) {
   );
 }
 
-function avatarUrl(session: AuthSession): string | null {
+function sessionFallbackAvatar(session: AuthSession): string | null {
   const meta = session.user.user_metadata ?? {};
   const raw =
     meta.avatar_url || meta.picture || meta.avatar || meta.profile_image;
   return typeof raw === 'string' && raw.trim() ? raw.trim() : null;
+}
+
+function resolveDisplay(session: AuthSession, userInfo: UserInfoView | null) {
+  if (userInfo) {
+    return {
+      label: userInfo.displayName,
+      photo: userInfo.avatarUrl,
+      email: userInfo.email,
+      isAnonymous: userInfo.isAnonymous,
+    };
+  }
+  const email =
+    typeof session.user.email === 'string' && session.user.email.trim()
+      ? session.user.email.trim()
+      : null;
+  return {
+    label: String(sessionFallbackLabel(session)),
+    photo: sessionFallbackAvatar(session),
+    email,
+    isAnonymous: isAnonymousUser(session.user),
+  };
 }
 
 function avatarChar(label: string): string {
@@ -132,9 +156,12 @@ export function AuthAccountButton({
   className,
   variant = 'nav',
   onSignedOut,
+  userApiBaseUrl,
 }: AuthAccountButtonProps) {
-  const { session, loading, configured } = useSession();
-  const { login, logout } = useAuthActions();
+  const { session, client, userInfo, loading, configured } = useUserInfo({
+    baseUrl: userApiBaseUrl,
+  });
+  const { login, logout } = useAuthActions({ client });
 
   const handleLogout = () => {
     void (async () => {
@@ -162,9 +189,8 @@ export function AuthAccountButton({
     );
   }
 
-  // Anonymous Supabase sessions are transport identities for RLS, not signed-in
-  // accounts. Keep the product UI as "登录" while Chat v2 uses the JWT.
-  if (!configured || !session || isAnonymousUser(session.user)) {
+  // 未配置 Supabase 时仍可跳转 SSO（login 带 return_to）
+  if (!configured || !session) {
     return (
       <LoginControl
         className={className}
@@ -174,12 +200,21 @@ export function AuthAccountButton({
     );
   }
 
-  const label = String(displayLabel(session));
-  const photo = avatarUrl(session);
-  const email =
-    typeof session.user.email === 'string' && session.user.email.trim()
-      ? session.user.email.trim()
-      : null;
+  const display = resolveDisplay(session, userInfo);
+  // Anonymous Supabase identities stay visually guest / login CTA.
+  if (display.isAnonymous) {
+    return (
+      <LoginControl
+        className={className}
+        variant={variant}
+        onLogin={() => login()}
+      />
+    );
+  }
+
+  const label = display.label;
+  const photo = display.photo;
+  const email = display.email;
   const title = email && email !== label ? `${label} · ${email}` : label;
 
   if (variant === 'avatar') {
