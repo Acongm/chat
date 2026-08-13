@@ -120,11 +120,13 @@ function normalizeMessage(raw: RawMessage): ChatV2Message {
 
 function pageUrl(
   baseUrl: string,
-  options: { limit?: number; after?: string },
+  options: { limit?: number; after?: string; before?: string; order?: 'asc' | 'desc' },
 ): string {
   const params = new URLSearchParams();
   if (options.limit !== undefined) params.set('limit', String(options.limit));
   if (options.after) params.set('after', options.after);
+  if (options.before) params.set('before', options.before);
+  if (options.order) params.set('order', options.order);
   const query = params.toString();
   return query ? `${baseUrl}?${query}` : baseUrl;
 }
@@ -168,28 +170,39 @@ export async function getChatV2(
     chat: RawChat;
     messages?: RawMessage[];
     nextCursor?: string | null;
+    prevCursor?: string | null;
   }>(
-    await fetch(`${baseUrl}/${encodeURIComponent(id)}`, {
-      headers: requestHeaders(options.accessToken),
-      signal: options.signal,
-    }),
+    await fetch(
+      pageUrl(`${baseUrl}/${encodeURIComponent(id)}`, { order: 'desc' }),
+      {
+        headers: requestHeaders(options.accessToken),
+        signal: options.signal,
+      },
+    ),
   );
   return {
     chat: normalizeChat(raw.chat),
     messages: (raw.messages || []).map(normalizeMessage),
     nextCursor: raw.nextCursor || undefined,
+    prevCursor: raw.prevCursor || undefined,
   };
 }
 
 export async function listChatMessagesV2(
   id: string,
-  page: { limit?: number; after?: string } = {},
+  page: {
+    limit?: number;
+    after?: string;
+    before?: string;
+    order?: 'asc' | 'desc';
+  } = {},
   options: ChatV2RequestOptions = {},
 ): Promise<ChatV2Page<ChatV2Message>> {
   const baseUrl = resolveChatsBaseUrl(options.baseUrl);
   const raw = await readJson<{
     messages?: RawMessage[];
     nextCursor?: string | null;
+    prevCursor?: string | null;
   }>(
     await fetch(
       pageUrl(`${baseUrl}/${encodeURIComponent(id)}/messages`, page),
@@ -202,6 +215,7 @@ export async function listChatMessagesV2(
   return {
     items: (raw.messages || []).map(normalizeMessage),
     nextCursor: raw.nextCursor || undefined,
+    prevCursor: raw.prevCursor || undefined,
   };
 }
 

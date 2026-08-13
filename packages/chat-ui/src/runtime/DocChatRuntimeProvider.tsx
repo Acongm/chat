@@ -180,6 +180,18 @@ function DocChatRuntimeInner({
 
   const runtime = useLocalRuntime(adapter, { initialMessages });
 
+  const historySyncKey = useMemo(
+    () => initialMessages.map((message) => message.id ?? '').join('\n'),
+    [initialMessages],
+  );
+
+  useEffect(() => {
+    const { isRunning, messages } = runtime.thread.getState();
+    if (isRunning) return;
+    if (initialMessages.length <= messages.length) return;
+    runtime.thread.reset([...initialMessages]);
+  }, [historySyncKey, initialMessages, runtime]);
+
   const persist = useCallback(() => {
     if (typeof sessionStorage === 'undefined') return;
     const messages = runtime.thread.getState().messages;

@@ -8,12 +8,11 @@
 |---|------|------|------|
 | **36** | Chat v2 consumer | **已完成 ✅** | merged `edb980e` |
 | **41** | 用户菜单 + getUserInfo | OPEN Phase 2 | Phase 2：AuthAccountMenu ✅；theme 在 menuFooter |
-| **40** | 非阻塞启动 | **P0 进行中** | Phase 1：shell 不阻塞 ✅；history 渐进加载 ✅ |
+| **40** | 非阻塞启动 | **Phase 2 ✅** | tail-first + composer disabled + scroll-up lazy load；browser E2E → #37 |
 | **39** | Chat 产品优化 | OPEN | 父 Epic，执行入口 #40 |
 | **1** | Chat v2 Epic | OPEN | #36 代码完成；剩 #40/#37 |
 
 ## 下一步（chat 仓）
 
-1. **#40 Phase 2** — tail-first history API（#57）、composer disabled 态、行为 E2E
-2. **#41 Phase 2** — 用户菜单（账号/设置链接）+ theme 入口
-3. **#37** — browser E2E smoke
+1. **#37** — browser E2E smoke（API path 已在 node-vercel-starter `platform-v2-quality-gate.e2e-spec.ts`）
+2. **#41 Phase 2** — theme 入口细化（menuFooter 已接 ChatSettingsSlot）

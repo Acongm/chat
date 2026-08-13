@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, type FormEvent } from 'react';
+import { useEffect, useRef, useState, type FormEvent } from 'react';
 import {
   ActionBarPrimitive,
   AuiIf,
@@ -149,7 +149,13 @@ function AssistantMessage() {
   );
 }
 
-function Composer({ placeholder }: { placeholder: string }) {
+function Composer({
+  placeholder,
+  disabled = false,
+}: {
+  placeholder: string;
+  disabled?: boolean;
+}) {
   const {
     chips,
     removeChip,
@@ -170,7 +176,10 @@ function Composer({ placeholder }: { placeholder: string }) {
   };
 
   return (
-    <ComposerPrimitive.Root className="acongm-gpt-composer">
+    <ComposerPrimitive.Root
+      className="acongm-gpt-composer"
+      data-disabled={disabled ? 'true' : undefined}
+    >
       {chips.length > 0 ? (
         <div className="acongm-gpt-composer__chips">
           <ContextChipBar chips={chips} onRemove={removeChip} />
@@ -191,6 +200,7 @@ function Composer({ placeholder }: { placeholder: string }) {
           rows={1}
           placeholder={placeholder}
           className="acongm-gpt-composer__input"
+          disabled={disabled}
           onChange={onInputChange}
         />
         <div className="acongm-gpt-composer__primary">
@@ -198,6 +208,7 @@ function Composer({ placeholder }: { placeholder: string }) {
             <ComposerPrimitive.Cancel
               className="acongm-gpt-composer__send"
               title="停止"
+              disabled={disabled}
             >
               <Square size={12} fill="currentColor" aria-hidden />
             </ComposerPrimitive.Cancel>
@@ -206,6 +217,7 @@ function Composer({ placeholder }: { placeholder: string }) {
             <ComposerPrimitive.Send
               className="acongm-gpt-composer__send"
               title="发送"
+              disabled={disabled}
             >
               <ArrowUp size={16} strokeWidth={2.25} aria-hidden />
             </ComposerPrimitive.Send>
@@ -219,15 +231,17 @@ function Composer({ placeholder }: { placeholder: string }) {
 function EmptyState({
   title,
   placeholder,
+  disabled = false,
 }: {
   title: string;
   placeholder: string;
+  disabled?: boolean;
 }) {
   return (
     <div className="acongm-gpt-empty">
       <h1 className="acongm-gpt-empty__title">{title}</h1>
       <div className="acongm-gpt-empty__composer">
-        <Composer placeholder={placeholder} />
+        <Composer placeholder={placeholder} disabled={disabled} />
       </div>
     </div>
   );
@@ -241,10 +255,89 @@ function ThreadScrollToBottom() {
   );
 }
 
+function HistoryLoadIndicator({ loading }: { loading: boolean }) {
+  if (!loading) return null;
+  return (
+    <div className="acongm-gpt-history-load" aria-busy="true">
+      正在加载更早的消息…
+    </div>
+  );
+}
+
+function LazyHistoryViewport({
+  placeholder,
+  composerDisabled,
+  hasOlderMessages,
+  loadingOlder,
+  onLoadOlderMessages,
+}: {
+  placeholder: string;
+  composerDisabled: boolean;
+  hasOlderMessages: boolean;
+  loadingOlder: boolean;
+  onLoadOlderMessages?: () => void;
+}) {
+  const viewportRef = useRef<HTMLDivElement>(null);
+  const scrollAnchorRef = useRef<number | null>(null);
+  const loadingOlderRef = useRef(loadingOlder);
+  loadingOlderRef.current = loadingOlder;
+
+  const requestOlder = () => {
+    if (!hasOlderMessages || loadingOlderRef.current || !onLoadOlderMessages) {
+      return;
+    }
+    const viewport = viewportRef.current;
+    if (viewport) {
+      scrollAnchorRef.current = viewport.scrollHeight - viewport.scrollTop;
+    }
+    onLoadOlderMessages();
+  };
+
+  useEffect(() => {
+    if (loadingOlder || scrollAnchorRef.current === null) return;
+    const viewport = viewportRef.current;
+    if (!viewport) return;
+    const anchor = scrollAnchorRef.current;
+    scrollAnchorRef.current = null;
+    viewport.scrollTop = viewport.scrollHeight - anchor;
+  }, [loadingOlder]);
+
+  return (
+    <ThreadPrimitive.Viewport
+      ref={viewportRef}
+      className="acongm-gpt-thread__viewport"
+      onScroll={(event) => {
+        const viewport = event.currentTarget;
+        if (viewport.scrollTop < 120) {
+          requestOlder();
+        }
+      }}
+    >
+      <HistoryLoadIndicator loading={loadingOlder} />
+      <ThreadPrimitive.Messages
+        components={{
+          UserMessage,
+          EditComposer,
+          AssistantMessage,
+        }}
+      />
+
+      <ThreadPrimitive.ViewportFooter className="acongm-gpt-thread__footer">
+        <ThreadScrollToBottom />
+        <Composer placeholder={placeholder} disabled={composerDisabled} />
+      </ThreadPrimitive.ViewportFooter>
+    </ThreadPrimitive.Viewport>
+  );
+}
+
 export type AssistantThreadProps = {
   emptyTitle?: string;
   placeholder?: string;
   disclaimer?: string;
+  composerDisabled?: boolean;
+  hasOlderMessages?: boolean;
+  loadingOlder?: boolean;
+  onLoadOlderMessages?: () => void;
 };
 
 /**
@@ -255,29 +348,32 @@ export function AssistantThread({
   emptyTitle = '我们从哪开始？',
   placeholder = '有什么可以帮忙的？输入 @ 引用知识…',
   disclaimer = '回答可能不准确，请核对重要信息。',
+  composerDisabled = false,
+  hasOlderMessages = false,
+  loadingOlder = false,
+  onLoadOlderMessages,
 }: AssistantThreadProps) {
   return (
     <ThreadPrimitive.Root className="acongm-gpt-thread">
       <AuiIf condition={(s) => s.thread.isEmpty}>
-        <EmptyState title={emptyTitle} placeholder={placeholder} />
+        <EmptyState
+          title={emptyTitle}
+          placeholder={placeholder}
+          disabled={composerDisabled}
+        />
       </AuiIf>
 
       <AuiIf condition={(s) => !s.thread.isEmpty}>
-        <ThreadPrimitive.Viewport className="acongm-gpt-thread__viewport">
-          <ThreadPrimitive.Messages
-            components={{
-              UserMessage,
-              EditComposer,
-              AssistantMessage,
-            }}
-          />
-
-          <ThreadPrimitive.ViewportFooter className="acongm-gpt-thread__footer">
-            <ThreadScrollToBottom />
-            <Composer placeholder={placeholder} />
-            <p className="acongm-gpt-disclaimer">{disclaimer}</p>
-          </ThreadPrimitive.ViewportFooter>
-        </ThreadPrimitive.Viewport>
+        <LazyHistoryViewport
+          placeholder={placeholder}
+          composerDisabled={composerDisabled}
+          hasOlderMessages={hasOlderMessages}
+          loadingOlder={loadingOlder}
+          onLoadOlderMessages={onLoadOlderMessages}
+        />
+        <p className="acongm-gpt-disclaimer acongm-gpt-disclaimer--thread">
+          {disclaimer}
+        </p>
       </AuiIf>
     </ThreadPrimitive.Root>
   );

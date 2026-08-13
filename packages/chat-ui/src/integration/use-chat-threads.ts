@@ -1,16 +1,19 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import type { ChatUiMessage, ChatV2Record } from '@acongm/kb-types';
+import type { ChatUiMessage, ChatV2Message, ChatV2Record } from '@acongm/kb-types';
 import {
   createChatV2,
   deleteChatV2,
+  getChatV2,
+  listChatMessagesV2,
   listChatsV2,
-  loadChatV2HistoryProgressive,
+  mapDurableBranchToUiMessages,
 } from '@acongm/agent-session-sdk';
 
 const DEFAULT_CHATS_BASE = '/api/chats';
 const CHAT_PAGE_SIZE = 50;
+const MESSAGE_HISTORY_PAGE_SIZE = 100;
 
 export type UseChatThreadsOptions = {
   accessToken?: string | null;
@@ -23,6 +26,13 @@ export type UseChatThreadsOptions = {
 
 export type SeedStatus = 'idle' | 'loading' | 'ready';
 
+type ThreadSeedCacheEntry = {
+  rawMessages: ChatV2Message[];
+  messages: ChatUiMessage[];
+  prevCursor: string | null;
+  complete: boolean;
+};
+
 export type UseChatThreadsResult = {
   threads: ChatV2Record[];
   activeThreadId: string | null;
@@ -30,6 +40,8 @@ export type UseChatThreadsResult = {
   seedMessages: ChatUiMessage[] | null;
   seedStatus: SeedStatus;
   historySyncing: boolean;
+  loadingOlder: boolean;
+  hasOlderMessages: boolean;
   loading: boolean;
   refreshing: boolean;
   loadingMore: boolean;
@@ -37,6 +49,7 @@ export type UseChatThreadsResult = {
   error: string | null;
   refresh: () => Promise<void>;
   loadMore: () => Promise<void>;
+  loadOlderMessages: () => Promise<void>;
   createThread: (input?: {
     title?: string;
     moduleKey?: string;
@@ -62,6 +75,19 @@ function mergeUniqueChats(
   return result;
 }
 
+function toCacheEntry(
+  rawMessages: ChatV2Message[],
+  prevCursor: string | null | undefined,
+): ThreadSeedCacheEntry {
+  const cursor = prevCursor ?? null;
+  return {
+    rawMessages,
+    messages: mapDurableBranchToUiMessages(rawMessages),
+    prevCursor: cursor,
+    complete: !cursor,
+  };
+}
+
 export function useChatThreads(
   options: UseChatThreadsOptions = {},
 ): UseChatThreadsResult {
@@ -81,6 +107,7 @@ export function useChatThreads(
     initialThreadId ? 'loading' : 'idle',
   );
   const [historySyncing, setHistorySyncing] = useState(false);
+  const [loadingOlder, setLoadingOlder] = useState(false);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [loadingMore, setLoadingMore] = useState(false);
@@ -89,9 +116,7 @@ export function useChatThreads(
   const refreshGen = useRef(0);
   const selectGen = useRef(0);
   const previousIdentity = useRef<string | null>(null);
-  const threadSeedCache = useRef(
-    new Map<string, { messages: ChatUiMessage[]; complete: boolean }>(),
-  );
+  const threadSeedCache = useRef(new Map<string, ThreadSeedCacheEntry>());
 
   const requestOptions = useMemo(
     () => ({
@@ -99,6 +124,13 @@ export function useChatThreads(
       accessToken: accessToken || undefined,
     }),
     [accessToken, chatsBaseUrl],
+  );
+
+  const activeSeedCache = activeThreadId
+    ? threadSeedCache.current.get(activeThreadId)
+    : undefined;
+  const hasOlderMessages = Boolean(
+    activeThreadId && activeSeedCache && !activeSeedCache.complete,
   );
 
   useEffect(() => {
@@ -113,6 +145,7 @@ export function useChatThreads(
     setSeedMessages(null);
     setSeedStatus(initialThreadId ? 'loading' : 'idle');
     setHistorySyncing(false);
+    setLoadingOlder(false);
     setError(null);
     setLoading(true);
     setRefreshing(false);
@@ -176,6 +209,36 @@ export function useChatThreads(
     }
   }, [accessToken, identityKey, loadingMore, nextCursor, requestOptions]);
 
+  const loadOlderMessages = useCallback(async () => {
+    if (!accessToken || !identityKey || !activeThreadId || loadingOlder) return;
+    const cached = threadSeedCache.current.get(activeThreadId);
+    if (!cached || cached.complete || !cached.prevCursor) return;
+
+    setLoadingOlder(true);
+    setError(null);
+    try {
+      const page = await listChatMessagesV2(
+        activeThreadId,
+        {
+          order: 'desc',
+          before: cached.prevCursor,
+          limit: MESSAGE_HISTORY_PAGE_SIZE,
+        },
+        requestOptions,
+      );
+      const entry = toCacheEntry(
+        [...page.items, ...cached.rawMessages],
+        page.prevCursor,
+      );
+      threadSeedCache.current.set(activeThreadId, entry);
+      setSeedMessages(entry.messages);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : '加载更早消息失败');
+    } finally {
+      setLoadingOlder(false);
+    }
+  }, [accessToken, activeThreadId, identityKey, loadingOlder, requestOptions]);
+
   const selectThread = useCallback(
     async (id: string) => {
       if (!accessToken || !identityKey) {
@@ -190,41 +253,32 @@ export function useChatThreads(
       if (cached) {
         setSeedMessages(cached.messages);
         setSeedStatus('ready');
-        setHistorySyncing(!cached.complete);
-      } else {
-        setSeedStatus('loading');
-        setHistorySyncing(true);
+        setHistorySyncing(false);
+        return;
       }
 
+      setSeedStatus('loading');
+      setHistorySyncing(true);
+      setSeedMessages(null);
+
       try {
-        await loadChatV2HistoryProgressive(
-          id,
-          (detail) => {
-            if (gen !== selectGen.current) return;
-            setSeedMessages(detail.messages);
-            setSeedStatus('ready');
-            setHistorySyncing(!detail.complete);
-            threadSeedCache.current.set(id, {
-              messages: detail.messages,
-              complete: detail.complete,
-            });
-            setThreads((prev) => {
-              const exists = prev.some((chat) => chat.id === id);
-              if (exists) {
-                return prev.map((chat) =>
-                  chat.id === id ? { ...chat, ...detail.chat } : chat,
-                );
-              }
-              return [detail.chat, ...prev];
-            });
-          },
-          {
-            ...requestOptions,
-            isCancelled: () => gen !== selectGen.current,
-          },
-        );
+        const detail = await getChatV2(id, requestOptions);
         if (gen !== selectGen.current) return;
+
+        const entry = toCacheEntry(detail.messages, detail.prevCursor);
+        threadSeedCache.current.set(id, entry);
+        setSeedMessages(entry.messages);
+        setSeedStatus('ready');
         setHistorySyncing(false);
+        setThreads((prev) => {
+          const exists = prev.some((chat) => chat.id === id);
+          if (exists) {
+            return prev.map((chat) =>
+              chat.id === id ? { ...chat, ...detail.chat } : chat,
+            );
+          }
+          return [detail.chat, ...prev];
+        });
       } catch (err) {
         if (gen !== selectGen.current) return;
         setHistorySyncing(false);
@@ -261,6 +315,7 @@ export function useChatThreads(
       setThreads((prev) => [chat, ...prev.filter((item) => item.id !== chat.id)]);
       setActiveThreadId(chat.id);
       if (!input.preserveSeed) {
+        threadSeedCache.current.set(chat.id, toCacheEntry([], null));
         setSeedMessages([]);
         setSeedStatus('ready');
       }
@@ -304,6 +359,8 @@ export function useChatThreads(
     seedMessages,
     seedStatus,
     historySyncing,
+    loadingOlder,
+    hasOlderMessages,
     loading,
     refreshing,
     loadingMore,
@@ -311,6 +368,7 @@ export function useChatThreads(
     error,
     refresh,
     loadMore,
+    loadOlderMessages,
     createThread,
     selectThread,
     removeThread,

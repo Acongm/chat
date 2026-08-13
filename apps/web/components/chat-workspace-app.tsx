@@ -220,15 +220,21 @@ function WorkspaceInner({
     ],
   );
 
+  const composerDisabled = useMemo(() => {
+    if (!authIdentity) return true;
+    if (threads.activeThreadId && threads.seedStatus === 'loading') return true;
+    return false;
+  }, [authIdentity, threads.activeThreadId, threads.seedStatus]);
+
   const composerPlaceholder = useMemo(() => {
     if (!authIdentity) {
       return '正在准备安全会话…';
     }
-    if (threads.activeThreadId && threads.historySyncing) {
-      return '正在同步会话历史…';
+    if (threads.activeThreadId && threads.seedStatus === 'loading') {
+      return '正在加载会话历史…';
     }
     return '有什么可以帮忙的？输入 @ 引用知识…';
-  }, [authIdentity, threads.activeThreadId, threads.historySyncing]);
+  }, [authIdentity, threads.activeThreadId, threads.seedStatus]);
 
   const handleNewThread = () => {
     threads.clearActive();
@@ -306,6 +312,12 @@ function WorkspaceInner({
           }
           emptyTitle={emptyTitle}
           placeholder={composerPlaceholder}
+          composerDisabled={composerDisabled}
+          hasOlderMessages={threads.hasOlderMessages}
+          loadingOlder={threads.loadingOlder}
+          onLoadOlderMessages={() => {
+            void threads.loadOlderMessages();
+          }}
         />
       }
       overlay={
