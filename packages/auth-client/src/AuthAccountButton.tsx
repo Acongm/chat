@@ -1,6 +1,6 @@
 'use client';
 
-import { getAuthBaseUrl, isAnonymousSession } from './client';
+import { isAnonymousSession } from './client';
 import { AuthAccountMenu } from './AuthAccountMenu';
 import { useAuthActions, useUserInfo } from './hooks';
 import type { ReactNode } from 'react';
@@ -67,13 +67,6 @@ function resolveDisplay(session: AuthSession, userInfo: UserInfoView | null) {
   };
 }
 
-function avatarChar(label: string): string {
-  const trimmed = label.trim();
-  if (!trimmed) return 'U';
-  const local = trimmed.includes('@') ? trimmed.split('@')[0] : trimmed;
-  return Array.from(local)[0]?.toUpperCase() || 'U';
-}
-
 function LoginIcon() {
   return (
     <svg
@@ -91,37 +84,6 @@ function LoginIcon() {
       <polyline points="10 17 15 12 10 7" />
       <line x1="15" x2="3" y1="12" y2="12" />
     </svg>
-  );
-}
-
-function UserAvatar({
-  label,
-  src,
-  className,
-}: {
-  label: string;
-  src: string | null;
-  className?: string;
-}) {
-  const mark = avatarChar(label);
-  if (src) {
-    return (
-      // eslint-disable-next-line @next/next/no-img-element -- 第三方 OAuth 头像 URL
-      <img
-        className={className ?? 'acongm-auth-avatar'}
-        src={src}
-        alt=""
-        width={28}
-        height={28}
-        referrerPolicy="no-referrer"
-        decoding="async"
-      />
-    );
-  }
-  return (
-    <span className={className ?? 'acongm-auth-avatar'} aria-hidden>
-      {mark}
-    </span>
   );
 }
 
@@ -167,7 +129,6 @@ export function AuthAccountButton({
   onSignedOut,
   userApiBaseUrl,
   ensureAnonymous,
-  menu = false,
   menuFooter,
 }: AuthAccountButtonProps) {
   const {
@@ -208,6 +169,20 @@ export function AuthAccountButton({
     );
   }
 
+  if (userInfo && !userInfo.isAnonymous) {
+    return (
+      <AuthAccountMenu
+        label={userInfo.displayName}
+        photo={userInfo.avatarUrl}
+        email={userInfo.email}
+        variant={variant}
+        className={className}
+        onLogout={handleLogout}
+        menuFooter={menuFooter}
+      />
+    );
+  }
+
   // 未配置 Supabase 时仍可跳转 SSO（login 带 return_to）
   if (!configured || !session) {
     return (
@@ -234,99 +209,15 @@ export function AuthAccountButton({
   const label = display.label;
   const photo = display.photo;
   const email = display.email;
-  const title = email && email !== label ? `${label} · ${email}` : label;
-  const accountHref = `${getAuthBaseUrl().replace(/\/$/, '')}/account`;
-  const showMenu = menu || variant === 'sidebar' || variant === 'nav';
-
-  if (showMenu) {
-    return (
-      <AuthAccountMenu
-        label={label}
-        photo={photo}
-        email={email}
-        variant={variant}
-        className={className}
-        onLogout={handleLogout}
-        menuFooter={menuFooter}
-      />
-    );
-  }
-
-  if (variant === 'avatar') {
-    return (
-      <a
-        className={className ?? 'acongm-auth-avatar'}
-        href={accountHref}
-        title={`${title} · 账号`}
-        aria-label={`${title}，打开账号`}
-      >
-        {photo ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img
-            src={photo}
-            alt=""
-            width={28}
-            height={28}
-            referrerPolicy="no-referrer"
-            decoding="async"
-          />
-        ) : (
-          avatarChar(label)
-        )}
-      </a>
-    );
-  }
-
-  if (variant === 'icon') {
-    return (
-      <a
-        className={className ?? 'acongm-auth-icon-btn'}
-        href={accountHref}
-        title={`${title} · 账号`}
-        aria-label={`${title}，打开账号`}
-      >
-        {photo ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img
-            className="acongm-auth-icon-btn__photo"
-            src={photo}
-            alt=""
-            width={22}
-            height={22}
-            referrerPolicy="no-referrer"
-            decoding="async"
-          />
-        ) : (
-          <span className="acongm-auth-icon-btn__mark" aria-hidden>
-            {avatarChar(label)}
-          </span>
-        )}
-      </a>
-    );
-  }
-
   return (
-    <div className="acongm-auth-user" data-variant={variant}>
-      <a className="acongm-auth-user__identity" href={accountHref} title="账号设置">
-        <UserAvatar label={label} src={photo} />
-        <div className="acongm-auth-user__meta">
-          <span className="acongm-auth-user__name" title={title}>
-            {label}
-          </span>
-          {email && email !== label ? (
-            <span className="acongm-auth-user__account" title={email}>
-              {email}
-            </span>
-          ) : null}
-        </div>
-      </a>
-      <button
-        type="button"
-        className={className ?? 'acongm-auth-btn'}
-        onClick={handleLogout}
-      >
-        退出
-      </button>
-    </div>
+    <AuthAccountMenu
+      label={label}
+      photo={photo}
+      email={email}
+      variant={variant}
+      className={className}
+      onLogout={handleLogout}
+      menuFooter={menuFooter}
+    />
   );
 }

@@ -88,6 +88,8 @@ export class UserApiError extends Error {
 }
 
 const DEFAULT_USER_API = '/api/user';
+const DEFAULT_AUTH_API = '/api/auth';
+const AUTH_API_FALLBACK = 'https://api.acongm.com/api/auth';
 
 function asString(value: unknown): string | null {
   return typeof value === 'string' && value.trim() ? value.trim() : null;
@@ -251,10 +253,24 @@ async function readJson(
   return body;
 }
 
+export type AuthSessionView = {
+  authenticated: boolean;
+  configured: boolean;
+  isAnonymous?: boolean;
+  user: {
+    id: string;
+    email: string | null;
+    name: string | null;
+    avatarUrl: string | null;
+  } | null;
+  userInfo: UserInfoView | null;
+  accessToken: string | null;
+};
+
 async function userFetch(
   path: string,
   options: {
-    accessToken: string;
+    accessToken?: string;
     baseUrl?: string;
     method?: string;
     body?: unknown;
@@ -265,9 +281,12 @@ async function userFetch(
   try {
     const response = await fetch(`${options.baseUrl || DEFAULT_USER_API}${path}`, {
       method: options.method || 'GET',
+      credentials: 'include',
       headers: {
-        Authorization: `Bearer ${options.accessToken}`,
         Accept: 'application/json',
+        ...(options.accessToken
+          ? { Authorization: `Bearer ${options.accessToken}` }
+          : {}),
         ...(options.body
           ? { 'Content-Type': 'application/json' }
           : {}),
@@ -289,7 +308,7 @@ async function userFetch(
 }
 
 export async function getUserMe(options: {
-  accessToken: string;
+  accessToken?: string;
   baseUrl?: string;
 }): Promise<UserMe> {
   return normalizeUserMe(await userFetch('/me', options));
@@ -297,10 +316,54 @@ export async function getUserMe(options: {
 
 /** Explicit getUserInfo — same payload as /me, preferred for login-state UI. */
 export async function getUserInfo(options: {
-  accessToken: string;
+  accessToken?: string;
   baseUrl?: string;
 }): Promise<UserMe> {
   return normalizeUserMe(await userFetch('/info', options));
+}
+
+/**
+ * Keycloak-like session probe. Uses Bearer and/or `.acongm.com` cookies.
+ * Tries same-origin BFF first, then api.acongm.com.
+ */
+export async function getAuthSession(options?: {
+  baseUrl?: string;
+}): Promise<AuthSessionView> {
+  const urls = options?.baseUrl
+    ? [`${options.baseUrl.replace(/\/$/, '')}/session`]
+    : [`${DEFAULT_AUTH_API}/session`, `${AUTH_API_FALLBACK}/session`];
+
+  let lastError: unknown;
+  for (const url of urls) {
+    try {
+      const response = await fetch(url, {
+        credentials: 'include',
+        headers: { Accept: 'application/json' },
+        cache: 'no-store',
+      });
+      if (!response.ok) continue;
+      const body = (await response.json()) as AuthSessionView;
+      if (body && typeof body === 'object') {
+        return {
+          authenticated: Boolean(body.authenticated),
+          configured: Boolean(body.configured),
+          isAnonymous: Boolean(body.isAnonymous),
+          user: body.user ?? null,
+          userInfo: body.userInfo ?? null,
+          accessToken:
+            typeof body.accessToken === 'string' ? body.accessToken : null,
+        };
+      }
+    } catch (error) {
+      lastError = error;
+    }
+  }
+
+  throw new UserApiError(
+    lastError instanceof Error ? lastError.message : 'Session request failed',
+    0,
+    'SESSION_REQUEST_FAILED',
+  );
 }
 
 export async function getUserProfile(options: {

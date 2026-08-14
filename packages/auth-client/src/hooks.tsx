@@ -13,7 +13,12 @@ import {
   resolveOAuthLoginMode,
   signOut,
 } from './client';
-import { getUserInfo, type UserInfoView, type UserMe } from './profile';
+import {
+  getAuthSession,
+  getUserInfo,
+  type UserInfoView,
+  type UserMe,
+} from './profile';
 import {
   resolveAuthSessionStatus,
   type AuthSessionStatus,
@@ -30,6 +35,9 @@ export function useSession(options?: UseSessionOptions) {
   const ensureAnonymous = options?.ensureAnonymous ?? false;
   const [configured, setConfigured] = useState(isAuthConfigured);
   const [session, setSession] = useState<Session | null>(null);
+  const [cookieUserId, setCookieUserId] = useState<string | null>(null);
+  const [cookieAccessToken, setCookieAccessToken] = useState<string | null>(null);
+  const [cookieAuthenticated, setCookieAuthenticated] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [retryNonce, setRetryNonce] = useState(0);
@@ -56,7 +64,12 @@ export function useSession(options?: UseSessionOptions) {
         const nextConfigured = Boolean(publicConfig);
         setConfigured(nextConfigured);
         if (!nextConfigured) {
+          const cookieSession = await getAuthSession().catch(() => null);
+          if (!mounted || currentGeneration !== generation) return;
           setSession(null);
+          setCookieUserId(cookieSession?.user?.id ?? null);
+          setCookieAccessToken(cookieSession?.accessToken ?? null);
+          setCookieAuthenticated(Boolean(cookieSession?.authenticated));
           setError(null);
           setLoading(false);
           return;
@@ -68,11 +81,19 @@ export function useSession(options?: UseSessionOptions) {
           : (await nextClient.auth.getSession()).data.session;
         if (!mounted || currentGeneration !== generation) return;
         setSession(nextSession);
-        setError(
-          ensureAnonymous && !nextSession
-            ? '无法准备访客会话，请重试。'
-            : null,
-        );
+        if (!nextSession) {
+          const cookieSession = await getAuthSession().catch(() => null);
+          if (!mounted || currentGeneration !== generation) return;
+          setCookieUserId(cookieSession?.user?.id ?? null);
+          setCookieAccessToken(cookieSession?.accessToken ?? null);
+          setCookieAuthenticated(Boolean(cookieSession?.authenticated));
+        } else {
+          setCookieUserId(null);
+          setCookieAccessToken(null);
+          setCookieAuthenticated(false);
+        }
+        // Missing guest session is unauthenticated (show login), not a hard error.
+        setError(null);
         setLoading(false);
       } catch (err) {
         if (!mounted || currentGeneration !== generation) return;
@@ -115,11 +136,14 @@ export function useSession(options?: UseSessionOptions) {
     };
   }, [client, ensureAnonymous, retryNonce]);
 
-  const isAnonymous = isAnonymousSession(session);
+  const isAnonymous = session
+    ? isAnonymousSession(session)
+    : Boolean(cookieAccessToken && !cookieAuthenticated);
+  const hasSession = Boolean(session) || cookieAuthenticated;
   const status = resolveAuthSessionStatus({
-    configured,
+    configured: configured || cookieAuthenticated,
     loading,
-    hasSession: Boolean(session),
+    hasSession,
     isAnonymous,
     error,
   });
@@ -128,12 +152,12 @@ export function useSession(options?: UseSessionOptions) {
     session,
     loading,
     client,
-    configured,
+    configured: configured || cookieAuthenticated,
     status,
     error,
     retry,
-    userId: session?.user?.id ?? null,
-    accessToken: session?.access_token ?? null,
+    userId: session?.user?.id ?? cookieUserId,
+    accessToken: session?.access_token ?? cookieAccessToken,
     isAnonymous,
   };
 }
@@ -162,21 +186,25 @@ export function useUserInfo(options?: { baseUrl?: string; ensureAnonymous?: bool
   const baseUrl = options?.baseUrl;
 
   useEffect(() => {
-    if (!accessToken) {
-      setUserMe(null);
-      setError(null);
-      setLoading(false);
-      return;
-    }
-
     let cancelled = false;
     setLoading(true);
     setError(null);
 
-    void getUserInfo({
-      accessToken,
-      baseUrl,
-    })
+    const load = accessToken
+      ? getUserInfo({ accessToken, baseUrl })
+      : getAuthSession().then((row) => {
+          if (!row.authenticated || !row.userInfo || !row.user) {
+            throw new Error('AUTH_REQUIRED');
+          }
+          return {
+            id: row.user.id,
+            email: row.user.email,
+            name: row.user.name,
+            userInfo: row.userInfo,
+          } as UserMe;
+        });
+
+    void load
       .then((next) => {
         if (cancelled) return;
         setUserMe(next);
@@ -185,7 +213,11 @@ export function useUserInfo(options?: { baseUrl?: string; ensureAnonymous?: bool
       .catch((err: unknown) => {
         if (cancelled) return;
         setUserMe(null);
-        setError(err instanceof Error ? err.message : 'Failed to load user info');
+        setError(
+          err instanceof Error && err.message !== 'AUTH_REQUIRED'
+            ? err.message
+            : null,
+        );
         setLoading(false);
       });
 

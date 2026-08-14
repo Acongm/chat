@@ -8,6 +8,7 @@ const FORWARD_HEADERS = [
   'content-type',
   'accept',
   'authorization',
+  'cookie',
   'x-call-source',
   'x-request-id',
 ] as const;
