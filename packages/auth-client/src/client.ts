@@ -1,5 +1,6 @@
 import { createBrowserClient as createSupabaseBrowserClient } from '@supabase/ssr';
 import type { Provider, Session, User } from '@supabase/supabase-js';
+import { knownPublicConfigForHost } from './acongm-public-config';
 
 export type AuthPublicConfig = {
   supabaseUrl: string;
@@ -50,6 +51,7 @@ export async function loadAuthPublicConfig(): Promise<AuthPublicConfig | null> {
   publicConfigPromise = (async () => {
     const urls = [
       '/api/auth/public-config',
+      'https://auth.acongm.com/api/auth/public-config',
       'https://api.acongm.com/api/auth/public-config',
     ];
     for (const url of urls) {
@@ -64,6 +66,13 @@ export async function loadAuthPublicConfig(): Promise<AuthPublicConfig | null> {
       } catch {
         // try the next source
       }
+    }
+    const hostname =
+      typeof window === 'undefined' ? undefined : window.location.hostname;
+    const fallback = knownPublicConfigForHost(hostname);
+    if (fallback) {
+      runtimePublicConfig = fallback;
+      return fallback;
     }
     return null;
   })();
@@ -194,7 +203,11 @@ export async function ensureAnonymousSession(
   if (current.data.session) return current.data.session;
 
   const { data, error } = await client.auth.signInAnonymously();
-  if (error) return null;
+  if (error) {
+    // Project may have anonymous sign-ins disabled. Keep the client usable
+    // so an existing logged-in cookie can still be read on the next retry.
+    return null;
+  }
   return data.session;
 }
 

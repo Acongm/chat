@@ -68,11 +68,9 @@ export function useSession(options?: UseSessionOptions) {
           : (await nextClient.auth.getSession()).data.session;
         if (!mounted || currentGeneration !== generation) return;
         setSession(nextSession);
-        setError(
-          ensureAnonymous && !nextSession
-            ? '无法准备访客会话，请重试。'
-            : null,
-        );
+        // Missing guest session is unauthenticated (show login), not a hard error.
+        // Anonymous sign-in may be disabled on the Supabase project.
+        setError(null);
         setLoading(false);
       } catch (err) {
         if (!mounted || currentGeneration !== generation) return;

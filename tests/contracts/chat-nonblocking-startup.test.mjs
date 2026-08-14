@@ -33,6 +33,13 @@ test('conversation hook uses tail-first restore and scroll-up older pages', () =
   assert.doesNotMatch(hook, /loadChatV2HistoryProgressive/);
 });
 
+test('chat public-config BFF prefers local env then auth then API', () => {
+  const route = source('apps/web/app/api/auth/public-config/route.ts');
+  assert.match(route, /NEXT_PUBLIC_SUPABASE_ANON_KEY/);
+  assert.match(route, /https:\/\/auth\.acongm\.com\/api\/auth\/public-config/);
+  assert.match(route, /https:\/\/api\.acongm\.com\/api\/auth\/public-config/);
+});
+
 test('chat sidebar no longer shows default portal return link', () => {
   const workspace = source('apps/web/components/chat-workspace-app.tsx');
   assert.doesNotMatch(workspace, /portalHref=/);

@@ -132,7 +132,7 @@ function WorkspaceInner({
   const searchParams = useSearchParams();
   const router = useRouter();
   const [authIdentity, setAuthIdentity] = useState<ChatAuthIdentity | null>(null);
-  const [authStatus, setAuthStatus] = useState<AuthSessionStatus>('restoring');
+  const [authStatus, setAuthStatus] = useState<AuthSessionStatus>('unauthenticated');
   const [runtimeKey, setRuntimeKey] = useState(
     () =>
       initialThreadId
