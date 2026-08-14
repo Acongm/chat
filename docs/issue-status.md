@@ -14,5 +14,5 @@
 
 ## 下一步（chat 仓）
 
-1. **#37** — browser E2E smoke（API path 已在 node-vercel-starter `platform-v2-quality-gate.e2e-spec.ts`）
+1. **#37** — browser E2E smoke（API path 在 `platform-v2-quality-gate.e2e-spec.ts`；Chat Playwright smoke 在 `e2e/quality-gate-smoke.spec.ts`）
 2. **#41 Phase 2** — theme 入口细化（menuFooter 已接 ChatSettingsSlot）

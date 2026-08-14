@@ -16,12 +16,17 @@
     "ui:add": "node scripts/ui-registry.mjs add core-ui",
     "ui:sync": "node scripts/ui-registry.mjs sync core-ui",
     "ui:diff": "node scripts/ui-registry.mjs diff core-ui",
-    "ui:drift": "node scripts/check-ui-drift.mjs"
+    "ui:drift": "node scripts/check-ui-drift.mjs",
+    "test:e2e": "playwright test",
+    "test:e2e:ui": "playwright test --ui"
   },
   "dependencies": {
     "next": "^16.2.12",
     "react": "^19.2.0",
     "react-dom": "^19.2.0"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.55.0"
   },
   "pnpm": {
     "onlyBuiltDependencies": ["esbuild", "sharp"]
