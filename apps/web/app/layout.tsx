@@ -14,7 +14,10 @@ export const metadata: Metadata = {
   },
   description: '知识库 AI 对话 — 按模块与文章隔离上下文',
   icons: {
-    icon: '/favicon.ico',
+    icon: [
+      { url: '/icon.png', type: 'image/png', sizes: '32x32' },
+      { url: '/favicon.ico', type: 'image/x-icon', sizes: 'any' },
+    ],
   },
 };
 
