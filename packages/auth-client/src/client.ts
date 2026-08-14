@@ -16,6 +16,17 @@ export function getAuthBaseUrl(): string {
   );
 }
 
+/** Map consumer login CTA to auth-site mode for OAuth intent routing. */
+export function resolveOAuthLoginMode(
+  session: Session | null | undefined,
+  options?: { explicitMode?: 'signin' | 'signup' },
+): 'signin' | 'signup' {
+  if (options?.explicitMode) {
+    return options.explicitMode;
+  }
+  return isAnonymousSession(session) ? 'signup' : 'signin';
+}
+
 /** 浏览器安全：跳转 SSO 登录（不读本地 yaml） */
 export function getOAuthLoginUrl(options?: {
   returnTo?: string;
