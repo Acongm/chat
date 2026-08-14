@@ -23,7 +23,15 @@ export type UserInfoView = {
 export type UserSettingsView = {
   language: string;
   theme: 'system' | 'light' | 'dark' | string;
+  chat?: {
+    defaultModel: string;
+    defaultPrompt: string;
+  };
   preferences: Record<string, unknown>;
+  schemaVersion?: number;
+  defaults?: Record<string, unknown>;
+  overrides?: Record<string, unknown>;
+  effective?: Record<string, unknown>;
 };
 
 export type UserMe = {
@@ -47,6 +55,8 @@ export type UpdateApplicationProfile = {
 export type UpdateUserSettings = {
   language?: string;
   theme?: 'system' | 'light' | 'dark' | string;
+  defaultModel?: string;
+  defaultPrompt?: string | null;
   preferences?: Record<string, unknown>;
 };
 
@@ -181,9 +191,31 @@ function normalizeSettings(raw: unknown): UserSettingsView {
         row.preferences && typeof row.preferences === 'object'
           ? (row.preferences as Record<string, unknown>)
           : {},
+      chat: normalizeSettingsChat(row.chat ?? (row.effective as Record<string, unknown> | undefined)?.chat),
+      schemaVersion: typeof row.schemaVersion === 'number' ? row.schemaVersion : undefined,
+      defaults: asRecord(row.defaults),
+      overrides: asRecord(row.overrides),
+      effective: asRecord(row.effective),
     };
   }
   return { language: 'zh-CN', theme: 'system', preferences: {} };
+}
+
+function normalizeSettingsChat(raw: unknown): UserSettingsView['chat'] {
+  if (!raw || typeof raw !== 'object') return undefined;
+  const row = raw as Record<string, unknown>;
+  const defaultModel = asString(row.defaultModel);
+  if (!defaultModel) return undefined;
+  return {
+    defaultModel,
+    defaultPrompt: asString(row.defaultPrompt) ?? '',
+  };
+}
+
+function asRecord(value: unknown): Record<string, unknown> | undefined {
+  return value && typeof value === 'object' && !Array.isArray(value)
+    ? (value as Record<string, unknown>)
+    : undefined;
 }
 
 function normalizeUserMe(body: Record<string, unknown>): UserMe {
@@ -297,6 +329,8 @@ export async function updateUserSettings(
   const body: Record<string, unknown> = {};
   if (patch.language !== undefined) body.language = patch.language;
   if (patch.theme !== undefined) body.theme = patch.theme;
+  if (patch.defaultModel !== undefined) body.defaultModel = patch.defaultModel;
+  if (patch.defaultPrompt !== undefined) body.defaultPrompt = patch.defaultPrompt;
   if (patch.preferences !== undefined) body.preferences = patch.preferences;
 
   if (Object.keys(body).length === 0) {
