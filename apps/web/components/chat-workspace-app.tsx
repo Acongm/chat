@@ -19,6 +19,7 @@ import {
   type KnowledgeRef,
 } from '@acongm/kb-catalog';
 import { ChatAuthSlot, useChatThreads, type ChatAuthIdentity } from '@acongm/chat-ui/integration';
+import type { AuthSessionStatus } from '@acongm/auth-client';
 import { useArticleIndex } from '@/lib/use-article-index';
 import { ChatSettingsSlot } from '@/components/chat-settings-slot';
 
@@ -131,6 +132,7 @@ function WorkspaceInner({
   const searchParams = useSearchParams();
   const router = useRouter();
   const [authIdentity, setAuthIdentity] = useState<ChatAuthIdentity | null>(null);
+  const [authStatus, setAuthStatus] = useState<AuthSessionStatus>('restoring');
   const [runtimeKey, setRuntimeKey] = useState(
     () =>
       initialThreadId
@@ -221,14 +223,21 @@ function WorkspaceInner({
   );
 
   const composerDisabled = useMemo(() => {
+    if (authStatus === 'restoring') return true;
     if (!authIdentity) return true;
     if (threads.activeThreadId && threads.seedStatus === 'loading') return true;
     return false;
-  }, [authIdentity, threads.activeThreadId, threads.seedStatus]);
+  }, [authIdentity, authStatus, threads.activeThreadId, threads.seedStatus]);
 
   const composerPlaceholder = useMemo(() => {
-    if (!authIdentity) {
+    if (authStatus === 'restoring') {
       return '正在准备安全会话…';
+    }
+    if (authStatus === 'error') {
+      return '访客会话准备失败，请在侧栏重试或先登录。';
+    }
+    if (!authIdentity) {
+      return '请先登录后再发送。';
     }
     if (threads.activeThreadId && threads.seedStatus === 'loading') {
       return '正在加载会话历史…';
@@ -237,7 +246,7 @@ function WorkspaceInner({
       return threads.error;
     }
     return '有什么可以帮忙的？输入 @ 引用知识…';
-  }, [authIdentity, threads.activeThreadId, threads.error, threads.seedStatus]);
+  }, [authIdentity, authStatus, threads.activeThreadId, threads.error, threads.seedStatus]);
 
   const handleNewThread = () => {
     threads.clearActive();
@@ -285,6 +294,7 @@ function WorkspaceInner({
           authSlot={
             <ChatAuthSlot
               onIdentityChange={setAuthIdentity}
+              onStatusChange={setAuthStatus}
               onSignedOut={handleSignedOut}
               menuFooter={<ChatSettingsSlot />}
             />

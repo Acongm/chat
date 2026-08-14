@@ -3,7 +3,9 @@ export {
   createBrowserClient,
   ensureAnonymousSession,
   getAuthBaseUrl,
+  getAuthPublicConfig,
   getOAuthLoginUrl,
+  loadAuthPublicConfig,
   isAnonymousSession,
   isAnonymousUser,
   isAuthConfigured,
@@ -19,6 +21,7 @@ export {
   startOAuthFlow,
 } from './client';
 export type {
+  AuthPublicConfig,
   AuthClientOptions,
   ClaimAnonymousThreadsInput,
   ClaimAnonymousThreadsResult,

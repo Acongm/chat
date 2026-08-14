@@ -1,11 +1,74 @@
 import { createBrowserClient as createSupabaseBrowserClient } from '@supabase/ssr';
 import type { Provider, Session, User } from '@supabase/supabase-js';
 
+export type AuthPublicConfig = {
+  supabaseUrl: string;
+  supabaseAnonKey: string;
+};
+
+let runtimePublicConfig: AuthPublicConfig | null = null;
+let publicConfigPromise: Promise<AuthPublicConfig | null> | null = null;
+
+function envPublicConfig(): AuthPublicConfig | null {
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL?.trim();
+  const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY?.trim();
+  if (supabaseUrl && supabaseAnonKey) {
+    return { supabaseUrl, supabaseAnonKey };
+  }
+  return null;
+}
+
+export function getAuthPublicConfig(): AuthPublicConfig | null {
+  return envPublicConfig() ?? runtimePublicConfig;
+}
+
 export function isAuthConfigured(): boolean {
-  return Boolean(
-    process.env.NEXT_PUBLIC_SUPABASE_URL?.trim() &&
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY?.trim(),
-  );
+  return Boolean(getAuthPublicConfig());
+}
+
+function readPublicConfigBody(body: unknown): AuthPublicConfig | null {
+  if (!body || typeof body !== 'object') return null;
+  const row = body as Record<string, unknown>;
+  const supabaseUrl =
+    typeof row.supabaseUrl === 'string' ? row.supabaseUrl.trim() : '';
+  const supabaseAnonKey =
+    typeof row.supabaseAnonKey === 'string' ? row.supabaseAnonKey.trim() : '';
+  if (!supabaseUrl || !supabaseAnonKey) return null;
+  return { supabaseUrl, supabaseAnonKey };
+}
+
+/**
+ * Chat/Portal production builds sometimes miss NEXT_PUBLIC_SUPABASE_*.
+ * Load the browser-safe publishable pair from the local BFF, then api.acongm.com.
+ */
+export async function loadAuthPublicConfig(): Promise<AuthPublicConfig | null> {
+  const fromEnv = envPublicConfig();
+  if (fromEnv) return fromEnv;
+  if (runtimePublicConfig) return runtimePublicConfig;
+  if (publicConfigPromise) return publicConfigPromise;
+
+  publicConfigPromise = (async () => {
+    const urls = [
+      '/api/auth/public-config',
+      'https://api.acongm.com/api/auth/public-config',
+    ];
+    for (const url of urls) {
+      try {
+        const response = await fetch(url, { cache: 'no-store' });
+        if (!response.ok) continue;
+        const parsed = readPublicConfigBody(await response.json());
+        if (parsed) {
+          runtimePublicConfig = parsed;
+          return parsed;
+        }
+      } catch {
+        // try the next source
+      }
+    }
+    return null;
+  })();
+
+  return publicConfigPromise;
 }
 
 export function getAuthBaseUrl(): string {
@@ -90,10 +153,9 @@ function formatProviderError(provider: string, message: string): Error {
 }
 
 export function createBrowserClient(options?: Partial<AuthClientOptions>) {
-  const supabaseUrl =
-    options?.supabaseUrl ?? process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const supabaseAnonKey =
-    options?.supabaseAnonKey ?? process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+  const resolved = getAuthPublicConfig();
+  const supabaseUrl = options?.supabaseUrl ?? resolved?.supabaseUrl;
+  const supabaseAnonKey = options?.supabaseAnonKey ?? resolved?.supabaseAnonKey;
 
   if (!supabaseUrl || !supabaseAnonKey) {
     throw new Error(

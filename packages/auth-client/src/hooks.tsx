@@ -9,6 +9,7 @@ import {
   getOAuthLoginUrl,
   isAnonymousSession,
   isAuthConfigured,
+  loadAuthPublicConfig,
   resolveOAuthLoginMode,
   signOut,
 } from './client';
@@ -27,9 +28,9 @@ export type { AuthSessionStatus };
 
 export function useSession(options?: UseSessionOptions) {
   const ensureAnonymous = options?.ensureAnonymous ?? false;
-  const configured = isAuthConfigured();
+  const [configured, setConfigured] = useState(isAuthConfigured);
   const [session, setSession] = useState<Session | null>(null);
-  const [loading, setLoading] = useState(configured);
+  const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [retryNonce, setRetryNonce] = useState(0);
   const client = useMemo(
@@ -39,24 +40,32 @@ export function useSession(options?: UseSessionOptions) {
 
   const retry = useCallback(() => {
     setError(null);
-    setLoading(configured);
+    setLoading(true);
     setRetryNonce((value) => value + 1);
-  }, [configured]);
+  }, []);
 
   useEffect(() => {
-    if (!client) {
-      setLoading(false);
-      return;
-    }
     let mounted = true;
     let generation = 0;
 
     const bootstrap = async () => {
       const currentGeneration = ++generation;
       try {
+        const publicConfig = await loadAuthPublicConfig();
+        if (!mounted || currentGeneration !== generation) return;
+        const nextConfigured = Boolean(publicConfig);
+        setConfigured(nextConfigured);
+        if (!nextConfigured) {
+          setSession(null);
+          setError(null);
+          setLoading(false);
+          return;
+        }
+
+        const nextClient = createBrowserClient();
         const nextSession = ensureAnonymous
-          ? await ensureAnonymousSession(client)
-          : (await client.auth.getSession()).data.session;
+          ? await ensureAnonymousSession(nextClient)
+          : (await nextClient.auth.getSession()).data.session;
         if (!mounted || currentGeneration !== generation) return;
         setSession(nextSession);
         setError(
@@ -75,34 +84,34 @@ export function useSession(options?: UseSessionOptions) {
 
     void bootstrap();
 
-    const {
-      data: { subscription },
-    } = client.auth.onAuthStateChange(
-      (event: AuthChangeEvent, nextSession: Session | null) => {
-        if (!mounted) return;
-        generation += 1;
-        if (nextSession) {
-          setSession(nextSession);
-          setError(null);
-          setLoading(false);
-          return;
-        }
+    const subscription = client
+      ? client.auth.onAuthStateChange(
+          (event: AuthChangeEvent, nextSession: Session | null) => {
+            if (!mounted) return;
+            generation += 1;
+            if (nextSession) {
+              setSession(nextSession);
+              setError(null);
+              setLoading(false);
+              return;
+            }
 
-        setSession(null);
-        if (ensureAnonymous && event === 'SIGNED_OUT') {
-          setLoading(true);
-          setError(null);
-          void bootstrap();
-          return;
-        }
-        setLoading(false);
-      },
-    );
+            setSession(null);
+            if (ensureAnonymous && event === 'SIGNED_OUT') {
+              setLoading(true);
+              setError(null);
+              void bootstrap();
+              return;
+            }
+            setLoading(false);
+          },
+        ).data.subscription
+      : null;
 
     return () => {
       mounted = false;
       generation += 1;
-      subscription.unsubscribe();
+      subscription?.unsubscribe();
     };
   }, [client, ensureAnonymous, retryNonce]);
 
