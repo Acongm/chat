@@ -3,7 +3,7 @@
 import { useEffect } from 'react';
 import type { KnowledgeRef, KnowledgeSearchHit } from '@acongm/kb-catalog';
 import type { ChatUiMessage } from '@acongm/kb-types';
-import { ChatDrawer } from './ChatDrawer';
+import { ChatDrawer, type ChatDrawerThreadProps } from './ChatDrawer';
 import { ChatTrigger } from './ChatTrigger';
 import { ChatUiProvider, useChatUi } from './ChatUiProvider';
 import { KnowledgeMentionMenu } from './knowledge/KnowledgeMentionMenu';
@@ -22,7 +22,7 @@ export type DocsChatShellProps = {
   resolveMentionHits?: (query: string) => KnowledgeSearchHit[];
   mentionHits?: KnowledgeSearchHit[];
   onSelect?: (ref: KnowledgeRef) => void;
-};
+} & ChatDrawerThreadProps;
 
 function DocsChatShellContent({
   context,
@@ -30,9 +30,23 @@ function DocsChatShellContent({
   mentionHits,
   resolveMentionHits,
   onSelect,
+  placeholder,
+  composerDisabled,
+  hasOlderMessages,
+  loadingOlder,
+  onLoadOlderMessages,
 }: Pick<
   DocsChatShellProps,
-  'context' | 'seedMessages' | 'mentionHits' | 'resolveMentionHits' | 'onSelect'
+  | 'context'
+  | 'seedMessages'
+  | 'mentionHits'
+  | 'resolveMentionHits'
+  | 'onSelect'
+  | 'placeholder'
+  | 'composerDisabled'
+  | 'hasOlderMessages'
+  | 'loadingOlder'
+  | 'onLoadOlderMessages'
 >) {
   const { mention, toggleChip, closeMention, openAttachPicker } =
     useKnowledgeUi();
@@ -63,7 +77,15 @@ function DocsChatShellContent({
   return (
     <>
       <ChatTrigger />
-      <ChatDrawer context={context} seedMessages={seedMessages} />
+      <ChatDrawer
+        context={context}
+        seedMessages={seedMessages}
+        placeholder={placeholder}
+        composerDisabled={composerDisabled}
+        hasOlderMessages={hasOlderMessages}
+        loadingOlder={loadingOlder}
+        onLoadOlderMessages={onLoadOlderMessages}
+      />
       <KnowledgeMentionMenu
         open={mention.open}
         query={mention.query}
@@ -88,6 +110,11 @@ export function DocsChatShell({
   mentionHits,
   resolveMentionHits,
   onSelect,
+  placeholder,
+  composerDisabled,
+  hasOlderMessages,
+  loadingOlder,
+  onLoadOlderMessages,
 }: DocsChatShellProps) {
   return (
     <ChatUiProvider defaultMode="drawer">
@@ -98,6 +125,11 @@ export function DocsChatShell({
           mentionHits={mentionHits}
           resolveMentionHits={resolveMentionHits}
           onSelect={onSelect}
+          placeholder={placeholder}
+          composerDisabled={composerDisabled}
+          hasOlderMessages={hasOlderMessages}
+          loadingOlder={loadingOlder}
+          onLoadOlderMessages={onLoadOlderMessages}
         />
       </KnowledgeUiProvider>
     </ChatUiProvider>
