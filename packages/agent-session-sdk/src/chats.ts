@@ -58,6 +58,28 @@ function requestHeaders(
   };
 }
 
+function isNetworkFetchError(error: unknown): boolean {
+  if (!(error instanceof TypeError)) return false;
+  return /failed to fetch|networkerror|load failed/i.test(error.message);
+}
+
+async function chatFetch(url: string, init: RequestInit): Promise<Response> {
+  try {
+    return await fetch(url, {
+      credentials: 'include',
+      ...init,
+    });
+  } catch (error) {
+    if (isNetworkFetchError(error)) {
+      throw new ChatStreamError('无法连接会话服务，请重试', {
+        status: 0,
+        code: 'CHAT_NETWORK',
+      });
+    }
+    throw error;
+  }
+}
+
 async function readBody(response: Response): Promise<unknown> {
   const contentType = response.headers.get('content-type') || '';
   try {
@@ -137,7 +159,7 @@ export async function listChatsV2(
 ): Promise<ChatV2Page<ChatV2Record>> {
   const baseUrl = resolveChatsBaseUrl(options.baseUrl);
   const raw = await readJson<{ chats?: RawChat[]; nextCursor?: string | null }>(
-    await fetch(pageUrl(baseUrl, page), {
+    await chatFetch(pageUrl(baseUrl, page), {
       headers: requestHeaders(options.accessToken),
       signal: options.signal,
     }),
@@ -152,7 +174,7 @@ export async function createChatV2(
   input: CreateChatV2Request = {},
   options: ChatV2RequestOptions = {},
 ): Promise<ChatV2Record> {
-  const response = await fetch(resolveChatsBaseUrl(options.baseUrl), {
+  const response = await chatFetch(resolveChatsBaseUrl(options.baseUrl), {
     method: 'POST',
     headers: requestHeaders(options.accessToken),
     body: JSON.stringify(input),
@@ -172,7 +194,7 @@ export async function getChatV2(
     nextCursor?: string | null;
     prevCursor?: string | null;
   }>(
-    await fetch(
+    await chatFetch(
       pageUrl(`${baseUrl}/${encodeURIComponent(id)}`, { order: 'desc' }),
       {
         headers: requestHeaders(options.accessToken),
@@ -204,7 +226,7 @@ export async function listChatMessagesV2(
     nextCursor?: string | null;
     prevCursor?: string | null;
   }>(
-    await fetch(
+    await chatFetch(
       pageUrl(`${baseUrl}/${encodeURIComponent(id)}/messages`, page),
       {
         headers: requestHeaders(options.accessToken),
@@ -225,7 +247,7 @@ export async function updateChatV2(
   options: ChatV2RequestOptions = {},
 ): Promise<ChatV2Record> {
   const baseUrl = resolveChatsBaseUrl(options.baseUrl);
-  const response = await fetch(`${baseUrl}/${encodeURIComponent(id)}`, {
+  const response = await chatFetch(`${baseUrl}/${encodeURIComponent(id)}`, {
     method: 'PATCH',
     headers: requestHeaders(options.accessToken),
     body: JSON.stringify(patch),
@@ -239,7 +261,7 @@ export async function deleteChatV2(
   options: ChatV2RequestOptions = {},
 ): Promise<void> {
   const baseUrl = resolveChatsBaseUrl(options.baseUrl);
-  const response = await fetch(`${baseUrl}/${encodeURIComponent(id)}`, {
+  const response = await chatFetch(`${baseUrl}/${encodeURIComponent(id)}`, {
     method: 'DELETE',
     headers: requestHeaders(options.accessToken),
     signal: options.signal,
@@ -256,7 +278,7 @@ export async function streamChatMessageV2(
   options: ChatV2RequestOptions = {},
 ): Promise<AsyncGenerator<ChatV2StreamEvent>> {
   const baseUrl = resolveChatsBaseUrl(options.baseUrl);
-  const response = await fetch(
+  const response = await chatFetch(
     `${baseUrl}/${encodeURIComponent(id)}/messages/stream`,
     {
       method: 'POST',
