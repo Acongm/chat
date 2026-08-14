@@ -39,6 +39,7 @@ export type { AuthAccountButtonProps } from './AuthAccountButton';
 export { AuthAccountMenu } from './AuthAccountMenu';
 export type { AuthAccountMenuProps } from './AuthAccountMenu';
 export {
+  getAuthSession,
   getUserInfo,
   getUserMe,
   getUserProfile,
@@ -48,6 +49,7 @@ export {
   UserApiError,
 } from './profile';
 export type {
+  AuthSessionView,
   ApplicationProfile,
   ProfileUpdateResult,
   SettingsUpdateResult,

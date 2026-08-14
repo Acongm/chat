@@ -169,6 +169,20 @@ export function AuthAccountButton({
     );
   }
 
+  if (userInfo && !userInfo.isAnonymous) {
+    return (
+      <AuthAccountMenu
+        label={userInfo.displayName}
+        photo={userInfo.avatarUrl}
+        email={userInfo.email}
+        variant={variant}
+        className={className}
+        onLogout={handleLogout}
+        menuFooter={menuFooter}
+      />
+    );
+  }
+
   // 未配置 Supabase 时仍可跳转 SSO（login 带 return_to）
   if (!configured || !session) {
     return (

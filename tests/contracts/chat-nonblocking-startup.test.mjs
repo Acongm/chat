@@ -33,6 +33,16 @@ test('conversation hook uses tail-first restore and scroll-up older pages', () =
   assert.doesNotMatch(hook, /loadChatV2HistoryProgressive/);
 });
 
+test('chat user and session BFFs forward the shared auth cookie', () => {
+  const user = source('apps/web/app/api/user/[[...path]]/route.ts');
+  const session = source('apps/web/app/api/auth/session/route.ts');
+  const chats = source('apps/web/app/api/chats/[[...path]]/route.ts');
+  assert.match(user, /'cookie'/);
+  assert.match(chats, /'cookie'/);
+  assert.match(session, /api\/auth\/session/);
+  assert.match(session, /cookie/);
+});
+
 test('chat public-config BFF prefers local env then auth then API', () => {
   const route = source('apps/web/app/api/auth/public-config/route.ts');
   assert.match(route, /NEXT_PUBLIC_SUPABASE_ANON_KEY/);

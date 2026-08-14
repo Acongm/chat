@@ -13,6 +13,8 @@ test('auth-client exports getUserInfo and useUserInfo for login-state UI', () =>
   assert.match(index, /useUserInfo/);
   assert.match(index, /UserInfoView/);
   assert.match(profileClient, /export async function getUserInfo/);
+  assert.match(profileClient, /export async function getAuthSession/);
+  assert.match(profileClient, /credentials: 'include'/);
   assert.match(profileClient, /\/info/);
   assert.match(hooks, /export function useUserInfo/);
 });

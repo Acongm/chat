@@ -6,6 +6,7 @@ const USER_UPSTREAM =
 
 const FORWARD_HEADERS = [
   'authorization',
+  'cookie',
   'content-type',
   'accept',
   'x-request-id',
