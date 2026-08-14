@@ -90,6 +90,7 @@ export class UserApiError extends Error {
 const DEFAULT_USER_API = '/api/user';
 const DEFAULT_AUTH_API = '/api/auth';
 const AUTH_API_FALLBACK = 'https://api.acongm.com/api/auth';
+const SESSION_CACHE_TTL_MS = 15_000;
 
 function asString(value: unknown): string | null {
   return typeof value === 'string' && value.trim() ? value.trim() : null;
@@ -267,6 +268,42 @@ export type AuthSessionView = {
   accessToken: string | null;
 };
 
+let cachedAuthSession: { at: number; value: AuthSessionView } | null = null;
+let authSessionInFlight: Promise<AuthSessionView> | null = null;
+
+export function clearAuthSessionCache() {
+  cachedAuthSession = null;
+  authSessionInFlight = null;
+}
+
+function peekAuthSessionCache(): AuthSessionView | null {
+  if (!cachedAuthSession) return null;
+  if (Date.now() - cachedAuthSession.at > SESSION_CACHE_TTL_MS) {
+    cachedAuthSession = null;
+    return null;
+  }
+  return cachedAuthSession.value;
+}
+
+function rememberAuthSession(value: AuthSessionView) {
+  cachedAuthSession = { at: Date.now(), value };
+}
+
+function userMeFromAuthSession(session: AuthSessionView): UserMe | null {
+  if (!session.authenticated || !session.user || !session.userInfo) return null;
+  return {
+    id: session.user.id,
+    email: session.user.email,
+    name: session.user.name,
+    role: session.userInfo.role,
+    tier: session.userInfo.tier,
+    isAnonymous: session.userInfo.isAnonymous,
+    profile: null,
+    userInfo: session.userInfo,
+    settings: { language: 'zh-CN', theme: 'system', preferences: {} },
+  };
+}
+
 async function userFetch(
   path: string,
   options: {
@@ -319,14 +356,29 @@ export async function getUserInfo(options: {
   accessToken?: string;
   baseUrl?: string;
 }): Promise<UserMe> {
+  if (!options.baseUrl) {
+    const peeked = peekAuthSessionCache();
+    const fromCache = peeked ? userMeFromAuthSession(peeked) : null;
+    if (fromCache) return fromCache;
+    const fromSession = await getAuthSession().catch(() => null);
+    const mapped = fromSession ? userMeFromAuthSession(fromSession) : null;
+    if (mapped) return mapped;
+  }
   return normalizeUserMe(await userFetch('/info', options));
 }
 
-/**
- * Keycloak-like session probe. Uses Bearer and/or `.acongm.com` cookies.
- * Tries same-origin BFF first, then api.acongm.com.
- */
-export async function getAuthSession(options?: {
+function normalizeAuthSession(body: AuthSessionView): AuthSessionView {
+  return {
+    authenticated: Boolean(body.authenticated),
+    configured: Boolean(body.configured),
+    isAnonymous: Boolean(body.isAnonymous),
+    user: body.user ?? null,
+    userInfo: body.userInfo ?? null,
+    accessToken: typeof body.accessToken === 'string' ? body.accessToken : null,
+  };
+}
+
+async function fetchAuthSession(options?: {
   baseUrl?: string;
 }): Promise<AuthSessionView> {
   const urls = options?.baseUrl
@@ -344,15 +396,7 @@ export async function getAuthSession(options?: {
       if (!response.ok) continue;
       const body = (await response.json()) as AuthSessionView;
       if (body && typeof body === 'object') {
-        return {
-          authenticated: Boolean(body.authenticated),
-          configured: Boolean(body.configured),
-          isAnonymous: Boolean(body.isAnonymous),
-          user: body.user ?? null,
-          userInfo: body.userInfo ?? null,
-          accessToken:
-            typeof body.accessToken === 'string' ? body.accessToken : null,
-        };
+        return normalizeAuthSession(body);
       }
     } catch (error) {
       lastError = error;
@@ -364,6 +408,32 @@ export async function getAuthSession(options?: {
     0,
     'SESSION_REQUEST_FAILED',
   );
+}
+
+/**
+ * Keycloak-like session probe. Uses Bearer and/or `.acongm.com` cookies.
+ * Tries same-origin BFF first, then api.acongm.com.
+ */
+export async function getAuthSession(options?: {
+  baseUrl?: string;
+}): Promise<AuthSessionView> {
+  if (options?.baseUrl) {
+    return fetchAuthSession(options);
+  }
+
+  const cached = peekAuthSessionCache();
+  if (cached) return cached;
+  if (authSessionInFlight) return authSessionInFlight;
+
+  authSessionInFlight = fetchAuthSession()
+    .then((value) => {
+      rememberAuthSession(value);
+      return value;
+    })
+    .finally(() => {
+      authSessionInFlight = null;
+    });
+  return authSessionInFlight;
 }
 
 export async function getUserProfile(options: {

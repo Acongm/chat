@@ -14,6 +14,7 @@ import {
   signOut,
 } from './client';
 import {
+  clearAuthSessionCache,
   getAuthSession,
   getUserInfo,
   type UserInfoView,
@@ -27,12 +28,15 @@ import {
 export type UseSessionOptions = {
   /** Chat/Portal: bootstrap a Supabase anonymous session when none exists. */
   ensureAnonymous?: boolean;
+  /** Skip network bootstrap when the caller already owns client + session. */
+  skipBootstrap?: boolean;
 };
 
 export type { AuthSessionStatus };
 
 export function useSession(options?: UseSessionOptions) {
   const ensureAnonymous = options?.ensureAnonymous ?? false;
+  const skipBootstrap = options?.skipBootstrap ?? false;
   const [configured, setConfigured] = useState(isAuthConfigured);
   const [session, setSession] = useState<Session | null>(null);
   const [cookieUserId, setCookieUserId] = useState<string | null>(null);
@@ -47,12 +51,18 @@ export function useSession(options?: UseSessionOptions) {
   );
 
   const retry = useCallback(() => {
+    clearAuthSessionCache();
     setError(null);
     setLoading(true);
     setRetryNonce((value) => value + 1);
   }, []);
 
   useEffect(() => {
+    if (skipBootstrap) {
+      setLoading(false);
+      return;
+    }
+
     let mounted = true;
     let generation = 0;
 
@@ -134,7 +144,7 @@ export function useSession(options?: UseSessionOptions) {
       generation += 1;
       subscription?.unsubscribe();
     };
-  }, [client, ensureAnonymous, retryNonce]);
+  }, [client, ensureAnonymous, retryNonce, skipBootstrap]);
 
   const isAnonymous = session
     ? isAnonymousSession(session)
@@ -190,19 +200,10 @@ export function useUserInfo(options?: { baseUrl?: string; ensureAnonymous?: bool
     setLoading(true);
     setError(null);
 
-    const load = accessToken
-      ? getUserInfo({ accessToken, baseUrl })
-      : getAuthSession().then((row) => {
-          if (!row.authenticated || !row.userInfo || !row.user) {
-            throw new Error('AUTH_REQUIRED');
-          }
-          return {
-            id: row.user.id,
-            email: row.user.email,
-            name: row.user.name,
-            userInfo: row.userInfo,
-          } as UserMe;
-        });
+    const load = getUserInfo({
+      accessToken: accessToken ?? undefined,
+      baseUrl,
+    });
 
     void load
       .then((next) => {
@@ -247,10 +248,12 @@ export function useAuthActions(options?: {
   /** Prefer the caller's session so anonymous upgrade mode is accurate. */
   session?: Session | null;
 }) {
-  const sessionHook = useSession();
+  const hasCallerSession =
+    options?.client !== undefined && options.session !== undefined;
+  const sessionHook = useSession({ skipBootstrap: hasCallerSession });
   const client = options?.client ?? sessionHook.client;
   const session = options?.session ?? sessionHook.session;
-  const configured = sessionHook.configured;
+  const configured = Boolean(client) || sessionHook.configured;
 
   const login = useCallback(
     (returnTo?: string) => {
@@ -271,6 +274,7 @@ export function useAuthActions(options?: {
     async (scope?: 'local' | 'global' | 'others') => {
       if (!client) return;
       await signOut(client, scope ? { scope } : undefined);
+      clearAuthSessionCache();
     },
     [client],
   );

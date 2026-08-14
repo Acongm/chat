@@ -39,6 +39,7 @@ export type { AuthAccountButtonProps } from './AuthAccountButton';
 export { AuthAccountMenu } from './AuthAccountMenu';
 export type { AuthAccountMenuProps } from './AuthAccountMenu';
 export {
+  clearAuthSessionCache,
   getAuthSession,
   getUserInfo,
   getUserMe,

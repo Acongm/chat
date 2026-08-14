@@ -207,15 +207,15 @@ function WorkspaceInner({
       runtimeKey,
       accessToken: authIdentity?.accessToken ?? null,
       ensureChat,
-      onChatPersisted: () => {
-        void threads.refresh();
+      onChatPersisted: (chatId) => {
+        threads.touchThread(chatId);
       },
     }),
     [
       chips,
       summariesUrl,
       threads.activeThreadId,
-      threads.refresh,
+      threads.touchThread,
       runtimeKey,
       authIdentity?.accessToken,
       ensureChat,
@@ -225,9 +225,8 @@ function WorkspaceInner({
   const composerDisabled = useMemo(() => {
     if (authStatus === 'restoring') return true;
     if (!authIdentity) return true;
-    if (threads.activeThreadId && threads.seedStatus === 'loading') return true;
     return false;
-  }, [authIdentity, authStatus, threads.activeThreadId, threads.seedStatus]);
+  }, [authIdentity, authStatus]);
 
   const composerPlaceholder = useMemo(() => {
     if (authStatus === 'restoring') {
