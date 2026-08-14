@@ -1,7 +1,11 @@
 'use client';
 
 import { useEffect, useRef, type ReactNode } from 'react';
-import { AuthAccountButton, useSession } from '@acongm/auth-client';
+import {
+  AuthAccountButton,
+  useSession,
+  type AuthSessionStatus,
+} from '@acongm/auth-client';
 
 export type ChatAuthIdentity = {
   userId: string;
@@ -11,6 +15,7 @@ export type ChatAuthIdentity = {
 
 export type ChatAuthSlotProps = {
   onIdentityChange?: (identity: ChatAuthIdentity | null) => void;
+  onStatusChange?: (status: AuthSessionStatus) => void;
   /** Called after signOut; useSession re-bootstraps anonymous identity. */
   onSignedOut?: () => void;
   menuFooter?: ReactNode;
@@ -22,12 +27,19 @@ export type ChatAuthSlotProps = {
  */
 export function ChatAuthSlot({
   onIdentityChange,
+  onStatusChange,
   onSignedOut,
   menuFooter,
 }: ChatAuthSlotProps) {
   const { session, status, error, retry } = useSession({ ensureAnonymous: true });
   const onIdentityRef = useRef(onIdentityChange);
+  const onStatusRef = useRef(onStatusChange);
   onIdentityRef.current = onIdentityChange;
+  onStatusRef.current = onStatusChange;
+
+  useEffect(() => {
+    onStatusRef.current?.(status);
+  }, [status]);
 
   useEffect(() => {
     if (!session?.access_token || !session.user.id) {

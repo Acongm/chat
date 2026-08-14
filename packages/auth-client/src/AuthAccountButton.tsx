@@ -46,12 +46,13 @@ function sessionFallbackAvatar(session: AuthSession): string | null {
 }
 
 function resolveDisplay(session: AuthSession, userInfo: UserInfoView | null) {
+  const sessionAnonymous = isAnonymousSession(session);
   if (userInfo) {
     return {
       label: userInfo.displayName,
       photo: userInfo.avatarUrl,
       email: userInfo.email,
-      isAnonymous: userInfo.isAnonymous,
+      isAnonymous: userInfo.isAnonymous && sessionAnonymous,
     };
   }
   const email =
@@ -235,8 +236,9 @@ export function AuthAccountButton({
   const email = display.email;
   const title = email && email !== label ? `${label} · ${email}` : label;
   const accountHref = `${getAuthBaseUrl().replace(/\/$/, '')}/account`;
+  const showMenu = menu || variant === 'sidebar' || variant === 'nav';
 
-  if (menu) {
+  if (showMenu) {
     return (
       <AuthAccountMenu
         label={label}

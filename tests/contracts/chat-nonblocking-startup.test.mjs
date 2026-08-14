@@ -14,6 +14,8 @@ test('workspace always mounts ChatFullscreen instead of full-page auth/history g
   assert.match(workspace, /composerDisabled/);
   assert.match(workspace, /composerPlaceholder/);
   assert.match(workspace, /正在准备安全会话/);
+  assert.match(workspace, /请先登录后再发送/);
+  assert.match(workspace, /onStatusChange/);
 });
 
 const HOOK_PATH = 'packages/chat-ui/src/integration/use-chat-threads.ts';
