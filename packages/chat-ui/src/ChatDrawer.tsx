@@ -5,14 +5,26 @@ import Drawer from 'rc-drawer';
 import { X } from 'lucide-react';
 import type { ChatUiMessage } from '@acongm/kb-types';
 import { DocChatRuntimeProvider } from './runtime/DocChatRuntimeProvider';
-import { AssistantThread } from './thread/AssistantThread';
+import {
+  AssistantThread,
+  type AssistantThreadProps,
+} from './thread/AssistantThread';
 import { useChatUi } from './ChatUiProvider';
 import type { DocChatContext } from './types';
+
+export type ChatDrawerThreadProps = Pick<
+  AssistantThreadProps,
+  | 'placeholder'
+  | 'composerDisabled'
+  | 'hasOlderMessages'
+  | 'loadingOlder'
+  | 'onLoadOlderMessages'
+>;
 
 export type ChatDrawerProps = {
   context: DocChatContext;
   seedMessages?: ChatUiMessage[] | null;
-};
+} & ChatDrawerThreadProps;
 
 type DrawerLayout = 'desktop' | 'tablet' | 'mobile';
 
@@ -45,12 +57,17 @@ function ChatDrawerPanel({
   seedMessages,
   open,
   onClose,
+  placeholder,
+  composerDisabled,
+  hasOlderMessages,
+  loadingOlder,
+  onLoadOlderMessages,
 }: {
   context: DocChatContext;
   seedMessages?: ChatUiMessage[] | null;
   open: boolean;
   onClose: () => void;
-}) {
+} & ChatDrawerThreadProps) {
   return (
     <div className="acongm-chat-shell">
       <div className="acongm-chat-shell__header">
@@ -77,7 +94,13 @@ function ChatDrawerPanel({
           active={open}
           seedMessages={seedMessages}
         >
-          <AssistantThread />
+          <AssistantThread
+            placeholder={placeholder}
+            composerDisabled={composerDisabled}
+            hasOlderMessages={hasOlderMessages}
+            loadingOlder={loadingOlder}
+            onLoadOlderMessages={onLoadOlderMessages}
+          />
         </DocChatRuntimeProvider>
       </div>
     </div>
@@ -94,6 +117,11 @@ function ChatDrawerPanel({
 export function ChatDrawer({
   context,
   seedMessages = null,
+  placeholder,
+  composerDisabled,
+  hasOlderMessages,
+  loadingOlder,
+  onLoadOlderMessages,
 }: ChatDrawerProps) {
   const { open, closePanel, mode } = useChatUi();
   const layout = useDrawerLayout();
@@ -146,6 +174,11 @@ export function ChatDrawer({
         seedMessages={seedMessages}
         open={open}
         onClose={closePanel}
+        placeholder={placeholder}
+        composerDisabled={composerDisabled}
+        hasOlderMessages={hasOlderMessages}
+        loadingOlder={loadingOlder}
+        onLoadOlderMessages={onLoadOlderMessages}
       />
     </Drawer>
   );

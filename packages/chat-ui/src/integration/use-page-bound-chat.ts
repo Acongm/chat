@@ -1,13 +1,17 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import type { ChatUiMessage } from '@acongm/kb-types';
+import type { ChatUiMessage, ChatV2Message } from '@acongm/kb-types';
 import {
   ChatStreamError,
   createChatV2,
-  loadChatV2History,
+  getChatV2,
+  listChatMessagesV2,
+  mapDurableBranchToUiMessages,
   type ChatV2RequestOptions,
 } from '@acongm/agent-session-sdk';
+
+const MESSAGE_HISTORY_PAGE_SIZE = 100;
 
 export type UsePageBoundChatOptions = {
   userId?: string | null;
@@ -27,6 +31,9 @@ export type UsePageBoundChatResult = {
   seedMessages: ChatUiMessage[] | null;
   ready: boolean;
   restoreError: string | null;
+  hasOlderMessages: boolean;
+  loadingOlder: boolean;
+  loadOlderMessages: () => Promise<void>;
   ensureChat: (input?: { title?: string }) => Promise<string>;
   persistPointer: (nextChatId: string) => void;
 };
@@ -47,9 +54,12 @@ export function usePageBoundChat(
   } = options;
 
   const [chatId, setChatId] = useState<string | null>(null);
+  const [rawMessages, setRawMessages] = useState<ChatV2Message[]>([]);
   const [seedMessages, setSeedMessages] = useState<ChatUiMessage[] | null>(null);
   const [ready, setReady] = useState(false);
   const [restoreError, setRestoreError] = useState<string | null>(null);
+  const [prevCursor, setPrevCursor] = useState<string | null>(null);
+  const [loadingOlder, setLoadingOlder] = useState(false);
 
   const requestOptions = useMemo<ChatV2RequestOptions>(
     () => ({
@@ -62,11 +72,16 @@ export function usePageBoundChat(
   useEffect(() => {
     let cancelled = false;
     setChatId(null);
+    setRawMessages([]);
     setSeedMessages(null);
     setReady(false);
     setRestoreError(null);
+    setPrevCursor(null);
 
-    if (!userId || !accessToken) return;
+    if (!userId || !accessToken) {
+      setReady(true);
+      return;
+    }
 
     const stored = localStorage.getItem(pointerKey)?.trim();
     if (!stored) {
@@ -74,7 +89,7 @@ export function usePageBoundChat(
       return;
     }
 
-    void loadChatV2History(stored, requestOptions)
+    void getChatV2(stored, requestOptions)
       .then((detail) => {
         if (cancelled) return;
         if (
@@ -87,7 +102,9 @@ export function usePageBoundChat(
           return;
         }
         setChatId(detail.chat.id);
-        setSeedMessages(detail.messages);
+        setRawMessages(detail.messages);
+        setSeedMessages(mapDurableBranchToUiMessages(detail.messages));
+        setPrevCursor(detail.prevCursor ?? null);
         setReady(true);
       })
       .catch((error) => {
@@ -117,6 +134,28 @@ export function usePageBoundChat(
     },
     [pointerKey],
   );
+
+  const loadOlderMessages = useCallback(async () => {
+    if (!chatId || !prevCursor || loadingOlder) return;
+    setLoadingOlder(true);
+    try {
+      const page = await listChatMessagesV2(
+        chatId,
+        {
+          order: 'desc',
+          before: prevCursor,
+          limit: MESSAGE_HISTORY_PAGE_SIZE,
+        },
+        requestOptions,
+      );
+      const nextRaw = [...page.items, ...rawMessages];
+      setRawMessages(nextRaw);
+      setSeedMessages(mapDurableBranchToUiMessages(nextRaw));
+      setPrevCursor(page.prevCursor ?? null);
+    } finally {
+      setLoadingOlder(false);
+    }
+  }, [chatId, loadingOlder, prevCursor, rawMessages, requestOptions]);
 
   const ensureChat = useCallback(
     async (input?: { title?: string }) => {
@@ -165,6 +204,9 @@ export function usePageBoundChat(
     seedMessages,
     ready,
     restoreError,
+    hasOlderMessages: Boolean(prevCursor),
+    loadingOlder,
+    loadOlderMessages,
     ensureChat,
     persistPointer,
   };
