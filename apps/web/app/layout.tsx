@@ -13,6 +13,9 @@ export const metadata: Metadata = {
     template: '%s | Acongm Chat',
   },
   description: '知识库 AI 对话 — 按模块与文章隔离上下文',
+  icons: {
+    icon: '/favicon.ico',
+  },
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
