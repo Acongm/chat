@@ -9,6 +9,7 @@ import {
   getOAuthLoginUrl,
   isAnonymousSession,
   isAuthConfigured,
+  resolveOAuthLoginMode,
   signOut,
 } from './client';
 import { getUserInfo, type UserInfoView, type UserMe } from './profile';
@@ -202,18 +203,28 @@ export function useUserInfo(options?: { baseUrl?: string; ensureAnonymous?: bool
 
 export function useAuthActions(options?: {
   client?: ReturnType<typeof createBrowserClient> | null;
+  /** Prefer the caller's session so anonymous upgrade mode is accurate. */
+  session?: Session | null;
 }) {
   const sessionHook = useSession();
   const client = options?.client ?? sessionHook.client;
+  const session = options?.session ?? sessionHook.session;
   const configured = sessionHook.configured;
 
-  const login = useCallback((returnTo?: string) => {
-    const href =
-      typeof window !== 'undefined'
-        ? getOAuthLoginUrl({ returnTo: returnTo ?? window.location.href })
-        : getOAuthLoginUrl();
-    window.location.href = href;
-  }, []);
+  const login = useCallback(
+    (returnTo?: string) => {
+      const mode = resolveOAuthLoginMode(session);
+      const href =
+        typeof window !== 'undefined'
+          ? getOAuthLoginUrl({
+              returnTo: returnTo ?? window.location.href,
+              mode,
+            })
+          : getOAuthLoginUrl({ mode });
+      window.location.href = href;
+    },
+    [session],
+  );
 
   const logout = useCallback(
     async (scope?: 'local' | 'global' | 'others') => {

@@ -179,7 +179,7 @@ export function AuthAccountButton({
     baseUrl: userApiBaseUrl,
     ensureAnonymous,
   });
-  const { login, logout } = useAuthActions({ client });
+  const { login, logout } = useAuthActions({ client, session });
 
   const handleLogout = () => {
     void (async () => {

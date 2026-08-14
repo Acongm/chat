@@ -9,6 +9,7 @@ export {
   isAuthConfigured,
   isSocialAuthProvider,
   linkOAuthIdentity,
+  resolveOAuthLoginMode,
   signInWithGitHub,
   signInWithGoogle,
   signInWithOAuth,
