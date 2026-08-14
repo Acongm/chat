@@ -20,6 +20,15 @@ function buildUpstream(pathSegments: string[] | undefined, search: string): stri
   return `${UPSTREAM.replace(/\/$/, '')}${suffix}${search}`;
 }
 
+function responseHeaders(upstream: Headers): Headers {
+  const headers = new Headers();
+  const contentType = upstream.get('content-type');
+  if (contentType) headers.set('content-type', contentType);
+  const cacheControl = upstream.get('cache-control');
+  if (cacheControl) headers.set('cache-control', cacheControl);
+  return headers;
+}
+
 async function proxy(request: NextRequest, pathSegments?: string[]) {
   const target = buildUpstream(pathSegments, request.nextUrl.search);
   const headers = new Headers();
@@ -31,18 +40,18 @@ async function proxy(request: NextRequest, pathSegments?: string[]) {
   const init: RequestInit = {
     method: request.method,
     headers,
-    duplex: 'half',
-  } as RequestInit;
+  };
 
   if (request.method !== 'GET' && request.method !== 'HEAD') {
     init.body = request.body;
+    (init as RequestInit & { duplex: 'half' }).duplex = 'half';
   }
 
   try {
     const upstream = await fetch(target, init);
     return new NextResponse(upstream.body, {
       status: upstream.status,
-      headers: upstream.headers,
+      headers: responseHeaders(upstream.headers),
     });
   } catch {
     return NextResponse.json(

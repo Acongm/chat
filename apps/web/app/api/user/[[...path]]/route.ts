@@ -29,11 +29,11 @@ async function proxy(request: NextRequest, path?: string[]) {
   const init: RequestInit = {
     method: request.method,
     headers,
-    duplex: 'half',
-  } as RequestInit;
+  };
 
   if (request.method !== 'GET' && request.method !== 'HEAD') {
     init.body = request.body;
+    (init as RequestInit & { duplex: 'half' }).duplex = 'half';
   }
 
   try {
@@ -41,9 +41,12 @@ async function proxy(request: NextRequest, path?: string[]) {
       upstreamUrl(path, request.nextUrl.search),
       init,
     );
+    const responseHeaders = new Headers();
+    const contentType = upstream.headers.get('content-type');
+    if (contentType) responseHeaders.set('content-type', contentType);
     return new NextResponse(upstream.body, {
       status: upstream.status,
-      headers: upstream.headers,
+      headers: responseHeaders,
     });
   } catch {
     return NextResponse.json(

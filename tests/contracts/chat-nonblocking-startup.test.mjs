@@ -52,6 +52,28 @@ test('chat user and session BFFs forward the shared auth cookie', () => {
   assert.match(session, /cookie/);
 });
 
+test('chats BFF does not replay hop-by-hop or CORS headers from upstream', () => {
+  const chats = source('apps/web/app/api/chats/[[...path]]/route.ts');
+  assert.match(chats, /function responseHeaders/);
+  assert.match(chats, /content-type/);
+  assert.doesNotMatch(chats, /headers: upstream\.headers/);
+  assert.match(chats, /duplex: 'half'/);
+  assert.match(chats, /init\.body = request\.body/);
+});
+
+test('chat list fetch sends cookies and maps Failed to fetch', () => {
+  const sdk = source('packages/agent-session-sdk/src/chats.ts');
+  const hook = source(HOOK_PATH);
+  assert.match(sdk, /credentials: 'include'/);
+  assert.match(sdk, /CHAT_NETWORK/);
+  assert.match(sdk, /无法连接会话服务，请重试/);
+  assert.match(hook, /setLoading\(false\)/);
+  assert.match(
+    hook,
+    /if \(!accessToken \|\| !identityKey\) \{\s*setLoading\(false\)/,
+  );
+});
+
 test('chat public-config BFF prefers local env then auth then API', () => {
   const route = source('apps/web/app/api/auth/public-config/route.ts');
   assert.match(route, /NEXT_PUBLIC_SUPABASE_ANON_KEY/);

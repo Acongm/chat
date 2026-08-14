@@ -154,7 +154,11 @@ export function useChatThreads(
   }, [identityKey, initialThreadId]);
 
   const refresh = useCallback(async () => {
-    if (!accessToken || !identityKey) return;
+    if (!accessToken || !identityKey) {
+      setLoading(false);
+      setRefreshing(false);
+      return;
+    }
     const gen = ++refreshGen.current;
     setError(null);
     setRefreshing(true);
@@ -175,7 +179,10 @@ export function useChatThreads(
   }, [accessToken, identityKey, requestOptions]);
 
   useEffect(() => {
-    if (!accessToken || !identityKey) return;
+    if (!accessToken || !identityKey) {
+      setLoading(false);
+      return;
+    }
     void refresh();
   }, [accessToken, identityKey, refresh]);
 
