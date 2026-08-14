@@ -38,45 +38,50 @@ function readPublicConfigBody(body: unknown): AuthPublicConfig | null {
   return { supabaseUrl, supabaseAnonKey };
 }
 
+function currentHostname(): string | undefined {
+  return typeof window === 'undefined' ? undefined : window.location.hostname;
+}
+
+async function fetchAuthPublicConfig(): Promise<AuthPublicConfig | null> {
+  const urls = [
+    '/api/auth/public-config',
+    'https://auth.acongm.com/api/auth/public-config',
+    'https://api.acongm.com/api/auth/public-config',
+  ];
+  for (const url of urls) {
+    try {
+      const response = await fetch(url, { cache: 'force-cache' });
+      if (!response.ok) continue;
+      const parsed = readPublicConfigBody(await response.json());
+      if (parsed) {
+        runtimePublicConfig = parsed;
+        return parsed;
+      }
+    } catch {
+      // try the next source
+    }
+  }
+  return null;
+}
+
 /**
  * Chat/Portal production builds sometimes miss NEXT_PUBLIC_SUPABASE_*.
- * Load the browser-safe publishable pair from the local BFF, then api.acongm.com.
+ * On *.acongm.com the publishable pair is known, so first paint does not wait
+ * on the public-config waterfall.
  */
 export async function loadAuthPublicConfig(): Promise<AuthPublicConfig | null> {
   const fromEnv = envPublicConfig();
   if (fromEnv) return fromEnv;
   if (runtimePublicConfig) return runtimePublicConfig;
+
+  const known = knownPublicConfigForHost(currentHostname());
+  if (known) {
+    runtimePublicConfig = known;
+    return known;
+  }
+
   if (publicConfigPromise) return publicConfigPromise;
-
-  publicConfigPromise = (async () => {
-    const urls = [
-      '/api/auth/public-config',
-      'https://auth.acongm.com/api/auth/public-config',
-      'https://api.acongm.com/api/auth/public-config',
-    ];
-    for (const url of urls) {
-      try {
-        const response = await fetch(url, { cache: 'no-store' });
-        if (!response.ok) continue;
-        const parsed = readPublicConfigBody(await response.json());
-        if (parsed) {
-          runtimePublicConfig = parsed;
-          return parsed;
-        }
-      } catch {
-        // try the next source
-      }
-    }
-    const hostname =
-      typeof window === 'undefined' ? undefined : window.location.hostname;
-    const fallback = knownPublicConfigForHost(hostname);
-    if (fallback) {
-      runtimePublicConfig = fallback;
-      return fallback;
-    }
-    return null;
-  })();
-
+  publicConfigPromise = fetchAuthPublicConfig();
   return publicConfigPromise;
 }
 

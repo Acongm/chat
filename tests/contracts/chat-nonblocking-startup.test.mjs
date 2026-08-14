@@ -16,6 +16,14 @@ test('workspace always mounts ChatFullscreen instead of full-page auth/history g
   assert.match(workspace, /正在准备安全会话/);
   assert.match(workspace, /请先登录后再发送/);
   assert.match(workspace, /onStatusChange/);
+  assert.match(workspace, /threads\.touchThread\(chatId\)/);
+  assert.doesNotMatch(
+    workspace.slice(
+      workspace.indexOf('const composerDisabled'),
+      workspace.indexOf('const composerPlaceholder'),
+    ),
+    /seedStatus/,
+  );
 });
 
 const HOOK_PATH = 'packages/chat-ui/src/integration/use-chat-threads.ts';
@@ -31,6 +39,7 @@ test('conversation hook uses tail-first restore and scroll-up older pages', () =
     /catch \(err\) \{[\s\S]*?setSeedStatus\('ready'\);[\s\S]*?setError\(/,
   );
   assert.doesNotMatch(hook, /loadChatV2HistoryProgressive/);
+  assert.match(hook, /touchThread/);
 });
 
 test('chat user and session BFFs forward the shared auth cookie', () => {
@@ -48,6 +57,7 @@ test('chat public-config BFF prefers local env then auth then API', () => {
   assert.match(route, /NEXT_PUBLIC_SUPABASE_ANON_KEY/);
   assert.match(route, /https:\/\/auth\.acongm\.com\/api\/auth\/public-config/);
   assert.match(route, /https:\/\/api\.acongm\.com\/api\/auth\/public-config/);
+  assert.match(route, /public, max-age=300/);
 });
 
 test('chat sidebar no longer shows default portal return link', () => {

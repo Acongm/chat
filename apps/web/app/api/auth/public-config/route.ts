@@ -33,7 +33,13 @@ function readBody(body: unknown): PublicConfig | null {
 function json(body: PublicConfig, extra?: Record<string, unknown>) {
   return NextResponse.json(
     { ...body, ...extra },
-    { headers: { 'cache-control': 'no-store' } },
+    {
+      headers: {
+        'cache-control': body.configured
+          ? 'public, max-age=300'
+          : 'no-store',
+      },
+    },
   );
 }
 

@@ -59,6 +59,7 @@ export type UseChatThreadsResult = {
   selectThread: (id: string) => Promise<void>;
   removeThread: (id: string) => Promise<void>;
   clearActive: () => void;
+  touchThread: (chatId: string) => void;
 };
 
 function mergeUniqueChats(
@@ -351,6 +352,33 @@ export function useChatThreads(
     setSeedStatus('idle');
   }, []);
 
+  const touchThread = useCallback(
+    (chatId: string) => {
+      const now = new Date().toISOString();
+      setThreads((prev) => {
+        const found = prev.find((chat) => chat.id === chatId);
+        if (!found) {
+          return [
+            {
+              id: chatId,
+              userId: identityKey || '',
+              title: '新对话',
+              metadata: {},
+              createdAt: now,
+              updatedAt: now,
+            },
+            ...prev,
+          ];
+        }
+        return [
+          { ...found, updatedAt: now },
+          ...prev.filter((chat) => chat.id !== chatId),
+        ];
+      });
+    },
+    [identityKey],
+  );
+
   const activeThread =
     threads.find((chat) => chat.id === activeThreadId) ?? null;
 
@@ -375,5 +403,6 @@ export function useChatThreads(
     selectThread,
     removeThread,
     clearActive,
+    touchThread,
   };
 }

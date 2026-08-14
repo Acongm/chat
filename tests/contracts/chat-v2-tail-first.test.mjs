@@ -38,6 +38,7 @@ test('chat workspace disables composer and wires scroll-up lazy history', () => 
   assert.match(workspace, /threads\.seedStatus === 'loading'/);
   assert.match(workspace, /hasOlderMessages=\{threads\.hasOlderMessages\}/);
   assert.match(workspace, /loadOlderMessages/);
+  assert.match(workspace, /touchThread/);
   assert.match(thread, /onScroll/);
   assert.match(thread, /loadingOlder/);
   assert.match(thread, /composerDisabled/);
