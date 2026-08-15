@@ -7,12 +7,11 @@
 | # | 标题 | 状态 | 说明 |
 |---|------|------|------|
 | **36** | Chat v2 consumer | **已完成 ✅** | merged `edb980e` |
-| **41** | 用户菜单 + getUserInfo | **进行中** | AuthAccountMenu ✅；补 `/api/user` BFF |
-| **40** | 非阻塞启动 | **Phase 2 进行中** | tail-first + composer disabled + User BFF |
-| **39** | Chat 产品优化 | OPEN | 父 Epic，执行入口 #40 |
-| **1** | Chat v2 Epic | OPEN | #36 代码完成；剩 #40/#37 |
+| **41** | 用户菜单 + getUserInfo | **源码完成 ✅** | BFF + AuthAccountMenu + `/account#settings` |
+| **40** | 非阻塞启动 | **源码完成 ✅** | tail-first + 失败不清空；剩 browser smoke → #37 |
+| **39** | Chat 产品优化 | OPEN | 父 Epic；执行入口改为 #37 |
+| **1** | Chat v2 Epic | OPEN | #36/#40/#41 代码完成；剩 #37 |
 
 ## 下一步（chat 仓）
 
-1. **#37** — browser E2E smoke（API path 在 `platform-v2-quality-gate.e2e-spec.ts`；Chat Playwright smoke 在 `e2e/quality-gate-smoke.spec.ts`）
-2. **#41 Phase 2** — theme 入口细化（menuFooter 已接 ChatSettingsSlot）
+1. **#37** — 生产 browser：Send / Retry / Reload / Edit / Cancel + 会话列表持久化（mock smoke 已在 `e2e/quality-gate-smoke.spec.ts`）
