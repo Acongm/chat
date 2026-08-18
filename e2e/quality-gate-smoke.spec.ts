@@ -133,7 +133,10 @@ test.describe('Platform v2 quality gate browser smoke (#37)', () => {
     await page.goto('/');
     await readyComposer(page);
 
-    await page.getByText('Agent 配置').click();
+    await page.getByText('Agent 配置', { exact: true }).click();
+    await expect(page.locator('#chat-default-prompt')).toBeVisible({
+      timeout: 10_000,
+    });
     await page.locator('#chat-default-prompt').fill('回答尽量简洁。');
     await page.getByRole('button', { name: '添加技能' }).click();
     await page.getByLabel('技能名称').fill('code-review');

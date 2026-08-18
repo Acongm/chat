@@ -100,7 +100,7 @@ export function ChatAgentSettings() {
         Agent 配置
       </summary>
       {!ready ? (
-        <p className="pt-1 text-xs text-muted-foreground">加载 Agent 配置…</p>
+        <p className="pt-1 text-xs text-muted-foreground">加载中…</p>
       ) : null}
       {ready ? (
       <div className="space-y-3 pt-1">
