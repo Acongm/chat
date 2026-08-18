@@ -110,7 +110,7 @@ function createUserSettings() {
     language: 'zh-CN',
     theme: 'system',
     chat: {
-      defaultModel: 'gpt-4.1-mini',
+      defaultModel: 'deepseek-v4-flash',
       defaultPrompt: '',
       skills: [] as Array<{
         id: string;
@@ -127,7 +127,7 @@ function createUserSettings() {
       language: 'zh-CN',
       theme: 'system',
       chat: {
-        defaultModel: 'gpt-4.1-mini',
+        defaultModel: 'deepseek-v4-flash',
         defaultPrompt: '',
         skills: [] as Array<{
           id: string;
