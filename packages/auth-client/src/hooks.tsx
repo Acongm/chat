@@ -192,6 +192,7 @@ export function useSession(options?: UseSessionOptions) {
     status,
     error,
     retry,
+    hasSession,
     userId: session?.user?.id ?? cookieUserId,
     accessToken: session?.access_token ?? cookieAccessToken,
     isAnonymous,

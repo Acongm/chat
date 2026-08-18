@@ -25,10 +25,11 @@ test('anonymous Supabase identity remains visually logged out', () => {
   assert.match(text, /<LoginControl/);
 });
 
-test('real chat auth slot exposes Supabase uid plus bearer token without legacy claim calls', () => {
+test('real chat auth slot exposes uid plus bearer token without legacy claim calls', () => {
   const text = source('packages/chat-ui/src/integration/chat-auth-slot.tsx');
-  assert.match(text, /userId:\s*session\.user\.id/);
-  assert.match(text, /accessToken:\s*session\.access_token/);
+  assert.match(text, /if \(!accessToken \|\| !userId\)/);
+  assert.match(text, /accessToken,/);
+  assert.match(text, /userId,/);
   assert.match(text, /status === 'error'/);
   assert.match(text, /onClick=\{retry\}/);
   assert.doesNotMatch(text, /\bclaimAnonymousThreads\s*\(/);

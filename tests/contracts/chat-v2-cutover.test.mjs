@@ -18,8 +18,10 @@ test('chat auth slot has no legacy claim/client-id calls', () => {
   const text = source('packages/chat-ui/src/integration/chat-auth-slot.tsx');
   assert.doesNotMatch(text, /\bclaimAnonymousThreads\s*\(/);
   assert.doesNotMatch(text, /\bgetClientId\s*\(/);
-  assert.match(text, /session\.access_token/);
-  assert.match(text, /session\.user\.id/);
+  assert.match(text, /accessToken/);
+  assert.match(text, /userId/);
+  assert.doesNotMatch(text, /session\.access_token/);
+  assert.doesNotMatch(text, /session\.user\.id/);
 });
 
 test('conversation hook uses Chat v2 SDK only', () => {
