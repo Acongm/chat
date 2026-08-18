@@ -125,4 +125,24 @@ test.describe('Platform v2 quality gate browser smoke (#37)', () => {
       }),
     ).toBeVisible();
   });
+
+  test('can save a default system prompt and skill from the sidebar', async ({
+    page,
+  }) => {
+    await installQualityGateMocks(page);
+    await page.goto('/');
+    await readyComposer(page);
+
+    await page.getByText('Agent 配置').click();
+    await page.locator('#chat-default-prompt').fill('回答尽量简洁。');
+    await page.getByRole('button', { name: '添加技能' }).click();
+    await page.getByLabel('技能名称').fill('code-review');
+    await page.getByLabel('技能内容').fill('先核对测试再改代码。');
+    await page.getByRole('button', { name: '保存 Agent 配置' }).click();
+
+    await expect(page.getByText('已保存。')).toBeVisible();
+    await expect(page.locator('#chat-default-prompt')).toHaveValue('回答尽量简洁。');
+    await expect(page.getByLabel('技能名称')).toHaveValue('code-review');
+    await expect(page.getByLabel('技能内容')).toHaveValue('先核对测试再改代码。');
+  });
 });

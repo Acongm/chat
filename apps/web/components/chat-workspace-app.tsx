@@ -290,12 +290,12 @@ function WorkspaceInner({
           loadingMore={threads.loadingMore}
           hasMore={threads.hasMore}
           error={threads.error}
+          settingsSlot={<ChatSettingsSlot />}
           authSlot={
             <ChatAuthSlot
               onIdentityChange={setAuthIdentity}
               onStatusChange={setAuthStatus}
               onSignedOut={handleSignedOut}
-              menuFooter={<ChatSettingsSlot />}
             />
           }
           onNewThread={handleNewThread}

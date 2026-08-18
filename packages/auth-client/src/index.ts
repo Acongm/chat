@@ -60,6 +60,7 @@ export type {
   UserMe,
   UserProfileResult,
   UserSettingsView,
+  AgentSkill,
 } from './profile';
 export {
   useSession,

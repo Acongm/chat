@@ -105,23 +105,91 @@ function fulfillSupabaseAuth(route: Route) {
   return json(route, 200, {});
 }
 
-function fulfillUser(route: Route) {
-  const pathname = new URL(route.request().url()).pathname.replace(/\/$/, '');
-  if (pathname === '/api/user/info') {
-    return json(route, 200, {
-      userInfo: {
-        id: MOCK_USER_ID,
-        displayName: '访客',
-        avatarUrl: null,
-        email: null,
-        accountLabel: '访客',
-        role: 'viewer',
-        tier: 'user',
-        isAnonymous: true,
-        source: 'auth',
+function createUserSettings() {
+  return {
+    language: 'zh-CN',
+    theme: 'system',
+    chat: {
+      defaultModel: 'gpt-4.1-mini',
+      defaultPrompt: '',
+      skills: [] as Array<{
+        id: string;
+        name: string;
+        content: string;
+        enabled: boolean;
+      }>,
+    },
+    preferences: {},
+    schemaVersion: 1,
+    defaults: {},
+    overrides: {},
+    effective: {
+      language: 'zh-CN',
+      theme: 'system',
+      chat: {
+        defaultModel: 'gpt-4.1-mini',
+        defaultPrompt: '',
+        skills: [] as Array<{
+          id: string;
+          name: string;
+          content: string;
+          enabled: boolean;
+        }>,
       },
+    },
+  };
+}
+
+function fulfillUser(route: Route, settings: ReturnType<typeof createUserSettings>) {
+  const pathname = new URL(route.request().url()).pathname.replace(/\/$/, '');
+  const method = route.request().method();
+  const userInfo = {
+    id: MOCK_USER_ID,
+    displayName: '访客',
+    avatarUrl: null,
+    email: null,
+    accountLabel: '访客',
+    role: 'viewer',
+    tier: 'user',
+    isAnonymous: true,
+    source: 'auth',
+  };
+
+  if (pathname === '/api/user/info') {
+    return json(route, 200, { userInfo });
+  }
+
+  if ((pathname === '/api/user/me' || pathname === '/api/user/settings') && method === 'GET') {
+    return json(route, 200, {
+      id: MOCK_USER_ID,
+      isAnonymous: true,
+      userInfo,
+      settings,
+      ...settings,
     });
   }
+
+  if (pathname === '/api/user/settings' && method === 'PATCH') {
+    const body = readJsonBody(route);
+    const nextSkills = Array.isArray(body.skills)
+      ? (body.skills as ReturnType<typeof createUserSettings>['chat']['skills'])
+      : body.skills === null
+        ? []
+        : settings.chat.skills;
+    const nextPrompt =
+      body.defaultPrompt === null
+        ? ''
+        : asString(body.defaultPrompt) ?? settings.chat.defaultPrompt;
+    settings.chat.defaultPrompt = nextPrompt;
+    settings.chat.skills = nextSkills;
+    settings.effective.chat.defaultPrompt = nextPrompt;
+    settings.effective.chat.skills = nextSkills;
+    return json(route, 200, {
+      settings,
+      userInfo,
+    });
+  }
+
   return json(route, 404, { message: `unmocked user route: ${pathname}` });
 }
 
@@ -295,9 +363,10 @@ export async function installQualityGateMocks(
   options: QualityGateMockOptions = {},
 ) {
   const store = createChatStore();
+  const settings = createUserSettings();
   await page.route(`${MOCK_SUPABASE_URL}/**`, fulfillSupabaseAuth);
   await page.route('**/api/chats**', (route) => store.fulfillChats(route, options));
-  await page.route('**/api/user/**', fulfillUser);
+  await page.route('**/api/user/**', (route) => fulfillUser(route, settings));
   await page.route('**/summaries-v1.json', (route) =>
     json(route, 200, { version: 1, files: {} }),
   );
