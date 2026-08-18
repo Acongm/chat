@@ -11,4 +11,7 @@ test('browser quality gate smoke spec exists for #37', () => {
   const body = readFileSync(spec, 'utf8');
   assert.match(body, /Platform v2 quality gate browser smoke/);
   assert.match(body, /installQualityGateMocks/);
+  assert.match(body, /停止/);
+  assert.match(body, /重新生成/);
+  assert.match(body, /acongm-gpt-sidebar__item-title/);
 });

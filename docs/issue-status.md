@@ -14,4 +14,5 @@
 
 ## 下一步（chat 仓）
 
-1. **#37** — 生产 browser：Send / Retry / Reload / Edit / Cancel + 会话列表持久化（mock smoke 已在 `e2e/quality-gate-smoke.spec.ts`）
+1. **#37** mock browser smoke — ✅ `e2e/quality-gate-smoke.spec.ts`（Send / Retry / Reload / Edit / Cancel + 会话列表持久化）
+2. **#37** 生产 JWT browser — 仍缺 Runtime Secret
