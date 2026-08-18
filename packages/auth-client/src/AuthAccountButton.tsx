@@ -137,6 +137,7 @@ export function AuthAccountButton({
     userInfo,
     loading,
     configured,
+    hasSession,
   } = useUserInfo({
     baseUrl: userApiBaseUrl,
     ensureAnonymous,
@@ -150,7 +151,15 @@ export function AuthAccountButton({
     })();
   };
 
-  if (configured && loading && !session) {
+  const loginControl = (
+    <LoginControl
+      className={className}
+      variant={variant}
+      onLogin={() => login()}
+    />
+  );
+
+  if (configured && loading && !hasSession && !userInfo) {
     if (variant === 'avatar' || variant === 'icon') {
       return (
         <span
@@ -183,13 +192,24 @@ export function AuthAccountButton({
     );
   }
 
-  // 未配置 Supabase 时仍可跳转 SSO（login 带 return_to）
-  if (!configured || !session) {
+  // Cookie session can be authenticated without a Supabase Session object.
+  if (!hasSession) {
+    return loginControl;
+  }
+
+  if (!session) {
+    if (userInfo?.isAnonymous) {
+      return loginControl;
+    }
     return (
-      <LoginControl
-        className={className}
+      <AuthAccountMenu
+        label={userInfo?.displayName ?? '已登录'}
+        photo={userInfo?.avatarUrl ?? null}
+        email={userInfo?.email ?? null}
         variant={variant}
-        onLogin={() => login()}
+        className={className}
+        onLogout={handleLogout}
+        menuFooter={menuFooter}
       />
     );
   }
@@ -197,13 +217,7 @@ export function AuthAccountButton({
   const display = resolveDisplay(session, userInfo);
   // Anonymous Supabase identities stay visually guest / login CTA.
   if (display.isAnonymous) {
-    return (
-      <LoginControl
-        className={className}
-        variant={variant}
-        onLogin={() => login()}
-      />
-    );
+    return loginControl;
   }
 
   const label = display.label;

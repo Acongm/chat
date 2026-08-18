@@ -29,6 +29,14 @@ test('AuthAccountButton prefers server userInfo and keeps chat logout UX', () =>
   assert.match(button, /LoginControl/);
 });
 
+test('cookie session is treated as a real login for chrome and getUserInfo', () => {
+  assert.match(hooks, /cookieIdentityFromAuthSession/);
+  assert.match(hooks, /userInfoLoading: hasSession && loading/);
+  assert.doesNotMatch(hooks, /hasSession: Boolean\(session\)/);
+  assert.match(button, /if \(!hasSession\)/);
+  assert.match(button, /userInfo\?\.displayName \?\? '已登录'/);
+});
+
 test('UserMe type includes userInfo and settings from API #62', () => {
   assert.match(profileClient, /userInfo: UserInfoView/);
   assert.match(profileClient, /settings: UserSettingsView/);

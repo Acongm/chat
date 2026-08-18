@@ -34,6 +34,28 @@ export type UseSessionOptions = {
 
 export type { AuthSessionStatus };
 
+type CookieIdentity = {
+  userId: string | null;
+  accessToken: string | null;
+  authenticated: boolean;
+};
+
+const EMPTY_COOKIE_IDENTITY: CookieIdentity = {
+  userId: null,
+  accessToken: null,
+  authenticated: false,
+};
+
+function cookieIdentityFromAuthSession(
+  cookieSession: Awaited<ReturnType<typeof getAuthSession>> | null,
+): CookieIdentity {
+  return {
+    userId: cookieSession?.user?.id ?? null,
+    accessToken: cookieSession?.accessToken ?? null,
+    authenticated: Boolean(cookieSession?.authenticated),
+  };
+}
+
 export function useSession(options?: UseSessionOptions) {
   const ensureAnonymous = options?.ensureAnonymous ?? false;
   const skipBootstrap = options?.skipBootstrap ?? false;
@@ -74,12 +96,14 @@ export function useSession(options?: UseSessionOptions) {
         const nextConfigured = Boolean(publicConfig);
         setConfigured(nextConfigured);
         if (!nextConfigured) {
-          const cookieSession = await getAuthSession().catch(() => null);
+          const cookie = cookieIdentityFromAuthSession(
+            await getAuthSession().catch(() => null),
+          );
           if (!mounted || currentGeneration !== generation) return;
           setSession(null);
-          setCookieUserId(cookieSession?.user?.id ?? null);
-          setCookieAccessToken(cookieSession?.accessToken ?? null);
-          setCookieAuthenticated(Boolean(cookieSession?.authenticated));
+          setCookieUserId(cookie.userId);
+          setCookieAccessToken(cookie.accessToken);
+          setCookieAuthenticated(cookie.authenticated);
           setError(null);
           setLoading(false);
           return;
@@ -92,15 +116,17 @@ export function useSession(options?: UseSessionOptions) {
         if (!mounted || currentGeneration !== generation) return;
         setSession(nextSession);
         if (!nextSession) {
-          const cookieSession = await getAuthSession().catch(() => null);
+          const cookie = cookieIdentityFromAuthSession(
+            await getAuthSession().catch(() => null),
+          );
           if (!mounted || currentGeneration !== generation) return;
-          setCookieUserId(cookieSession?.user?.id ?? null);
-          setCookieAccessToken(cookieSession?.accessToken ?? null);
-          setCookieAuthenticated(Boolean(cookieSession?.authenticated));
+          setCookieUserId(cookie.userId);
+          setCookieAccessToken(cookie.accessToken);
+          setCookieAuthenticated(cookie.authenticated);
         } else {
-          setCookieUserId(null);
-          setCookieAccessToken(null);
-          setCookieAuthenticated(false);
+          setCookieUserId(EMPTY_COOKIE_IDENTITY.userId);
+          setCookieAccessToken(EMPTY_COOKIE_IDENTITY.accessToken);
+          setCookieAuthenticated(EMPTY_COOKIE_IDENTITY.authenticated);
         }
         // Missing guest session is unauthenticated (show login), not a hard error.
         setError(null);
@@ -186,13 +212,20 @@ export function useUser() {
  * Falls back to null on 401/network errors so buttons can keep session-based UI.
  */
 export function useUserInfo(options?: { baseUrl?: string; ensureAnonymous?: boolean }) {
-  const { session, loading: sessionLoading, client, configured, status } = useSession({
+  const {
+    session,
+    loading: sessionLoading,
+    client,
+    configured,
+    status,
+    accessToken,
+    hasSession,
+  } = useSession({
     ensureAnonymous: options?.ensureAnonymous,
   });
   const [userMe, setUserMe] = useState<UserMe | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const accessToken = session?.access_token ?? null;
   const baseUrl = options?.baseUrl;
 
   useEffect(() => {
@@ -235,10 +268,10 @@ export function useUserInfo(options?: { baseUrl?: string; ensureAnonymous?: bool
     userMe,
     userInfo,
     loading: sessionLoading,
-    userInfoLoading: Boolean(session) && loading,
+    userInfoLoading: hasSession && loading,
     error,
     configured,
-    hasSession: Boolean(session),
+    hasSession,
     status,
   };
 }
