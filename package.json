@@ -18,7 +18,8 @@
     "ui:diff": "node scripts/ui-registry.mjs diff core-ui",
     "ui:drift": "node scripts/check-ui-drift.mjs",
     "test:e2e": "playwright test",
-    "test:e2e:ui": "playwright test --ui"
+    "test:e2e:ui": "playwright test --ui",
+    "test:e2e:live": "playwright test --config=playwright.live.config.ts"
   },
   "dependencies": {
     "next": "^16.2.12",

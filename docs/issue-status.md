@@ -15,4 +15,5 @@
 ## 下一步（chat 仓）
 
 1. **#37** mock browser smoke — ✅ `e2e/quality-gate-smoke.spec.ts`（Send / Retry / Reload / Edit / Cancel + 会话列表持久化）
-2. **#37** 生产 JWT browser — 仍缺 Runtime Secret
+2. **#37** live JWT browser — ✅ `pnpm test:e2e:live`（注入真实 session，侧栏显示 Quality Gate Live）
+3. **#37** 生产 cookie / OAuth browser — 仍待 `*.acongm.com`
