@@ -274,13 +274,13 @@ function ConversationFooter({
   disclaimer: string;
 }) {
   return (
-    <ThreadPrimitive.ViewportFooter className="acongm-gpt-thread__footer sticky bottom-0">
+    <div className="acongm-gpt-thread__footer">
       <ThreadScrollToBottom />
       <Composer placeholder={placeholder} disabled={composerDisabled} />
       <p className="acongm-gpt-disclaimer acongm-gpt-disclaimer--thread">
         {disclaimer}
       </p>
-    </ThreadPrimitive.ViewportFooter>
+    </div>
   );
 }
 
@@ -325,30 +325,32 @@ function LazyHistoryViewport({
   }, [loadingOlder]);
 
   return (
-    <ThreadPrimitive.Viewport
-      ref={viewportRef}
-      className="acongm-gpt-thread__viewport"
-      onScroll={(event) => {
-        const viewport = event.currentTarget;
-        if (viewport.scrollTop < 120) {
-          requestOlder();
-        }
-      }}
-    >
-      <HistoryLoadIndicator loading={loadingOlder} />
-      <ThreadPrimitive.Messages
-        components={{
-          UserMessage,
-          EditComposer,
-          AssistantMessage,
+    <>
+      <ThreadPrimitive.Viewport
+        ref={viewportRef}
+        className="acongm-gpt-thread__viewport"
+        onScroll={(event) => {
+          const viewport = event.currentTarget;
+          if (viewport.scrollTop < 120) {
+            requestOlder();
+          }
         }}
-      />
+      >
+        <HistoryLoadIndicator loading={loadingOlder} />
+        <ThreadPrimitive.Messages
+          components={{
+            UserMessage,
+            EditComposer,
+            AssistantMessage,
+          }}
+        />
+      </ThreadPrimitive.Viewport>
       <ConversationFooter
         placeholder={placeholder}
         composerDisabled={composerDisabled}
         disclaimer={disclaimer}
       />
-    </ThreadPrimitive.Viewport>
+    </>
   );
 }
 
@@ -363,10 +365,10 @@ export type AssistantThreadProps = {
 };
 
 /**
- * Official assistant-ui Thread layout:
- * Root → empty composer, or Viewport → Messages + sticky ViewportFooter.
+ * Long-thread rest layout:
+ * Root → Viewport (messages only) + docked composer sibling.
+ * Composer stays in view without scrolling; only the message pane scrolls.
  * https://www.assistant-ui.com/docs/primitives/thread
- * https://www.assistant-ui.com/examples/chatgpt
  */
 export function AssistantThread({
   emptyTitle = '我们从哪开始？',

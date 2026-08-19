@@ -325,26 +325,24 @@ html[data-theme='dark'] .acongm-workspace[data-preset='siteFull'] {
   overflow: hidden;
   background: var(--gpt-bg, #fff);
   color: var(--gpt-fg, #0d0d0d);
-  padding: 0;
+  padding: 0 1rem;
 }
 
-/* Absolute fill so long markdown cannot grow ancestors. Sticky footer needs this bound. */
 .acongm-gpt-thread__viewport {
-  position: absolute;
-  inset: 0;
+  position: relative;
+  flex: 1 1 0%;
+  min-height: 0;
   display: flex;
   flex-direction: column;
   gap: 2rem;
   overflow-x: hidden;
   overflow-y: auto;
   overscroll-behavior: contain;
-  padding: 3.5rem 1rem 0;
+  padding: 1.25rem 0 1rem;
 }
 
-/* Official ViewportFooter: sticky + margin-top:auto so auto-scroll measures inset. */
 .acongm-gpt-thread__footer {
-  position: sticky;
-  bottom: 0;
+  position: relative;
   z-index: 5;
   display: flex;
   flex-direction: column;
@@ -352,8 +350,8 @@ html[data-theme='dark'] .acongm-workspace[data-preset='siteFull'] {
   gap: 0.5rem;
   width: 100%;
   max-width: 48rem;
-  margin: auto auto 0;
-  padding: 0.5rem 0 0.15rem;
+  margin: 0 auto;
+  padding: 0.35rem 0 0.15rem;
   overflow: visible;
   background: var(--gpt-bg, #fff);
 }

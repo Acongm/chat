@@ -42,38 +42,38 @@ test('chat workspace disables composer and wires scroll-up lazy history', () => 
   assert.match(thread, /onScroll/);
   assert.match(thread, /loadingOlder/);
   assert.match(thread, /composerDisabled/);
-  assert.match(thread, /ThreadPrimitive\.ViewportFooter/);
   assert.match(
     thread,
-    /ThreadPrimitive\.ViewportFooter[\s\S]*<Composer /,
+    /ThreadPrimitive\.Viewport[\s\S]*<\/ThreadPrimitive\.Viewport>\s*<ConversationFooter/,
   );
+  assert.doesNotMatch(thread, /ThreadPrimitive\.ViewportFooter/);
   assert.doesNotMatch(thread, /acongm-gpt-thread__dock/);
   assert.doesNotMatch(thread, /acongm-gpt-thread__conversation/);
 });
 
-test('thread CSS pins ViewportFooter with official sticky bottom', () => {
+test('thread CSS docks the composer outside the scroll viewport', () => {
   const css = source('packages/chat-ui/src/styles/chatgpt.css');
   assert.match(
     css,
-    /\.acongm-gpt-thread__footer\s*\{[\s\S]*position:\s*sticky/,
+    /\.acongm-gpt-thread__footer\s*\{[\s\S]*flex-shrink:\s*0/,
   );
   assert.match(
     css,
-    /\.acongm-gpt-thread__footer\s*\{[\s\S]*bottom:\s*0/,
+    /\.acongm-gpt-thread__footer\s*\{[\s\S]*position:\s*relative/,
   );
   assert.match(
     css,
-    /\.acongm-gpt-thread__viewport\s*\{[\s\S]*position:\s*absolute/,
+    /\.acongm-gpt-thread__viewport\s*\{[\s\S]*overflow-y:\s*auto/,
   );
-  assert.match(
+  assert.doesNotMatch(
     css,
-    /\.acongm-gpt-thread__viewport\s*\{[\s\S]*inset:\s*0/,
+    /\.acongm-gpt-thread__viewport\s*\{[^}]*position:\s*absolute/,
   );
   assert.doesNotMatch(css, /acongm-gpt-thread__dock/);
   assert.doesNotMatch(css, /acongm-gpt-thread__conversation/);
   assert.doesNotMatch(
     css,
-    /\.acongm-gpt-thread__footer\s*\{[^}]*position:\s*relative/,
+    /\.acongm-gpt-thread__footer\s*\{[^}]*position:\s*sticky/,
   );
 });
 
