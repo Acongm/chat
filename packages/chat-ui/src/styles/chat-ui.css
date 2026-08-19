@@ -274,6 +274,13 @@
   flex-direction: column;
 }
 
+.acongm-chat-shell__body > * {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
 .workspace-main-chat .acongm-chat-shell.is-fullscreen .acongm-chat-shell__header {
   display: none;
 }
@@ -1094,6 +1101,12 @@
   flex: 1;
   display: flex;
   flex-direction: column;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.acongm-workspace__body > * {
+  flex: 1;
   min-height: 0;
 }
 

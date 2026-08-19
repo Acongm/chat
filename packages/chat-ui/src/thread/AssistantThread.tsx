@@ -375,16 +375,18 @@ export function AssistantThread({
       </AuiIf>
 
       <AuiIf condition={(s) => !s.thread.isEmpty}>
-        <LazyHistoryViewport
-          hasOlderMessages={hasOlderMessages}
-          loadingOlder={loadingOlder}
-          onLoadOlderMessages={onLoadOlderMessages}
-        />
-        <ThreadDock
-          placeholder={placeholder}
-          composerDisabled={composerDisabled}
-          disclaimer={disclaimer}
-        />
+        <div className="acongm-gpt-thread__conversation">
+          <LazyHistoryViewport
+            hasOlderMessages={hasOlderMessages}
+            loadingOlder={loadingOlder}
+            onLoadOlderMessages={onLoadOlderMessages}
+          />
+          <ThreadDock
+            placeholder={placeholder}
+            composerDisabled={composerDisabled}
+            disclaimer={disclaimer}
+          />
+        </div>
       </AuiIf>
     </ThreadPrimitive.Root>
   );

@@ -60,6 +60,7 @@ test.describe('Platform v2 quality gate browser smoke (#37)', () => {
       const spacer = document.createElement('div');
       spacer.dataset.scrollProbe = '1';
       spacer.style.height = '1600px';
+      spacer.style.flexShrink = '0';
       node.prepend(spacer);
     });
 
