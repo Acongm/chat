@@ -79,6 +79,52 @@ test.describe('Platform v2 quality gate browser smoke (#37)', () => {
     expect(await viewport.evaluate((node) => node.scrollTop)).toBeGreaterThan(100);
   });
 
+  test('keeps sidebar header and footer pinned while the thread list scrolls', async ({
+    page,
+  }) => {
+    await installQualityGateMocks(page);
+    await page.goto('/');
+    await sendPrompt(page, 'hello quality gate');
+    await expect(page.getByText(FIRST_ASSISTANT_REPLY)).toBeVisible({
+      timeout: 30_000,
+    });
+
+    const list = page.locator('.acongm-gpt-sidebar__list');
+    const header = page.locator('.acongm-gpt-sidebar__header');
+    const footer = page.locator('.acongm-gpt-sidebar__footer');
+    await expect(footer).toBeVisible();
+
+    await list.evaluate((node) => {
+      const spacer = document.createElement('div');
+      spacer.dataset.scrollProbe = 'sidebar';
+      spacer.style.height = '1600px';
+      spacer.style.flexShrink = '0';
+      node.append(spacer);
+    });
+
+    const headerBefore = await header.boundingBox();
+    const footerBefore = await footer.boundingBox();
+    expect(headerBefore).toBeTruthy();
+    expect(footerBefore).toBeTruthy();
+    await list.evaluate((node) => {
+      node.scrollTop = 800;
+    });
+    const headerAfter = await header.boundingBox();
+    const footerAfter = await footer.boundingBox();
+    expect(Math.abs((headerAfter?.y ?? 0) - (headerBefore?.y ?? 0))).toBeLessThan(
+      2,
+    );
+    expect(Math.abs((footerAfter?.y ?? 0) - (footerBefore?.y ?? 0))).toBeLessThan(
+      2,
+    );
+    expect(await list.evaluate((node) => node.scrollTop)).toBeGreaterThan(100);
+    expect(
+      await page
+        .locator('.acongm-workspace__thread')
+        .evaluate((node) => getComputedStyle(node).overflow),
+    ).toBe('hidden');
+  });
+
   test('exposes reload on assistant messages and edit on user messages', async ({
     page,
   }) => {

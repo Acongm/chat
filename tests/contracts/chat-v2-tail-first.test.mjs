@@ -63,4 +63,29 @@ test('thread CSS pins ViewportFooter with official sticky bottom', () => {
   );
   assert.doesNotMatch(css, /acongm-gpt-thread__dock/);
   assert.doesNotMatch(css, /acongm-gpt-thread__conversation/);
+  assert.doesNotMatch(
+    css,
+    /\.acongm-gpt-thread__footer\s*\{[^}]*position:\s*relative/,
+  );
+});
+
+test('workspace CSS pins the sidebar chrome and only scrolls the list', () => {
+  const workspace = source('packages/chat-ui/src/styles/chat-ui.css');
+  const gpt = source('packages/chat-ui/src/styles/chatgpt.css');
+  assert.match(
+    workspace,
+    /\.acongm-workspace__thread[\s\S]*?overflow:\s*hidden/,
+  );
+  assert.match(
+    gpt,
+    /\.acongm-gpt-sidebar__header\s*\{[\s\S]*flex-shrink:\s*0/,
+  );
+  assert.match(
+    gpt,
+    /\.acongm-gpt-sidebar__footer\s*\{[\s\S]*flex-shrink:\s*0/,
+  );
+  assert.match(
+    gpt,
+    /\.acongm-gpt-sidebar__list\s*\{[\s\S]*overflow:\s*auto/,
+  );
 });

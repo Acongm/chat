@@ -569,6 +569,8 @@
 .acongm-chat-rd__content {
   display: flex;
   flex-direction: column;
+  height: 100%;
+  min-height: 0;
   background: var(--acongm-surface-0);
   color: var(--acongm-text);
   overflow: hidden;
@@ -577,7 +579,14 @@
 
 .acongm-chat-rd .acongm-chat-shell {
   height: 100%;
+  min-height: 0;
   background: var(--acongm-surface-0);
+}
+
+.acongm-chat-rd .acongm-gpt-thread {
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
 }
 
 /* PC：无遮罩，浮在右侧并给正文让宽 */
@@ -649,7 +658,7 @@
 
   .acongm-chat-rd.is-mobile .acongm-chat-shell {
     height: 100%;
-    min-height: 100dvh;
+    min-height: 0;
   }
 
   .acongm-chat-rd.is-mobile .acongm-chat-shell__close {
@@ -1072,11 +1081,20 @@
 
 .acongm-workspace__thread,
 .acongm-workspace__knowledge {
+  display: flex;
+  flex-direction: column;
   min-width: 0;
   min-height: 0;
   border-right: 1px solid color-mix(in srgb, var(--acongm-text, #0d0d0d) 10%, transparent);
   background: color-mix(in srgb, var(--acongm-bg, #fff) 92%, #e8e8ea);
-  overflow: auto;
+  overflow: hidden;
+}
+
+.acongm-workspace__thread > *,
+.acongm-workspace__knowledge > * {
+  flex: 1;
+  min-height: 0;
+  min-width: 0;
 }
 
 .acongm-workspace__knowledge {
