@@ -190,7 +190,7 @@
 
 .acongm-chat-shell.is-fullscreen {
   height: 100%;
-  max-height: none;
+  max-height: 100%;
   border-radius: 0;
   border: 0;
 }
@@ -272,6 +272,7 @@
   min-height: 0;
   display: flex;
   flex-direction: column;
+  overflow: hidden;
 }
 
 .acongm-chat-shell__body > * {
@@ -505,17 +506,22 @@
 }
 
 .acongm-chat-fullscreen {
-  min-height: 100dvh;
+  height: 100%;
+  max-height: 100%;
+  min-height: 0;
+  overflow: hidden;
   display: flex;
   flex-direction: column;
 }
 
-/* 嵌在 ChatWorkspace 主区时不要再撑满视口，避免盖住左栏 */
+/* 嵌在 ChatWorkspace 主区时填满格子，禁止再按内容把整页撑高 */
 .acongm-workspace__main .acongm-chat-fullscreen,
 .workspace-main-chat .acongm-chat-fullscreen {
   min-height: 0;
   height: 100%;
+  max-height: 100%;
   flex: 1;
+  overflow: hidden;
 }
 
 @keyframes acongm-cursor {
@@ -570,6 +576,7 @@
   display: flex;
   flex-direction: column;
   height: 100%;
+  max-height: 100%;
   min-height: 0;
   background: var(--acongm-surface-0);
   color: var(--acongm-text);
@@ -579,12 +586,16 @@
 
 .acongm-chat-rd .acongm-chat-shell {
   height: 100%;
+  max-height: 100%;
   min-height: 0;
+  overflow: hidden;
   background: var(--acongm-surface-0);
 }
 
 .acongm-chat-rd .acongm-gpt-thread {
   flex: 1;
+  height: 100%;
+  max-height: 100%;
   min-height: 0;
   overflow: hidden;
 }
@@ -605,6 +616,8 @@
     right: 16px;
     bottom: 16px;
     height: auto !important;
+    max-height: calc(100dvh - var(--fd-nav-height, 3.5rem) - 28px) !important;
+    overflow: hidden !important;
   }
 
   .acongm-chat-rd.is-desktop .rc-drawer-content {

@@ -61,11 +61,39 @@ test('thread CSS pins ViewportFooter with official sticky bottom', () => {
     css,
     /\.acongm-gpt-thread__footer\s*\{[\s\S]*bottom:\s*0/,
   );
+  assert.match(
+    css,
+    /\.acongm-gpt-thread__viewport\s*\{[\s\S]*position:\s*absolute/,
+  );
+  assert.match(
+    css,
+    /\.acongm-gpt-thread__viewport\s*\{[\s\S]*inset:\s*0/,
+  );
   assert.doesNotMatch(css, /acongm-gpt-thread__dock/);
   assert.doesNotMatch(css, /acongm-gpt-thread__conversation/);
   assert.doesNotMatch(
     css,
     /\.acongm-gpt-thread__footer\s*\{[^}]*position:\s*relative/,
+  );
+});
+
+test('fullscreen and shell never grow with min-height 100dvh', () => {
+  const workspace = source('packages/chat-ui/src/styles/chat-ui.css');
+  assert.doesNotMatch(
+    workspace,
+    /\.acongm-chat-fullscreen\s*\{[^}]*min-height:\s*100dvh/,
+  );
+  assert.doesNotMatch(
+    workspace,
+    /\.acongm-chat-shell\.is-fullscreen\s*\{[^}]*max-height:\s*none/,
+  );
+  assert.match(
+    workspace,
+    /\.acongm-chat-fullscreen\s*\{[\s\S]*overflow:\s*hidden/,
+  );
+  assert.match(
+    workspace,
+    /\.acongm-chat-shell__body\s*\{[\s\S]*overflow:\s*hidden/,
   );
 });
 

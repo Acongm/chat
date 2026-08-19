@@ -1,6 +1,7 @@
 import { expect, test, type Locator, type Page } from '@playwright/test';
 import {
   FIRST_ASSISTANT_REPLY,
+  MOCK_CHAT_ID,
   RELOADED_ASSISTANT_REPLY,
   installQualityGateMocks,
 } from './fixtures/mock-quality-gate';
@@ -39,6 +40,73 @@ test.describe('Platform v2 quality gate browser smoke (#37)', () => {
       timeout: 30_000,
     });
     await expect(page.getByText('hello quality gate').first()).toBeVisible();
+  });
+
+  test('long restored threads keep sidebar and composer inside the window', async ({
+    page,
+  }) => {
+    await installQualityGateMocks(page, { longFirstReply: true });
+    await page.goto('/');
+    await sendPrompt(page, '继续');
+    const viewport = page.locator('.acongm-gpt-thread__viewport');
+    await expect(viewport).toContainText('这是第 1 段长回复', { timeout: 30_000 });
+    await expect(viewport).toContainText('这是第 48 段长回复');
+
+    await page.goto(`/t/${MOCK_CHAT_ID}`);
+    await expect(viewport).toContainText('这是第 48 段长回复', {
+      timeout: 30_000,
+    });
+
+    const metrics = await page.evaluate(() => {
+      const workspace = document.querySelector('.acongm-workspace');
+      const viewport = document.querySelector('.acongm-gpt-thread__viewport');
+      const composer = document.querySelector(
+        '.acongm-gpt-thread__footer .acongm-gpt-composer',
+      );
+      const sidebar = document.querySelector('.acongm-workspace__thread');
+      const composerBox = composer?.getBoundingClientRect();
+      const sidebarBox = sidebar?.getBoundingClientRect();
+      return {
+        docScrollTop: document.scrollingElement?.scrollTop ?? -1,
+        workspaceHeight: workspace?.getBoundingClientRect().height ?? 0,
+        viewportHeight: viewport?.getBoundingClientRect().height ?? 0,
+        viewportScrollHeight: viewport?.scrollHeight ?? 0,
+        windowHeight: window.innerHeight,
+        composerVisible: Boolean(
+          composerBox &&
+            composerBox.top >= 0 &&
+            composerBox.bottom <= window.innerHeight + 1,
+        ),
+        sidebarVisible: Boolean(
+          sidebarBox &&
+            sidebarBox.top >= 0 &&
+            sidebarBox.bottom <= window.innerHeight + 1,
+        ),
+      };
+    });
+
+    expect(metrics.docScrollTop).toBe(0);
+    expect(metrics.workspaceHeight).toBeLessThanOrEqual(metrics.windowHeight + 1);
+    expect(metrics.viewportHeight).toBeGreaterThan(120);
+    expect(metrics.viewportScrollHeight).toBeGreaterThan(
+      metrics.viewportHeight + 400,
+    );
+    expect(metrics.composerVisible).toBe(true);
+    expect(metrics.sidebarVisible).toBe(true);
+
+    const composer = page.locator(
+      '.acongm-gpt-thread__footer .acongm-gpt-composer',
+    );
+    const before = await composer.boundingBox();
+    await viewport.evaluate((node) => {
+      node.scrollTop = 800;
+    });
+    const after = await composer.boundingBox();
+    expect(Math.abs((after?.y ?? 0) - (before?.y ?? 0))).toBeLessThan(2);
+    expect(await viewport.evaluate((node) => node.scrollTop)).toBeGreaterThan(100);
+    expect(
+      await page.evaluate(() => document.scrollingElement?.scrollTop ?? -1),
+    ).toBe(0);
   });
 
   test('scrolls only the message viewport and keeps the composer pinned', async ({
