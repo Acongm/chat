@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef, useState, type FormEvent } from 'react';
+import { useCallback, useEffect, useRef, useState, type FormEvent } from 'react';
 import {
   ActionBarPrimitive,
   AuiIf,
@@ -278,20 +278,41 @@ function LazyHistoryViewport({
   onLoadOlderMessages?: () => void;
 }) {
   const viewportRef = useRef<HTMLDivElement>(null);
-  const scrollAnchorRef = useRef<number | null>(null);
+  const scrollAnchorRef = useRef<
+    | { container: 'document' | 'viewport'; distanceFromBottom: number }
+    | null
+  >(null);
+  const documentPinnedToBottomRef = useRef(true);
+  const documentScrollInitializedRef = useRef(false);
   const loadingOlderRef = useRef(loadingOlder);
   loadingOlderRef.current = loadingOlder;
 
-  const requestOlder = () => {
+  const usesDocumentScroll = useCallback((viewport: HTMLDivElement) => {
+    return window.getComputedStyle(viewport).overflowY === 'visible';
+  }, []);
+
+  const requestOlder = useCallback(() => {
     if (!hasOlderMessages || loadingOlderRef.current || !onLoadOlderMessages) {
       return;
     }
     const viewport = viewportRef.current;
     if (viewport) {
-      scrollAnchorRef.current = viewport.scrollHeight - viewport.scrollTop;
+      if (usesDocumentScroll(viewport)) {
+        scrollAnchorRef.current = {
+          container: 'document',
+          distanceFromBottom:
+            document.documentElement.scrollHeight - window.scrollY,
+        };
+      } else {
+        scrollAnchorRef.current = {
+          container: 'viewport',
+          distanceFromBottom: viewport.scrollHeight - viewport.scrollTop,
+        };
+      }
     }
+    loadingOlderRef.current = true;
     onLoadOlderMessages();
-  };
+  }, [hasOlderMessages, onLoadOlderMessages, usesDocumentScroll]);
 
   useEffect(() => {
     if (loadingOlder || scrollAnchorRef.current === null) return;
@@ -299,8 +320,54 @@ function LazyHistoryViewport({
     if (!viewport) return;
     const anchor = scrollAnchorRef.current;
     scrollAnchorRef.current = null;
-    viewport.scrollTop = viewport.scrollHeight - anchor;
+    if (anchor.container === 'document') {
+      window.scrollTo({
+        top: document.documentElement.scrollHeight - anchor.distanceFromBottom,
+      });
+      return;
+    }
+    viewport.scrollTop = viewport.scrollHeight - anchor.distanceFromBottom;
   }, [loadingOlder]);
+
+  useEffect(() => {
+    const viewport = viewportRef.current;
+    if (!viewport || !usesDocumentScroll(viewport)) return;
+
+    let scrollFrame = 0;
+    const scrollDocumentToBottom = () => {
+      cancelAnimationFrame(scrollFrame);
+      scrollFrame = requestAnimationFrame(() => {
+        window.scrollTo({ top: document.documentElement.scrollHeight });
+      });
+    };
+    const handleDocumentScroll = () => {
+      const distanceFromBottom =
+        document.documentElement.scrollHeight - window.innerHeight - window.scrollY;
+      documentPinnedToBottomRef.current = distanceFromBottom < 120;
+      if (window.scrollY < 120) requestOlder();
+    };
+    const resizeObserver = new ResizeObserver(() => {
+      if (
+        documentPinnedToBottomRef.current &&
+        scrollAnchorRef.current?.container !== 'document'
+      ) {
+        scrollDocumentToBottom();
+      }
+    });
+
+    window.addEventListener('scroll', handleDocumentScroll, { passive: true });
+    resizeObserver.observe(viewport);
+    if (!documentScrollInitializedRef.current) {
+      documentScrollInitializedRef.current = true;
+      scrollDocumentToBottom();
+    }
+
+    return () => {
+      cancelAnimationFrame(scrollFrame);
+      resizeObserver.disconnect();
+      window.removeEventListener('scroll', handleDocumentScroll);
+    };
+  }, [requestOlder, usesDocumentScroll]);
 
   return (
     <ThreadPrimitive.Viewport
@@ -308,7 +375,7 @@ function LazyHistoryViewport({
       className="acongm-gpt-thread__viewport"
       onScroll={(event) => {
         const viewport = event.currentTarget;
-        if (viewport.scrollTop < 120) {
+        if (!usesDocumentScroll(viewport) && viewport.scrollTop < 120) {
           requestOlder();
         }
       }}
