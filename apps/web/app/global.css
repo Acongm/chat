@@ -7,8 +7,10 @@
 
 html,
 body {
-  height: 100%;
-  overflow: hidden;
+  min-height: 100%;
+  height: auto;
+  overflow-x: hidden;
+  overflow-y: auto;
 }
 
 body {
@@ -20,16 +22,16 @@ body {
 
 /* App-level overrides only. Workspace/sidebar/component visuals live in chat-ui. */
 .workspace-main-chat {
-  flex: 1;
-  min-height: 0;
+  min-height: 100vh;
   display: flex;
   flex-direction: column;
 }
 
 .workspace-main-chat .acongm-chat-fullscreen,
 .workspace-main-chat .acongm-chat-shell.is-fullscreen {
-  height: 100%;
-  min-height: 0;
+  height: auto;
+  min-height: 100vh;
+  overflow: visible;
   border: 0;
   border-radius: 0;
   box-shadow: none;

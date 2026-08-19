@@ -65,10 +65,16 @@ test.describe('Platform v2 quality gate browser smoke (#37)', () => {
       page.locator('.acongm-gpt-thread__viewport .acongm-gpt-thread__footer'),
     ).toHaveCount(0);
     await expect(footer).toHaveCount(1);
+    await expect
+      .poll(async () =>
+        page.evaluate(() => document.scrollingElement?.scrollHeight ?? 0),
+      )
+      .toBeGreaterThan(800);
 
     const metrics = await page.evaluate(() => {
       const workspace = document.querySelector('.acongm-workspace');
       const viewport = document.querySelector('.acongm-gpt-thread__viewport');
+      const footer = document.querySelector('.acongm-gpt-thread__footer');
       const composer = document.querySelector(
         '.acongm-gpt-thread__footer .acongm-gpt-composer',
       );
@@ -76,35 +82,38 @@ test.describe('Platform v2 quality gate browser smoke (#37)', () => {
       const composerBox = composer?.getBoundingClientRect();
       const sidebarBox = sidebar?.getBoundingClientRect();
       const doc = document.scrollingElement;
+      const inView = (box?: DOMRect | null) =>
+        Boolean(
+          box && box.top >= 0 && box.bottom <= window.innerHeight + 1,
+        );
       return {
         docScrollTop: doc?.scrollTop ?? -1,
         docScrollHeight: doc?.scrollHeight ?? 0,
         workspaceHeight: workspace?.getBoundingClientRect().height ?? 0,
         viewportHeight: viewport?.getBoundingClientRect().height ?? 0,
-        viewportScrollHeight: viewport?.scrollHeight ?? 0,
+        viewportOverflowY: viewport
+          ? getComputedStyle(viewport).overflowY
+          : '',
+        footerPosition: footer ? getComputedStyle(footer).position : '',
         windowHeight: window.innerHeight,
-        composerVisible: Boolean(
-          composerBox &&
-            composerBox.top >= 0 &&
-            composerBox.bottom <= window.innerHeight + 1,
-        ),
-        sidebarVisible: Boolean(
-          sidebarBox &&
-            sidebarBox.top >= 0 &&
-            sidebarBox.bottom <= window.innerHeight + 1,
-        ),
+        composerVisible: inView(composerBox),
+        sidebarVisible: inView(sidebarBox),
+        sidebarHeight: sidebarBox?.height ?? 0,
+        sidebarTop: sidebarBox?.top ?? -1,
       };
     });
 
-    expect(metrics.docScrollTop).toBe(0);
-    expect(metrics.docScrollHeight).toBeLessThanOrEqual(metrics.windowHeight + 1);
-    expect(metrics.workspaceHeight).toBeLessThanOrEqual(metrics.windowHeight + 1);
-    expect(metrics.viewportHeight).toBeGreaterThan(120);
-    expect(metrics.viewportScrollHeight).toBeGreaterThan(
-      metrics.viewportHeight + 400,
-    );
+    expect(metrics.docScrollHeight).toBeGreaterThan(metrics.windowHeight + 400);
+    expect(metrics.workspaceHeight).toBeGreaterThan(metrics.windowHeight + 400);
+    expect(metrics.viewportHeight).toBeGreaterThan(metrics.windowHeight);
+    expect(metrics.viewportOverflowY).toBe('visible');
+    expect(metrics.footerPosition).toBe('fixed');
     expect(metrics.composerVisible).toBe(true);
     expect(metrics.sidebarVisible).toBe(true);
+    expect(metrics.sidebarTop).toBeLessThanOrEqual(1);
+    expect(Math.abs(metrics.sidebarHeight - metrics.windowHeight)).toBeLessThan(
+      2,
+    );
 
     await page.screenshot({
       path: '/opt/cursor/artifacts/chat_long_thread_rest_no_scroll.png',
@@ -112,7 +121,7 @@ test.describe('Platform v2 quality gate browser smoke (#37)', () => {
     });
   });
 
-  test('scrolls only the message viewport and keeps the composer pinned', async ({
+  test('scrolls the document and keeps sidebar plus composer pinned', async ({
     page,
   }) => {
     await installQualityGateMocks(page);
@@ -126,6 +135,7 @@ test.describe('Platform v2 quality gate browser smoke (#37)', () => {
     const composer = page.locator(
       '.acongm-gpt-thread__footer .acongm-gpt-composer',
     );
+    const sidebar = page.locator('.acongm-workspace__thread');
     await expect(composer).toHaveCount(1);
     await expect(
       page.locator('.acongm-gpt-thread__viewport .acongm-gpt-thread__footer'),
@@ -140,14 +150,23 @@ test.describe('Platform v2 quality gate browser smoke (#37)', () => {
     });
 
     const before = await composer.boundingBox();
+    const sidebarBefore = await sidebar.boundingBox();
     expect(before).toBeTruthy();
-    await viewport.evaluate((node) => {
-      node.scrollTop = 900;
+    expect(sidebarBefore).toBeTruthy();
+    await page.evaluate(() => {
+      const doc = document.scrollingElement;
+      if (doc) doc.scrollTop = 900;
     });
     const after = await composer.boundingBox();
+    const sidebarAfter = await sidebar.boundingBox();
     expect(after).toBeTruthy();
     expect(Math.abs((after?.y ?? 0) - (before?.y ?? 0))).toBeLessThan(2);
-    expect(await viewport.evaluate((node) => node.scrollTop)).toBeGreaterThan(100);
+    expect(Math.abs((sidebarAfter?.y ?? 0) - (sidebarBefore?.y ?? 0))).toBeLessThan(
+      2,
+    );
+    expect(
+      await page.evaluate(() => document.scrollingElement?.scrollTop ?? 0),
+    ).toBeGreaterThan(100);
   });
 
   test('keeps sidebar header and footer pinned while the thread list scrolls', async ({

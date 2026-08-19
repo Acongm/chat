@@ -12,7 +12,7 @@ export const LONG_ASSISTANT_REPLY = Array.from({ length: 48 }, (_, index) => {
   return [
     `## ${n}. Firefox / Tailwind / GitHub`,
     '',
-    `这是第 ${n} 段长回复，用来验证消息区独立滚动，侧栏和输入框必须始终钉在视口内。`,
+    `这是第 ${n} 段长回复，用来验证页面跟 body 滚动，侧栏和输入框必须始终钉在视口内。`,
     '',
     '```ts',
     `export const topic${n} = ${n};`,

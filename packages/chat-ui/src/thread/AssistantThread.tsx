@@ -1,6 +1,12 @@
 'use client';
 
-import { useEffect, useRef, useState, type FormEvent } from 'react';
+import {
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+  type FormEvent,
+} from 'react';
 import {
   ActionBarPrimitive,
   AuiIf,
@@ -284,6 +290,48 @@ function ConversationFooter({
   );
 }
 
+type ScrollAnchor = {
+  kind: 'viewport' | 'document';
+  value: number;
+};
+
+function isDrawerViewport(viewport: HTMLElement | null): boolean {
+  return Boolean(viewport?.closest('.acongm-chat-rd'));
+}
+
+function captureScrollAnchor(viewport: HTMLDivElement | null): ScrollAnchor | null {
+  if (isDrawerViewport(viewport) && viewport) {
+    return {
+      kind: 'viewport',
+      value: viewport.scrollHeight - viewport.scrollTop,
+    };
+  }
+  const doc = document.scrollingElement;
+  if (!doc) return null;
+  return { kind: 'document', value: doc.scrollHeight - doc.scrollTop };
+}
+
+function restoreScrollAnchor(
+  viewport: HTMLDivElement | null,
+  anchor: ScrollAnchor,
+) {
+  if (anchor.kind === 'viewport' && viewport) {
+    viewport.scrollTop = viewport.scrollHeight - anchor.value;
+    return;
+  }
+  const doc = document.scrollingElement;
+  if (doc) {
+    doc.scrollTop = doc.scrollHeight - anchor.value;
+  }
+}
+
+function scrollDocumentToLatest() {
+  const doc = document.scrollingElement;
+  if (doc) {
+    doc.scrollTop = doc.scrollHeight;
+  }
+}
+
 function LazyHistoryViewport({
   hasOlderMessages,
   loadingOlder,
@@ -300,29 +348,44 @@ function LazyHistoryViewport({
   disclaimer: string;
 }) {
   const viewportRef = useRef<HTMLDivElement>(null);
-  const scrollAnchorRef = useRef<number | null>(null);
+  const scrollAnchorRef = useRef<ScrollAnchor | null>(null);
+  const didAlignLatestRef = useRef(false);
   const loadingOlderRef = useRef(loadingOlder);
   loadingOlderRef.current = loadingOlder;
 
-  const requestOlder = () => {
+  const requestOlder = useCallback(() => {
     if (!hasOlderMessages || loadingOlderRef.current || !onLoadOlderMessages) {
       return;
     }
-    const viewport = viewportRef.current;
-    if (viewport) {
-      scrollAnchorRef.current = viewport.scrollHeight - viewport.scrollTop;
-    }
+    scrollAnchorRef.current = captureScrollAnchor(viewportRef.current);
     onLoadOlderMessages();
-  };
+  }, [hasOlderMessages, onLoadOlderMessages]);
 
   useEffect(() => {
     if (loadingOlder || scrollAnchorRef.current === null) return;
-    const viewport = viewportRef.current;
-    if (!viewport) return;
     const anchor = scrollAnchorRef.current;
     scrollAnchorRef.current = null;
-    viewport.scrollTop = viewport.scrollHeight - anchor;
+    restoreScrollAnchor(viewportRef.current, anchor);
   }, [loadingOlder]);
+
+  useEffect(() => {
+    const onWindowScroll = () => {
+      if ((document.scrollingElement?.scrollTop ?? window.scrollY) < 120) {
+        requestOlder();
+      }
+    };
+    window.addEventListener('scroll', onWindowScroll, { passive: true });
+    return () => window.removeEventListener('scroll', onWindowScroll);
+  }, [requestOlder]);
+
+  useEffect(() => {
+    if (didAlignLatestRef.current) return;
+    const viewport = viewportRef.current;
+    if (!viewport || isDrawerViewport(viewport)) return;
+    if (!viewport.querySelector('.acongm-gpt-msg')) return;
+    scrollDocumentToLatest();
+    didAlignLatestRef.current = true;
+  });
 
   return (
     <>
@@ -366,9 +429,8 @@ export type AssistantThreadProps = {
 
 /**
  * Long-thread rest layout:
- * Root → Viewport (messages only) + docked composer sibling.
- * Composer stays in view without scrolling; only the message pane scrolls.
- * https://www.assistant-ui.com/docs/primitives/thread
+ * Root → Viewport (messages grow the page) + fixed composer sibling.
+ * The document scrolls; the sidebar stays 100vh and the input stays on screen.
  */
 export function AssistantThread({
   emptyTitle = '我们从哪开始？',

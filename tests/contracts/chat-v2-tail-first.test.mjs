@@ -40,6 +40,7 @@ test('chat workspace disables composer and wires scroll-up lazy history', () => 
   assert.match(workspace, /loadOlderMessages/);
   assert.match(workspace, /touchThread/);
   assert.match(thread, /onScroll/);
+  assert.match(thread, /window\.addEventListener\('scroll'/);
   assert.match(thread, /loadingOlder/);
   assert.match(thread, /composerDisabled/);
   assert.match(
@@ -51,19 +52,19 @@ test('chat workspace disables composer and wires scroll-up lazy history', () => 
   assert.doesNotMatch(thread, /acongm-gpt-thread__conversation/);
 });
 
-test('thread CSS docks the composer outside the scroll viewport', () => {
+test('thread CSS pins the composer and lets the document scroll', () => {
   const css = source('packages/chat-ui/src/styles/chatgpt.css');
   assert.match(
     css,
-    /\.acongm-gpt-thread__footer\s*\{[\s\S]*flex-shrink:\s*0/,
+    /\.acongm-gpt-thread__footer\s*\{[\s\S]*position:\s*fixed/,
   );
   assert.match(
     css,
-    /\.acongm-gpt-thread__footer\s*\{[\s\S]*position:\s*relative/,
+    /\.acongm-gpt-thread__viewport\s*\{[\s\S]*overflow:\s*visible/,
   );
   assert.match(
     css,
-    /\.acongm-gpt-thread__viewport\s*\{[\s\S]*overflow-y:\s*auto/,
+    /\.acongm-gpt-thread\s*\{[\s\S]*min-height:\s*100vh/,
   );
   assert.doesNotMatch(
     css,
@@ -77,29 +78,36 @@ test('thread CSS docks the composer outside the scroll viewport', () => {
   );
 });
 
-test('fullscreen and shell never grow with min-height 100dvh', () => {
+test('workspace CSS lets the page grow instead of locking 100dvh', () => {
   const workspace = source('packages/chat-ui/src/styles/chat-ui.css');
+  const app = source('apps/web/app/global.css');
   assert.doesNotMatch(
     workspace,
     /\.acongm-chat-fullscreen\s*\{[^}]*min-height:\s*100dvh/,
   );
-  assert.doesNotMatch(
+  assert.match(
     workspace,
-    /\.acongm-chat-shell\.is-fullscreen\s*\{[^}]*max-height:\s*none/,
+    /\.acongm-workspace\s*\{[\s\S]*overflow:\s*visible/,
   );
   assert.match(
     workspace,
-    /\.acongm-chat-fullscreen\s*\{[\s\S]*overflow:\s*hidden/,
+    /\.workspace-main-chat \.acongm-chat-fullscreen\s*\{[\s\S]*overflow:\s*visible/,
   );
-  assert.match(
-    workspace,
-    /\.acongm-chat-shell__body\s*\{[\s\S]*overflow:\s*hidden/,
-  );
+  assert.match(app, /overflow-y:\s*auto/);
+  assert.doesNotMatch(app, /html,\s*body\s*\{[^}]*overflow:\s*hidden/);
 });
 
-test('workspace CSS pins the sidebar chrome and only scrolls the list', () => {
+test('workspace CSS pins the sidebar to 100vh and only scrolls the list', () => {
   const workspace = source('packages/chat-ui/src/styles/chat-ui.css');
   const gpt = source('packages/chat-ui/src/styles/chatgpt.css');
+  assert.match(
+    workspace,
+    /\.acongm-workspace__thread[\s\S]*?position:\s*sticky/,
+  );
+  assert.match(
+    workspace,
+    /\.acongm-workspace__thread[\s\S]*?height:\s*100vh/,
+  );
   assert.match(
     workspace,
     /\.acongm-workspace__thread[\s\S]*?overflow:\s*hidden/,
