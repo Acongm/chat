@@ -20,12 +20,20 @@ export type UserInfoView = {
   source: 'profile' | 'auth' | 'fallback' | string;
 };
 
+export type AgentSkill = {
+  id: string;
+  name: string;
+  content: string;
+  enabled: boolean;
+};
+
 export type UserSettingsView = {
   language: string;
   theme: 'system' | 'light' | 'dark' | string;
   chat?: {
     defaultModel: string;
     defaultPrompt: string;
+    skills: AgentSkill[];
   };
   preferences: Record<string, unknown>;
   schemaVersion?: number;
@@ -57,6 +65,7 @@ export type UpdateUserSettings = {
   theme?: 'system' | 'light' | 'dark' | string;
   defaultModel?: string;
   defaultPrompt?: string | null;
+  skills?: AgentSkill[] | null;
   preferences?: Record<string, unknown>;
 };
 
@@ -212,7 +221,26 @@ function normalizeSettingsChat(raw: unknown): UserSettingsView['chat'] {
   return {
     defaultModel,
     defaultPrompt: asString(row.defaultPrompt) ?? '',
+    skills: normalizeAgentSkills(row.skills),
   };
+}
+
+function normalizeAgentSkills(value: unknown): AgentSkill[] {
+  if (!Array.isArray(value)) return [];
+  const skills: AgentSkill[] = [];
+  for (const [index, item] of value.entries()) {
+    if (!item || typeof item !== 'object' || Array.isArray(item)) continue;
+    const row = item as Record<string, unknown>;
+    const name = asString(row.name);
+    if (!name) continue;
+    skills.push({
+      id: asString(row.id) ?? `skill-${index + 1}`,
+      name,
+      content: typeof row.content === 'string' ? row.content : '',
+      enabled: row.enabled !== false,
+    });
+  }
+  return skills;
 }
 
 function asRecord(value: unknown): Record<string, unknown> | undefined {
@@ -464,6 +492,7 @@ export async function updateUserSettings(
   if (patch.theme !== undefined) body.theme = patch.theme;
   if (patch.defaultModel !== undefined) body.defaultModel = patch.defaultModel;
   if (patch.defaultPrompt !== undefined) body.defaultPrompt = patch.defaultPrompt;
+  if (patch.skills !== undefined) body.skills = patch.skills;
   if (patch.preferences !== undefined) body.preferences = patch.preferences;
 
   if (Object.keys(body).length === 0) {

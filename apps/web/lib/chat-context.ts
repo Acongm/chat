@@ -73,6 +73,7 @@ export function resolveChatContext(
     content: '',
     summariesUrl: getSummariesUrl(),
     enableThinking: config.chat.enableThinking,
+    maxTokens: 4096,
     historyMode: config.chat.historyMode,
     defaultScope: scope,
     callSourcePrefix: 'chat-site',

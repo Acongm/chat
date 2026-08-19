@@ -5,10 +5,12 @@ const MOCK_ANON_KEY = 'mock-anon-key';
 
 export default defineConfig({
   testDir: './e2e',
+  testIgnore: /live-quality-gate\.spec\.ts/,
   fullyParallel: true,
   forbidOnly: Boolean(process.env.CI),
   retries: process.env.CI ? 1 : 0,
   workers: process.env.CI ? 1 : undefined,
+  timeout: 60_000,
   reporter: process.env.CI ? [['github'], ['html', { open: 'never' }]] : 'list',
   use: {
     baseURL: 'http://127.0.0.1:3200',

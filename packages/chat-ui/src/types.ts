@@ -10,7 +10,7 @@ export type DocChatContext = {
   streamUrl?: string;
   /** 覆盖 summaries JSON 地址 */
   summariesUrl?: string;
-  /** 默认 true：请求 enableThinking，渲染 reasoning 块 */
+  /** 默认 false：避免 DeepSeek Flash 默认思考占满输出预算导致无可见回复 */
   enableThinking?: boolean;
   /** 1–8192，透传模型请求 */
   maxTokens?: number;
