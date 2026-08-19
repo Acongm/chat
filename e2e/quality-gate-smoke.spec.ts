@@ -98,6 +98,7 @@ test.describe('Platform v2 quality gate browser smoke (#37)', () => {
         windowHeight: window.innerHeight,
         composerVisible: inView(composerBox),
         sidebarVisible: inView(sidebarBox),
+        sidebarPosition: sidebar ? getComputedStyle(sidebar).position : '',
         sidebarHeight: sidebarBox?.height ?? 0,
         sidebarTop: sidebarBox?.top ?? -1,
       };
@@ -108,6 +109,7 @@ test.describe('Platform v2 quality gate browser smoke (#37)', () => {
     expect(metrics.viewportHeight).toBeGreaterThan(metrics.windowHeight);
     expect(metrics.viewportOverflowY).toBe('visible');
     expect(metrics.footerPosition).toBe('fixed');
+    expect(metrics.sidebarPosition).toBe('fixed');
     expect(metrics.composerVisible).toBe(true);
     expect(metrics.sidebarVisible).toBe(true);
     expect(metrics.sidebarTop).toBeLessThanOrEqual(1);

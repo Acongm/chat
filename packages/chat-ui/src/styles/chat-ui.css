@@ -1093,22 +1093,42 @@
 }
 
 .acongm-workspace.cols-3 {
-  grid-template-columns: var(--acongm-sidebar-width) minmax(0, 1fr) minmax(240px, 280px);
+  grid-template-columns: minmax(0, 1fr) minmax(240px, 280px);
+  padding-left: var(--acongm-sidebar-width);
 }
 
 .acongm-workspace.cols-2 {
-  grid-template-columns: var(--acongm-sidebar-width) minmax(0, 1fr);
+  grid-template-columns: minmax(0, 1fr);
+  padding-left: var(--acongm-sidebar-width);
 }
 
 .acongm-workspace.cols-2:has(.acongm-workspace__knowledge) {
   grid-template-columns: minmax(0, 1fr) minmax(240px, 280px);
+  padding-left: 0;
 }
 
 .acongm-workspace.cols-1 {
   grid-template-columns: minmax(0, 1fr);
+  padding-left: 0;
 }
 
-.acongm-workspace__thread,
+.acongm-workspace__thread {
+  position: fixed;
+  top: 0;
+  left: 0;
+  z-index: 20;
+  display: flex;
+  flex-direction: column;
+  width: var(--acongm-sidebar-width);
+  height: 100vh;
+  max-height: 100vh;
+  min-width: 0;
+  min-height: 0;
+  border-right: 1px solid color-mix(in srgb, var(--acongm-text, #0d0d0d) 10%, transparent);
+  background: color-mix(in srgb, var(--acongm-bg, #fff) 92%, #e8e8ea);
+  overflow: hidden;
+}
+
 .acongm-workspace__knowledge {
   position: sticky;
   top: 0;
@@ -1233,6 +1253,7 @@
 
 .acongm-workspace.is-compact {
   grid-template-columns: minmax(0, 1fr);
+  padding-left: 0;
   padding-bottom: calc(52px + env(safe-area-inset-bottom));
 }
 

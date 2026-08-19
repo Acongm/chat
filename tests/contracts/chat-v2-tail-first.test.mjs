@@ -94,6 +94,7 @@ test('workspace CSS lets the page grow instead of locking 100dvh', () => {
     /\.workspace-main-chat \.acongm-chat-fullscreen\s*\{[\s\S]*overflow:\s*visible/,
   );
   assert.match(app, /overflow-y:\s*auto/);
+  assert.match(app, /overflow-x:\s*clip/);
   assert.doesNotMatch(app, /html,\s*body\s*\{[^}]*overflow:\s*hidden/);
 });
 
@@ -102,11 +103,11 @@ test('workspace CSS pins the sidebar to 100vh and only scrolls the list', () => 
   const gpt = source('packages/chat-ui/src/styles/chatgpt.css');
   assert.match(
     workspace,
-    /\.acongm-workspace__thread[\s\S]*?position:\s*sticky/,
+    /\.acongm-workspace__thread\s*\{[\s\S]*?position:\s*fixed/,
   );
   assert.match(
     workspace,
-    /\.acongm-workspace__thread[\s\S]*?height:\s*100vh/,
+    /\.acongm-workspace__thread\s*\{[\s\S]*?height:\s*100vh/,
   );
   assert.match(
     workspace,
