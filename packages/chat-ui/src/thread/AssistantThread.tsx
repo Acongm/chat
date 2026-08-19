@@ -1,6 +1,12 @@
 'use client';
 
-import { useEffect, useRef, useState, type FormEvent } from 'react';
+import {
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+  type FormEvent,
+} from 'react';
 import {
   ActionBarPrimitive,
   AuiIf,
@@ -264,69 +270,150 @@ function HistoryLoadIndicator({ loading }: { loading: boolean }) {
   );
 }
 
-function LazyHistoryViewport({
+function ConversationFooter({
   placeholder,
   composerDisabled,
-  hasOlderMessages,
-  loadingOlder,
-  onLoadOlderMessages,
+  disclaimer,
 }: {
   placeholder: string;
   composerDisabled: boolean;
+  disclaimer: string;
+}) {
+  return (
+    <div className="acongm-gpt-thread__footer">
+      <ThreadScrollToBottom />
+      <Composer placeholder={placeholder} disabled={composerDisabled} />
+      <p className="acongm-gpt-disclaimer acongm-gpt-disclaimer--thread">
+        {disclaimer}
+      </p>
+    </div>
+  );
+}
+
+type ScrollAnchor = {
+  kind: 'viewport' | 'document';
+  value: number;
+};
+
+function isDrawerViewport(viewport: HTMLElement | null): boolean {
+  return Boolean(viewport?.closest('.acongm-chat-rd'));
+}
+
+function captureScrollAnchor(viewport: HTMLDivElement | null): ScrollAnchor | null {
+  if (isDrawerViewport(viewport) && viewport) {
+    return {
+      kind: 'viewport',
+      value: viewport.scrollHeight - viewport.scrollTop,
+    };
+  }
+  const doc = document.scrollingElement;
+  if (!doc) return null;
+  return { kind: 'document', value: doc.scrollHeight - doc.scrollTop };
+}
+
+function restoreScrollAnchor(
+  viewport: HTMLDivElement | null,
+  anchor: ScrollAnchor,
+) {
+  if (anchor.kind === 'viewport' && viewport) {
+    viewport.scrollTop = viewport.scrollHeight - anchor.value;
+    return;
+  }
+  const doc = document.scrollingElement;
+  if (doc) {
+    doc.scrollTop = doc.scrollHeight - anchor.value;
+  }
+}
+
+function scrollDocumentToLatest() {
+  const doc = document.scrollingElement;
+  if (doc) {
+    doc.scrollTop = doc.scrollHeight;
+  }
+}
+
+function LazyHistoryViewport({
+  hasOlderMessages,
+  loadingOlder,
+  onLoadOlderMessages,
+  placeholder,
+  composerDisabled,
+  disclaimer,
+}: {
   hasOlderMessages: boolean;
   loadingOlder: boolean;
   onLoadOlderMessages?: () => void;
+  placeholder: string;
+  composerDisabled: boolean;
+  disclaimer: string;
 }) {
   const viewportRef = useRef<HTMLDivElement>(null);
-  const scrollAnchorRef = useRef<number | null>(null);
+  const scrollAnchorRef = useRef<ScrollAnchor | null>(null);
+  const didAlignLatestRef = useRef(false);
   const loadingOlderRef = useRef(loadingOlder);
   loadingOlderRef.current = loadingOlder;
 
-  const requestOlder = () => {
+  const requestOlder = useCallback(() => {
     if (!hasOlderMessages || loadingOlderRef.current || !onLoadOlderMessages) {
       return;
     }
-    const viewport = viewportRef.current;
-    if (viewport) {
-      scrollAnchorRef.current = viewport.scrollHeight - viewport.scrollTop;
-    }
+    scrollAnchorRef.current = captureScrollAnchor(viewportRef.current);
     onLoadOlderMessages();
-  };
+  }, [hasOlderMessages, onLoadOlderMessages]);
 
   useEffect(() => {
     if (loadingOlder || scrollAnchorRef.current === null) return;
-    const viewport = viewportRef.current;
-    if (!viewport) return;
     const anchor = scrollAnchorRef.current;
     scrollAnchorRef.current = null;
-    viewport.scrollTop = viewport.scrollHeight - anchor;
+    restoreScrollAnchor(viewportRef.current, anchor);
   }, [loadingOlder]);
 
-  return (
-    <ThreadPrimitive.Viewport
-      ref={viewportRef}
-      className="acongm-gpt-thread__viewport"
-      onScroll={(event) => {
-        const viewport = event.currentTarget;
-        if (viewport.scrollTop < 120) {
-          requestOlder();
-        }
-      }}
-    >
-      <HistoryLoadIndicator loading={loadingOlder} />
-      <ThreadPrimitive.Messages
-        components={{
-          UserMessage,
-          EditComposer,
-          AssistantMessage,
-        }}
-      />
+  useEffect(() => {
+    const onWindowScroll = () => {
+      if ((document.scrollingElement?.scrollTop ?? window.scrollY) < 120) {
+        requestOlder();
+      }
+    };
+    window.addEventListener('scroll', onWindowScroll, { passive: true });
+    return () => window.removeEventListener('scroll', onWindowScroll);
+  }, [requestOlder]);
 
-      <ThreadPrimitive.ViewportFooter className="acongm-gpt-thread__footer">
-        <ThreadScrollToBottom />
-        <Composer placeholder={placeholder} disabled={composerDisabled} />
-      </ThreadPrimitive.ViewportFooter>
-    </ThreadPrimitive.Viewport>
+  useEffect(() => {
+    if (didAlignLatestRef.current) return;
+    const viewport = viewportRef.current;
+    if (!viewport || isDrawerViewport(viewport)) return;
+    if (!viewport.querySelector('.acongm-gpt-msg')) return;
+    scrollDocumentToLatest();
+    didAlignLatestRef.current = true;
+  });
+
+  return (
+    <>
+      <ThreadPrimitive.Viewport
+        ref={viewportRef}
+        className="acongm-gpt-thread__viewport"
+        onScroll={(event) => {
+          const viewport = event.currentTarget;
+          if (viewport.scrollTop < 120) {
+            requestOlder();
+          }
+        }}
+      >
+        <HistoryLoadIndicator loading={loadingOlder} />
+        <ThreadPrimitive.Messages
+          components={{
+            UserMessage,
+            EditComposer,
+            AssistantMessage,
+          }}
+        />
+      </ThreadPrimitive.Viewport>
+      <ConversationFooter
+        placeholder={placeholder}
+        composerDisabled={composerDisabled}
+        disclaimer={disclaimer}
+      />
+    </>
   );
 }
 
@@ -341,8 +428,9 @@ export type AssistantThreadProps = {
 };
 
 /**
- * ChatGPT demo 风格 Thread（assistant-ui primitives）。
- * 参考：https://www.assistant-ui.com/demos/chatgpt
+ * Long-thread rest layout:
+ * Root → Viewport (messages grow the page) + fixed composer sibling.
+ * The document scrolls; the sidebar stays 100vh and the input stays on screen.
  */
 export function AssistantThread({
   emptyTitle = '我们从哪开始？',
@@ -365,15 +453,13 @@ export function AssistantThread({
 
       <AuiIf condition={(s) => !s.thread.isEmpty}>
         <LazyHistoryViewport
-          placeholder={placeholder}
-          composerDisabled={composerDisabled}
           hasOlderMessages={hasOlderMessages}
           loadingOlder={loadingOlder}
           onLoadOlderMessages={onLoadOlderMessages}
+          placeholder={placeholder}
+          composerDisabled={composerDisabled}
+          disclaimer={disclaimer}
         />
-        <p className="acongm-gpt-disclaimer acongm-gpt-disclaimer--thread">
-          {disclaimer}
-        </p>
       </AuiIf>
     </ThreadPrimitive.Root>
   );

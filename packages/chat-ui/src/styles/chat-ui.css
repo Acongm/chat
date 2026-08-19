@@ -190,7 +190,7 @@
 
 .acongm-chat-shell.is-fullscreen {
   height: 100%;
-  max-height: none;
+  max-height: 100%;
   border-radius: 0;
   border: 0;
 }
@@ -268,6 +268,14 @@
 }
 
 .acongm-chat-shell__body {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.acongm-chat-shell__body > * {
   flex: 1;
   min-height: 0;
   display: flex;
@@ -498,17 +506,21 @@
 }
 
 .acongm-chat-fullscreen {
-  min-height: 100dvh;
+  height: 100%;
+  max-height: 100%;
+  min-height: 0;
+  overflow: hidden;
   display: flex;
   flex-direction: column;
 }
 
-/* 嵌在 ChatWorkspace 主区时不要再撑满视口，避免盖住左栏 */
+/* 嵌在 ChatWorkspace 主区时随正文长高，由 document 滚动 */
 .acongm-workspace__main .acongm-chat-fullscreen,
 .workspace-main-chat .acongm-chat-fullscreen {
-  min-height: 0;
-  height: 100%;
-  flex: 1;
+  min-height: 100vh;
+  height: auto;
+  max-height: none;
+  overflow: visible;
 }
 
 @keyframes acongm-cursor {
@@ -562,6 +574,9 @@
 .acongm-chat-rd__content {
   display: flex;
   flex-direction: column;
+  height: 100%;
+  max-height: 100%;
+  min-height: 0;
   background: var(--acongm-surface-0);
   color: var(--acongm-text);
   overflow: hidden;
@@ -570,7 +585,34 @@
 
 .acongm-chat-rd .acongm-chat-shell {
   height: 100%;
+  max-height: 100%;
+  min-height: 0;
+  overflow: hidden;
   background: var(--acongm-surface-0);
+}
+
+.acongm-chat-rd .acongm-gpt-thread {
+  flex: 1;
+  height: 100%;
+  max-height: 100%;
+  min-height: 0;
+  overflow: hidden;
+  padding-bottom: 0;
+}
+
+.acongm-chat-rd .acongm-gpt-thread__viewport {
+  flex: 1 1 0%;
+  min-height: 0;
+  overflow-x: hidden;
+  overflow-y: auto;
+}
+
+.acongm-chat-rd .acongm-gpt-thread__footer {
+  position: relative;
+  left: auto;
+  right: auto;
+  bottom: auto;
+  width: 100%;
 }
 
 /* PC：无遮罩，浮在右侧并给正文让宽 */
@@ -589,6 +631,8 @@
     right: 16px;
     bottom: 16px;
     height: auto !important;
+    max-height: calc(100dvh - var(--fd-nav-height, 3.5rem) - 28px) !important;
+    overflow: hidden !important;
   }
 
   .acongm-chat-rd.is-desktop .rc-drawer-content {
@@ -642,7 +686,7 @@
 
   .acongm-chat-rd.is-mobile .acongm-chat-shell {
     height: 100%;
-    min-height: 100dvh;
+    min-height: 0;
   }
 
   .acongm-chat-rd.is-mobile .acongm-chat-shell__close {
@@ -1035,35 +1079,77 @@
 /* —— ChatWorkspace 三栏 —— */
 
 .acongm-workspace {
+  --acongm-sidebar-width: 260px;
   display: grid;
-  min-height: 100dvh;
+  box-sizing: border-box;
+  align-items: start;
+  min-height: 100vh;
+  height: auto;
   width: 100%;
+  overflow: visible;
   background: var(--acongm-bg, #f7f7f8);
   color: var(--acongm-text, #0d0d0d);
   font-family: var(--acongm-font-sans, system-ui, sans-serif);
 }
 
 .acongm-workspace.cols-3 {
-  grid-template-columns: minmax(220px, 260px) minmax(0, 1fr) minmax(240px, 280px);
+  grid-template-columns: minmax(0, 1fr) minmax(240px, 280px);
+  padding-left: var(--acongm-sidebar-width);
 }
 
 .acongm-workspace.cols-2 {
-  grid-template-columns: minmax(220px, 260px) minmax(0, 1fr);
+  grid-template-columns: minmax(0, 1fr);
+  padding-left: var(--acongm-sidebar-width);
 }
 
 .acongm-workspace.cols-2:has(.acongm-workspace__knowledge) {
   grid-template-columns: minmax(0, 1fr) minmax(240px, 280px);
+  padding-left: 0;
 }
 
 .acongm-workspace.cols-1 {
   grid-template-columns: minmax(0, 1fr);
+  padding-left: 0;
 }
 
-.acongm-workspace__thread,
-.acongm-workspace__knowledge {
+.acongm-workspace__thread {
+  position: fixed;
+  top: 0;
+  left: 0;
+  z-index: 20;
+  display: flex;
+  flex-direction: column;
+  width: var(--acongm-sidebar-width);
+  height: 100vh;
+  max-height: 100vh;
+  min-width: 0;
+  min-height: 0;
   border-right: 1px solid color-mix(in srgb, var(--acongm-text, #0d0d0d) 10%, transparent);
   background: color-mix(in srgb, var(--acongm-bg, #fff) 92%, #e8e8ea);
-  overflow: auto;
+  overflow: hidden;
+}
+
+.acongm-workspace__knowledge {
+  position: sticky;
+  top: 0;
+  align-self: start;
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  height: 100vh;
+  max-height: 100vh;
+  min-width: 0;
+  min-height: 0;
+  border-right: 1px solid color-mix(in srgb, var(--acongm-text, #0d0d0d) 10%, transparent);
+  background: color-mix(in srgb, var(--acongm-bg, #fff) 92%, #e8e8ea);
+  overflow: hidden;
+}
+
+.acongm-workspace__thread > *,
+.acongm-workspace__knowledge > * {
+  flex: 1;
+  min-height: 0;
+  min-width: 0;
 }
 
 .acongm-workspace__knowledge {
@@ -1075,6 +1161,8 @@
   display: flex;
   flex-direction: column;
   min-width: 0;
+  min-height: 100vh;
+  overflow: visible;
   position: relative;
 }
 
@@ -1086,7 +1174,13 @@
   flex: 1;
   display: flex;
   flex-direction: column;
-  min-height: 0;
+  min-height: 100vh;
+  overflow: visible;
+}
+
+.acongm-workspace__body > * {
+  flex: 1;
+  min-height: 100%;
 }
 
 .acongm-chat-empty {
@@ -1159,6 +1253,7 @@
 
 .acongm-workspace.is-compact {
   grid-template-columns: minmax(0, 1fr);
+  padding-left: 0;
   padding-bottom: calc(52px + env(safe-area-inset-bottom));
 }
 

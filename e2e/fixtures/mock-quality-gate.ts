@@ -7,6 +7,19 @@ export const MOCK_ACCESS_TOKEN = 'mock-access-token-quality-gate';
 export const MOCK_CHAT_ID = '11111111-1111-4111-8111-111111111111';
 export const FIRST_ASSISTANT_REPLY = '你好，这是测试回复';
 export const RELOADED_ASSISTANT_REPLY = '这是重新生成的回复';
+export const LONG_ASSISTANT_REPLY = Array.from({ length: 48 }, (_, index) => {
+  const n = index + 1;
+  return [
+    `## ${n}. Firefox / Tailwind / GitHub`,
+    '',
+    `这是第 ${n} 段长回复，用来验证页面跟 body 滚动，侧栏和输入框必须始终钉在视口内。`,
+    '',
+    '```ts',
+    `export const topic${n} = ${n};`,
+    '```',
+    '',
+  ].join('\n');
+}).join('\n');
 
 type ChatRow = {
   id: string;
@@ -34,6 +47,8 @@ type MessageRow = {
 export type QualityGateMockOptions = {
   streamDelayMs?: number;
   failFirstStream?: boolean;
+  longFirstReply?: boolean;
+  seedLongThread?: boolean;
 };
 
 const MOCK_SESSION = {
@@ -193,10 +208,48 @@ function fulfillUser(route: Route, settings: ReturnType<typeof createUserSetting
   return json(route, 404, { message: `unmocked user route: ${pathname}` });
 }
 
-function createChatStore() {
+function createChatStore(options: QualityGateMockOptions = {}) {
   const chats = new Map<string, ChatRow>();
   const messages = new Map<string, MessageRow[]>();
   let streamCount = 0;
+
+  if (options.seedLongThread) {
+    const stamp = nowIso();
+    chats.set(MOCK_CHAT_ID, {
+      id: MOCK_CHAT_ID,
+      user_id: MOCK_USER_ID,
+      title: '继续',
+      page_path: null,
+      module_key: null,
+      metadata: {},
+      created_at: stamp,
+      updated_at: stamp,
+    });
+    messages.set(MOCK_CHAT_ID, [
+      {
+        id: 'user-msg-seed',
+        chat_id: MOCK_CHAT_ID,
+        user_id: MOCK_USER_ID,
+        client_message_id: null,
+        parent_message_id: null,
+        role: 'user',
+        parts: [{ type: 'text', text: '继续' }],
+        metadata: {},
+        created_at: stamp,
+      },
+      {
+        id: 'assistant-msg-seed',
+        chat_id: MOCK_CHAT_ID,
+        user_id: MOCK_USER_ID,
+        client_message_id: null,
+        parent_message_id: 'user-msg-seed',
+        role: 'assistant',
+        parts: [{ type: 'text', text: LONG_ASSISTANT_REPLY }],
+        metadata: {},
+        created_at: stamp,
+      },
+    ]);
+  }
 
   function rememberMessage(row: MessageRow) {
     const rows = messages.get(row.chat_id) ?? [];
@@ -293,7 +346,12 @@ function createChatStore() {
         const body = readJsonBody(route);
         const content = asString(body.content) || 'hello quality gate';
         const failThisStream = Boolean(options.failFirstStream && streamCount === 1);
-        const reply = streamCount === 1 ? FIRST_ASSISTANT_REPLY : RELOADED_ASSISTANT_REPLY;
+        const reply =
+          options.longFirstReply && streamCount === 1
+            ? LONG_ASSISTANT_REPLY
+            : streamCount === 1
+              ? FIRST_ASSISTANT_REPLY
+              : RELOADED_ASSISTANT_REPLY;
 
         if (!failThisStream) {
           persistTurn(chatId, content, reply);
@@ -362,7 +420,7 @@ export async function installQualityGateMocks(
   page: Page,
   options: QualityGateMockOptions = {},
 ) {
-  const store = createChatStore();
+  const store = createChatStore(options);
   const settings = createUserSettings();
   await page.route(`${MOCK_SUPABASE_URL}/**`, fulfillSupabaseAuth);
   await page.route('**/api/chats**', (route) => store.fulfillChats(route, options));
