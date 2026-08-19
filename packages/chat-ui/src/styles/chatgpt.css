@@ -335,6 +335,7 @@ html[data-theme='dark'] .acongm-workspace[data-preset='siteFull'] {
   max-width: 48rem;
   margin: auto auto 0;
   padding: 0.5rem 0 0.15rem;
+  overflow: visible;
   background: var(--gpt-bg, #fff);
 }
 
@@ -571,6 +572,10 @@ html[data-theme='dark'] .acongm-gpt-composer:focus-within {
   color: inherit;
   cursor: pointer;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+}
+
+.acongm-gpt-scroll-bottom:disabled {
+  display: none;
 }
 
 /* Edit composer */
