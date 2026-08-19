@@ -7,7 +7,7 @@
 | # | 标题 | 状态 | 说明 |
 |---|------|------|------|
 | **36** | Chat v2 consumer | **已完成 ✅** | merged `edb980e` |
-| **41** | 用户菜单 + getUserInfo | **源码完成 ✅** | BFF + AuthAccountMenu + `/account#settings` |
+| **41** | 用户菜单 + getUserInfo | **已关闭 ✅** | 2026-08-19 completed |
 | **40** | 非阻塞启动 | **源码完成 ✅** | tail-first + 失败不清空；剩 browser smoke → #37 |
 | **39** | Chat 产品优化 | OPEN | 父 Epic；执行入口改为 #37 |
 | **1** | Chat v2 Epic | OPEN | #36/#40/#41 代码完成；剩 #37 |
@@ -16,4 +16,5 @@
 
 1. **#37** mock browser smoke — ✅ `e2e/quality-gate-smoke.spec.ts`（Send / Retry / Reload / Edit / Cancel + 会话列表持久化）
 2. **#37** live JWT browser — ✅ `pnpm test:e2e:live`（注入真实 session，侧栏显示 Quality Gate Live）
-3. **#37** 生产 cookie / OAuth browser — 仍待 `*.acongm.com`
+3. **#37** 生产 cookie browser — ✅ `auth` `pnpm test:e2e:prod`（`.acongm.com` cookie 解锁 Chat chrome）
+4. **#37** 真 LLM send / 真人 OAuth — 仍缺
