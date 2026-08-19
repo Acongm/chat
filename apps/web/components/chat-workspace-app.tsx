@@ -51,7 +51,9 @@ function buildDocContext(
     // Do not send empty content — API rejects Length(1) on "".
     content: undefined,
     summariesUrl,
-    enableThinking: true,
+    // Flash thinks by default; leave reasoning off unless the site config opts in.
+    enableThinking: false,
+    maxTokens: 4096,
     historyMode: 'long',
     defaultScope: base.scope,
     callSourcePrefix: 'chat-site',

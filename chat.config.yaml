@@ -21,7 +21,8 @@ isolation:
   allowedModules: []
 
 chat:
-  enableThinking: true
+  # Flash 默认思考会占满 max_tokens，普通对话先关闭，保证可见回复。
+  enableThinking: false
   historyMode: long
   callSourcePrefix: chat-site
   allowGeneralChat: true
