@@ -42,9 +42,25 @@ test('chat workspace disables composer and wires scroll-up lazy history', () => 
   assert.match(thread, /onScroll/);
   assert.match(thread, /loadingOlder/);
   assert.match(thread, /composerDisabled/);
-  assert.match(thread, /acongm-gpt-thread__dock/);
-  assert.doesNotMatch(
+  assert.match(thread, /ThreadPrimitive\.ViewportFooter/);
+  assert.match(
     thread,
     /ThreadPrimitive\.ViewportFooter[\s\S]*<Composer /,
   );
+  assert.doesNotMatch(thread, /acongm-gpt-thread__dock/);
+  assert.doesNotMatch(thread, /acongm-gpt-thread__conversation/);
+});
+
+test('thread CSS pins ViewportFooter with official sticky bottom', () => {
+  const css = source('packages/chat-ui/src/styles/chatgpt.css');
+  assert.match(
+    css,
+    /\.acongm-gpt-thread__footer\s*\{[\s\S]*position:\s*sticky/,
+  );
+  assert.match(
+    css,
+    /\.acongm-gpt-thread__footer\s*\{[\s\S]*bottom:\s*0/,
+  );
+  assert.doesNotMatch(css, /acongm-gpt-thread__dock/);
+  assert.doesNotMatch(css, /acongm-gpt-thread__conversation/);
 });

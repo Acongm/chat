@@ -52,9 +52,13 @@ test.describe('Platform v2 quality gate browser smoke (#37)', () => {
     });
 
     const viewport = page.locator('.acongm-gpt-thread__viewport');
-    const composer = page.locator('.acongm-gpt-composer').last();
-    await expect(page.locator('.acongm-gpt-thread__viewport .acongm-gpt-composer')).toHaveCount(0);
-    await expect(page.locator('.acongm-gpt-thread__dock .acongm-gpt-composer')).toHaveCount(1);
+    const composer = page.locator(
+      '.acongm-gpt-thread__footer .acongm-gpt-composer',
+    );
+    await expect(composer).toHaveCount(1);
+    await expect(
+      page.locator('.acongm-gpt-thread__viewport .acongm-gpt-thread__footer'),
+    ).toHaveCount(1);
 
     await viewport.evaluate((node) => {
       const spacer = document.createElement('div');
