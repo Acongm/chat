@@ -42,4 +42,9 @@ test('chat workspace disables composer and wires scroll-up lazy history', () => 
   assert.match(thread, /onScroll/);
   assert.match(thread, /loadingOlder/);
   assert.match(thread, /composerDisabled/);
+  assert.match(thread, /acongm-gpt-thread__dock/);
+  assert.doesNotMatch(
+    thread,
+    /ThreadPrimitive\.ViewportFooter[\s\S]*<Composer /,
+  );
 });

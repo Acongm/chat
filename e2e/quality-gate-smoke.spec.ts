@@ -41,6 +41,39 @@ test.describe('Platform v2 quality gate browser smoke (#37)', () => {
     await expect(page.getByText('hello quality gate').first()).toBeVisible();
   });
 
+  test('scrolls only the message viewport and keeps the composer pinned', async ({
+    page,
+  }) => {
+    await installQualityGateMocks(page);
+    await page.goto('/');
+    await sendPrompt(page, 'hello quality gate');
+    await expect(page.getByText(FIRST_ASSISTANT_REPLY)).toBeVisible({
+      timeout: 30_000,
+    });
+
+    const viewport = page.locator('.acongm-gpt-thread__viewport');
+    const composer = page.locator('.acongm-gpt-composer').last();
+    await expect(page.locator('.acongm-gpt-thread__viewport .acongm-gpt-composer')).toHaveCount(0);
+    await expect(page.locator('.acongm-gpt-thread__dock .acongm-gpt-composer')).toHaveCount(1);
+
+    await viewport.evaluate((node) => {
+      const spacer = document.createElement('div');
+      spacer.dataset.scrollProbe = '1';
+      spacer.style.height = '1600px';
+      node.prepend(spacer);
+    });
+
+    const before = await composer.boundingBox();
+    expect(before).toBeTruthy();
+    await viewport.evaluate((node) => {
+      node.scrollTop = 900;
+    });
+    const after = await composer.boundingBox();
+    expect(after).toBeTruthy();
+    expect(Math.abs((after?.y ?? 0) - (before?.y ?? 0))).toBeLessThan(2);
+    expect(await viewport.evaluate((node) => node.scrollTop)).toBeGreaterThan(100);
+  });
+
   test('exposes reload on assistant messages and edit on user messages', async ({
     page,
   }) => {

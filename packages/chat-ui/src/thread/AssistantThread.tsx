@@ -264,15 +264,31 @@ function HistoryLoadIndicator({ loading }: { loading: boolean }) {
   );
 }
 
-function LazyHistoryViewport({
+function ThreadDock({
   placeholder,
   composerDisabled,
+  disclaimer,
+}: {
+  placeholder: string;
+  composerDisabled: boolean;
+  disclaimer: string;
+}) {
+  return (
+    <div className="acongm-gpt-thread__dock">
+      <ThreadScrollToBottom />
+      <Composer placeholder={placeholder} disabled={composerDisabled} />
+      <p className="acongm-gpt-disclaimer acongm-gpt-disclaimer--thread">
+        {disclaimer}
+      </p>
+    </div>
+  );
+}
+
+function LazyHistoryViewport({
   hasOlderMessages,
   loadingOlder,
   onLoadOlderMessages,
 }: {
-  placeholder: string;
-  composerDisabled: boolean;
   hasOlderMessages: boolean;
   loadingOlder: boolean;
   onLoadOlderMessages?: () => void;
@@ -321,11 +337,6 @@ function LazyHistoryViewport({
           AssistantMessage,
         }}
       />
-
-      <ThreadPrimitive.ViewportFooter className="acongm-gpt-thread__footer">
-        <ThreadScrollToBottom />
-        <Composer placeholder={placeholder} disabled={composerDisabled} />
-      </ThreadPrimitive.ViewportFooter>
     </ThreadPrimitive.Viewport>
   );
 }
@@ -365,15 +376,15 @@ export function AssistantThread({
 
       <AuiIf condition={(s) => !s.thread.isEmpty}>
         <LazyHistoryViewport
-          placeholder={placeholder}
-          composerDisabled={composerDisabled}
           hasOlderMessages={hasOlderMessages}
           loadingOlder={loadingOlder}
           onLoadOlderMessages={onLoadOlderMessages}
         />
-        <p className="acongm-gpt-disclaimer acongm-gpt-disclaimer--thread">
-          {disclaimer}
-        </p>
+        <ThreadDock
+          placeholder={placeholder}
+          composerDisabled={composerDisabled}
+          disclaimer={disclaimer}
+        />
       </AuiIf>
     </ThreadPrimitive.Root>
   );
