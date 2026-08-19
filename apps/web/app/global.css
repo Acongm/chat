@@ -8,6 +8,7 @@
 body {
   margin: 0;
   min-height: 100vh;
+  min-height: 100dvh;
   background: var(--background);
   color: var(--foreground);
   font-family: var(--acongm-font-sans);
@@ -32,4 +33,49 @@ body {
 
 .workspace-main-chat .acongm-chat-shell__header {
   display: none;
+}
+
+/*
+ * Desktop workspace scroll contract:
+ * - the conversation list stays viewport-height while the document scrolls;
+ * - the message viewport participates in document scrolling;
+ * - the composer remains available at the bottom of the viewport.
+ */
+@media (min-width: 768px) {
+  .acongm-workspace {
+    align-items: start;
+  }
+
+  .acongm-workspace__thread {
+    position: sticky;
+    top: 0;
+    height: 100vh;
+    height: 100dvh;
+    max-height: 100vh;
+    max-height: 100dvh;
+  }
+
+  .workspace-main-chat,
+  .workspace-main-chat .acongm-workspace__body,
+  .workspace-main-chat .acongm-chat-fullscreen,
+  .workspace-main-chat .acongm-chat-shell.is-fullscreen,
+  .workspace-main-chat .acongm-chat-shell__body,
+  .workspace-main-chat .acongm-gpt-thread {
+    height: auto;
+    max-height: none;
+    min-height: 100vh;
+    min-height: 100dvh;
+    overflow: visible;
+  }
+
+  .workspace-main-chat .acongm-gpt-thread__viewport {
+    min-height: calc(100vh - 2rem);
+    min-height: calc(100dvh - 2rem);
+    overflow-y: visible;
+  }
+
+  .workspace-main-chat .acongm-gpt-thread__footer {
+    position: sticky;
+    bottom: 0;
+  }
 }

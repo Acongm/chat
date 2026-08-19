@@ -41,6 +41,96 @@ test.describe('Platform v2 quality gate browser smoke (#37)', () => {
     await expect(page.getByText('hello quality gate').first()).toBeVisible();
   });
 
+  test('keeps the sidebar and composer visible while the document scrolls', async ({
+    page,
+  }) => {
+    await installQualityGateMocks(page);
+    await page.goto('/');
+    await sendPrompt(page, 'verify workspace scrolling');
+    await expect(page.getByText(FIRST_ASSISTANT_REPLY)).toBeVisible({
+      timeout: 30_000,
+    });
+
+    await page.locator('.acongm-gpt-thread__viewport').evaluate((viewport) => {
+      const spacer = document.createElement('div');
+      spacer.dataset.layoutTestSpacer = 'true';
+      spacer.style.height = '200vh';
+      spacer.style.flex = '0 0 200vh';
+      const footer = viewport.querySelector('.acongm-gpt-thread__footer');
+      viewport.insertBefore(spacer, footer);
+    });
+
+    const initialLayout = await page.evaluate(() => {
+      const sidebar = document.querySelector<HTMLElement>(
+        '.acongm-workspace__thread',
+      );
+      const viewport = document.querySelector<HTMLElement>(
+        '.acongm-gpt-thread__viewport',
+      );
+      const footer = document.querySelector<HTMLElement>(
+        '.acongm-gpt-thread__footer',
+      );
+      if (!sidebar || !viewport || !footer) {
+        throw new Error('workspace layout is incomplete');
+      }
+
+      return {
+        documentScrollable: document.documentElement.scrollHeight > window.innerHeight,
+        sidebarPosition: getComputedStyle(sidebar).position,
+        sidebarHeight: sidebar.getBoundingClientRect().height,
+        viewportOverflowY: getComputedStyle(viewport).overflowY,
+        footerPosition: getComputedStyle(footer).position,
+        viewportScrollTop: viewport.scrollTop,
+        viewportHeight: window.innerHeight,
+      };
+    });
+
+    expect(initialLayout.documentScrollable).toBe(true);
+    expect(initialLayout.sidebarPosition).toBe('sticky');
+    expect(
+      Math.abs(initialLayout.sidebarHeight - initialLayout.viewportHeight),
+    ).toBeLessThan(2);
+    expect(initialLayout.viewportOverflowY).toBe('visible');
+    expect(initialLayout.footerPosition).toBe('sticky');
+    expect(initialLayout.viewportScrollTop).toBe(0);
+
+    await page.evaluate(() => {
+      window.scrollTo(0, document.documentElement.scrollHeight / 2);
+    });
+
+    await expect
+      .poll(() => page.evaluate(() => window.scrollY), { timeout: 5_000 })
+      .toBeGreaterThan(0);
+
+    const scrolledLayout = await page.evaluate(() => {
+      const sidebar = document.querySelector<HTMLElement>(
+        '.acongm-workspace__thread',
+      );
+      const footer = document.querySelector<HTMLElement>(
+        '.acongm-gpt-thread__footer',
+      );
+      if (!sidebar || !footer) {
+        throw new Error('workspace layout is incomplete');
+      }
+      const sidebarRect = sidebar.getBoundingClientRect();
+      const footerRect = footer.getBoundingClientRect();
+      return {
+        sidebarTop: sidebarRect.top,
+        sidebarBottom: sidebarRect.bottom,
+        footerTop: footerRect.top,
+        footerBottom: footerRect.bottom,
+        viewportHeight: window.innerHeight,
+      };
+    });
+
+    expect(Math.abs(scrolledLayout.sidebarTop)).toBeLessThan(2);
+    expect(
+      Math.abs(scrolledLayout.sidebarBottom - scrolledLayout.viewportHeight),
+    ).toBeLessThan(2);
+    expect(scrolledLayout.footerTop).toBeGreaterThanOrEqual(0);
+    expect(scrolledLayout.footerBottom).toBeLessThanOrEqual(scrolledLayout.viewportHeight + 1);
+  });
+
   test('exposes reload on assistant messages and edit on user messages', async ({
     page,
   }) => {
