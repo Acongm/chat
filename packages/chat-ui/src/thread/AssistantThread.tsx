@@ -13,6 +13,7 @@ import {
   ComposerPrimitive,
   MessagePrimitive,
   ThreadPrimitive,
+  unstable_useComposerInput,
   useMessagePartReasoning,
 } from '@assistant-ui/react';
 import { MarkdownTextPrimitive } from '@assistant-ui/react-markdown';
@@ -30,6 +31,9 @@ import {
 } from 'lucide-react';
 import { ContextChipBar } from '../knowledge/ContextChipBar';
 import { useKnowledgeUi } from '../knowledge/KnowledgeUiContext';
+import { ChatQuickTags } from './ChatQuickTags';
+import { normalizeComposerText } from './composer-text';
+import { TrimmedComposerSend } from './TrimmedComposerSend';
 
 function AssistantMarkdown() {
   return (
@@ -43,11 +47,15 @@ function AssistantMarkdown() {
 function ReasoningPart() {
   const part = useMessagePartReasoning();
   const running = part.status?.type === 'running';
-  const [open, setOpen] = useState(false);
+  const [open, setOpen] = useState(() => part.text.length > 0);
 
   useEffect(() => {
     if (running) setOpen(true);
   }, [running]);
+
+  useEffect(() => {
+    if (part.text.length > 0) setOpen(true);
+  }, [part.text.length]);
 
   const shown = running || open;
 
@@ -85,6 +93,7 @@ function UserMessage() {
       <ActionBarPrimitive.Root
         hideWhenRunning
         autohide="always"
+        autohideFloat="always"
         className="acongm-gpt-actions is-user"
       >
         <ActionBarPrimitive.Copy asChild>
@@ -108,16 +117,18 @@ function UserMessage() {
 }
 
 function EditComposer() {
+  const trimBeforeSend = useTrimComposerBeforeSend();
+
   return (
-    <ComposerPrimitive.Root className="acongm-gpt-edit">
+    <ComposerPrimitive.Root className="acongm-gpt-edit" onSubmit={trimBeforeSend}>
       <ComposerPrimitive.Input className="acongm-gpt-edit__input" />
       <div className="acongm-gpt-edit__actions">
         <ComposerPrimitive.Cancel className="acongm-gpt-edit__cancel">
           取消
         </ComposerPrimitive.Cancel>
-        <ComposerPrimitive.Send className="acongm-gpt-edit__send">
+        <TrimmedComposerSend className="acongm-gpt-edit__send">
           发送
-        </ComposerPrimitive.Send>
+        </TrimmedComposerSend>
       </div>
     </ComposerPrimitive.Root>
   );
@@ -134,7 +145,12 @@ function AssistantMessage() {
           }}
         />
       </div>
-      <ActionBarPrimitive.Root hideWhenRunning className="acongm-gpt-actions">
+      <ActionBarPrimitive.Root
+        hideWhenRunning
+        autohide="always"
+        autohideFloat="always"
+        className="acongm-gpt-actions is-assistant"
+      >
         <ActionBarPrimitive.Copy asChild>
           <button type="button" className="acongm-gpt-icon-btn" title="复制">
             <AuiIf condition={(s) => s.message.isCopied}>
@@ -155,6 +171,16 @@ function AssistantMessage() {
   );
 }
 
+function useTrimComposerBeforeSend() {
+  const { value, setText } = unstable_useComposerInput();
+
+  return useCallback(() => {
+    const normalized = normalizeComposerText(value);
+    if (!normalized) return;
+    if (normalized !== value) setText(normalized);
+  }, [value, setText]);
+}
+
 function Composer({
   placeholder,
   disabled = false,
@@ -171,6 +197,8 @@ function Composer({
     mention,
   } = useKnowledgeUi();
 
+  const trimBeforeSend = useTrimComposerBeforeSend();
+
   const onInputChange = (event: FormEvent<HTMLTextAreaElement>) => {
     const value = event.currentTarget.value;
     const match = /(^|\s)@([^\s@]*)$/.exec(value);
@@ -185,12 +213,14 @@ function Composer({
     <ComposerPrimitive.Root
       className="acongm-gpt-composer"
       data-disabled={disabled ? 'true' : undefined}
+      onSubmit={trimBeforeSend}
     >
       {chips.length > 0 ? (
         <div className="acongm-gpt-composer__chips">
           <ContextChipBar chips={chips} onRemove={removeChip} />
         </div>
       ) : null}
+      <ChatQuickTags disabled={disabled} />
       <div className="acongm-gpt-composer__row">
         <button
           type="button"
@@ -220,13 +250,13 @@ function Composer({
             </ComposerPrimitive.Cancel>
           </ThreadPrimitive.If>
           <ThreadPrimitive.If running={false}>
-            <ComposerPrimitive.Send
+            <TrimmedComposerSend
               className="acongm-gpt-composer__send"
               title="发送"
               disabled={disabled}
             >
               <ArrowUp size={16} strokeWidth={2.25} aria-hidden />
-            </ComposerPrimitive.Send>
+            </TrimmedComposerSend>
           </ThreadPrimitive.If>
         </div>
       </div>

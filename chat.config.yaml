@@ -21,8 +21,8 @@ isolation:
   allowedModules: []
 
 chat:
-  # Flash 默认思考会占满 max_tokens，普通对话先关闭，保证可见回复。
-  enableThinking: false
+  # 开启思考流并在对话中展示「思考过程」面板。
+  enableThinking: true
   historyMode: long
   callSourcePrefix: chat-site
   allowGeneralChat: true

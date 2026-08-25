@@ -324,4 +324,71 @@ test.describe('Platform v2 quality gate browser smoke (#37)', () => {
     await expect(page.getByLabel('技能名称')).toHaveValue('code-review');
     await expect(page.getByLabel('技能内容')).toHaveValue('先核对测试再改代码。');
   });
+
+  test('trims composer whitespace before sending', async ({ page }) => {
+    await installQualityGateMocks(page);
+    await page.goto('/');
+    await sendPrompt(page, '  trimmed prompt  ');
+    await expect(page.getByText('trimmed prompt', { exact: true })).toBeVisible({
+      timeout: 30_000,
+    });
+    await expect(page.getByText(FIRST_ASSISTANT_REPLY)).toBeVisible({
+      timeout: 30_000,
+    });
+  });
+
+  test('shows reasoning panel when thinking stream is enabled', async ({
+    page,
+  }) => {
+    await installQualityGateMocks(page);
+    await page.goto('/');
+    await sendPrompt(page, 'explain this briefly');
+    await expect(page.getByText('思考过程')).toBeVisible({ timeout: 30_000 });
+    await expect(page.getByText('正在分析用户问题…')).toBeVisible({
+      timeout: 30_000,
+    });
+  });
+
+  test('quick tag inserts web-search prefix and sends successfully', async ({
+    page,
+  }) => {
+    await installQualityGateMocks(page);
+    await page.goto('/');
+    await page.getByRole('button', { name: '联网检索' }).click();
+    const composer = await readyComposer(page);
+    await expect(composer).toHaveValue('联网检索最新资料后，');
+    await composer.fill('联网检索最新资料后，今天深圳什么天气？');
+    await page.getByTitle('发送').click();
+    await expect(page.getByText(FIRST_ASSISTANT_REPLY)).toBeVisible({
+      timeout: 30_000,
+    });
+  });
+
+  test('does not shift message layout when user actions appear on hover', async ({
+    page,
+  }) => {
+    await installQualityGateMocks(page);
+    await page.goto('/');
+    await sendPrompt(page, 'layout stability check');
+    await expect(page.getByText(FIRST_ASSISTANT_REPLY)).toBeVisible({
+      timeout: 30_000,
+    });
+
+    const userBubble = page.locator('.acongm-gpt-msg.is-user').first();
+    const assistantBubble = page.locator('.acongm-gpt-msg.is-assistant').first();
+    const beforeUser = await userBubble.evaluate((node) => node.getBoundingClientRect().height);
+    const beforeAssistant = await assistantBubble.evaluate(
+      (node) => node.getBoundingClientRect().height,
+    );
+    await userBubble.hover();
+    await expect(page.getByTitle('编辑')).toBeVisible();
+    const afterUser = await userBubble.evaluate((node) => node.getBoundingClientRect().height);
+    await assistantBubble.hover();
+    await expect(page.getByTitle('重新生成')).toBeVisible();
+    const afterAssistant = await assistantBubble.evaluate(
+      (node) => node.getBoundingClientRect().height,
+    );
+    expect(Math.abs(afterUser - beforeUser)).toBeLessThan(2);
+    expect(Math.abs(afterAssistant - beforeAssistant)).toBeLessThan(2);
+  });
 });

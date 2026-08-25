@@ -345,6 +345,8 @@ function createChatStore(options: QualityGateMockOptions = {}) {
         const chatId = streamMatch[1];
         const body = readJsonBody(route);
         const content = asString(body.content) || 'hello quality gate';
+        const enableThinking = Boolean(body.enableThinking);
+        const enableWebSearch = Boolean(body.enableWebSearch);
         const failThisStream = Boolean(options.failFirstStream && streamCount === 1);
         const reply =
           options.longFirstReply && streamCount === 1
@@ -378,6 +380,22 @@ function createChatStore(options: QualityGateMockOptions = {}) {
                 messageId: `user-msg-${streamCount}`,
                 runId: `run-${streamCount}`,
               }),
+              ...(enableThinking
+                ? [
+                    sseEvent('thinking', {
+                      type: 'thinking',
+                      content: '正在分析用户问题…',
+                    }),
+                  ]
+                : []),
+              ...(enableWebSearch
+                ? [
+                    sseEvent('meta', {
+                      type: 'meta',
+                      enableWebSearch: true,
+                    }),
+                  ]
+                : []),
               sseEvent('delta', {
                 type: 'delta',
                 content: reply.slice(0, Math.ceil(reply.length / 2)),

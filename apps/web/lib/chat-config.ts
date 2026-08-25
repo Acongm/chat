@@ -44,7 +44,7 @@ const DEFAULT_CONFIG: ChatSiteConfig = {
     allowedModules: [],
   },
   chat: {
-    enableThinking: false,
+    enableThinking: true,
     historyMode: 'long',
     callSourcePrefix: 'chat-site',
   },

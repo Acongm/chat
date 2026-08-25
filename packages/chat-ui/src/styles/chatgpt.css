@@ -437,17 +437,32 @@ html[data-theme='dark'] .acongm-workspace[data-preset='siteFull'] {
   display: flex;
   align-items: center;
   gap: 0.15rem;
-  min-height: 1.75rem;
 }
 
-.acongm-gpt-actions.is-user {
+.acongm-gpt-actions[data-floating='true'] {
+  position: absolute;
+  z-index: 2;
   opacity: 0;
+  pointer-events: none;
   transition: opacity 0.15s ease;
 }
 
-.acongm-gpt-msg.is-user:hover .acongm-gpt-actions.is-user,
-.acongm-gpt-actions.is-user:focus-within {
+.acongm-gpt-msg.is-user .acongm-gpt-actions[data-floating='true'] {
+  right: 0;
+  bottom: -0.1rem;
+  transform: translateY(100%);
+}
+
+.acongm-gpt-msg.is-assistant .acongm-gpt-actions[data-floating='true'] {
+  left: 0;
+  bottom: -0.1rem;
+  transform: translateY(100%);
+}
+
+.acongm-gpt-msg:hover .acongm-gpt-actions[data-floating='true'],
+.acongm-gpt-actions[data-floating='true']:focus-within {
   opacity: 1;
+  pointer-events: auto;
 }
 
 .acongm-gpt-icon-btn {
@@ -501,6 +516,47 @@ html[data-theme='dark'] .acongm-gpt-composer:focus-within {
 
 .acongm-gpt-composer__chips {
   padding: 0.25rem 0.5rem 0.15rem;
+}
+
+.acongm-gpt-composer__tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  padding: 0.15rem 0.5rem 0.35rem;
+}
+
+.acongm-gpt-composer__tags button {
+  flex: 0 0 auto;
+  border: 1px solid color-mix(in srgb, var(--gpt-fg) 12%, transparent);
+  border-radius: 999px;
+  padding: 0.2rem 0.65rem;
+  background: transparent;
+  color: var(--gpt-muted);
+  cursor: pointer;
+  font: inherit;
+  font-size: 0.75rem;
+  line-height: 1.35;
+  transition:
+    color 0.15s ease,
+    border-color 0.15s ease,
+    background 0.15s ease;
+}
+
+.acongm-gpt-composer__tags button:hover:not(:disabled) {
+  color: var(--gpt-fg);
+  border-color: color-mix(in srgb, var(--gpt-fg) 22%, transparent);
+  background: var(--gpt-sidebar-hover);
+}
+
+.acongm-gpt-composer__tags button.is-active {
+  color: var(--gpt-fg);
+  border-color: color-mix(in srgb, var(--gpt-fg) 28%, transparent);
+  background: color-mix(in srgb, var(--gpt-fg) 6%, transparent);
+}
+
+.acongm-gpt-composer__tags button:disabled {
+  opacity: 0.45;
+  cursor: default;
 }
 
 .acongm-gpt-composer__row {

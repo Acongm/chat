@@ -129,6 +129,7 @@ export function createDocChatModelAdapter(
       }
 
       const tagOptions = deriveTagOptions(question);
+      const apiQuestion = tagOptions.promptForApi || question;
       const callSource = resolveCallSource(
         tagOptions.scope,
         tagOptions.enableWebSearch,
@@ -147,7 +148,7 @@ export function createDocChatModelAdapter(
       if (!chatId && ensureChat) {
         chatId = (
           await ensureChat({
-            title: question.replace(/\s+/g, ' ').trim().slice(0, 80) || undefined,
+            title: apiQuestion.replace(/\s+/g, ' ').trim().slice(0, 80) || undefined,
           })
         ).trim();
       }
@@ -156,7 +157,7 @@ export function createDocChatModelAdapter(
         ? await streamChatMessageV2(
             chatId,
             {
-              content: question,
+              content: apiQuestion,
               clientMessageId: currentUser.message.id,
               parentMessageId: parentOfCurrentUser(messages, currentUser.index),
               assistantMessageId: unstable_assistantMessageId,

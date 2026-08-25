@@ -25,6 +25,7 @@ import {
   type AuthSessionStatus,
 } from '@acongm/auth-client';
 import { useArticleIndex } from '@/lib/use-article-index';
+import { loadChatConfig } from '@/lib/chat-config';
 import { ChatSettingsSlot } from '@/components/chat-settings-slot';
 
 export type ChatWorkspaceAppProps = {
@@ -49,18 +50,18 @@ function buildDocContext(
   DocChatContext,
   'runtimeKey' | 'ensureChat' | 'accessToken' | 'onChatPersisted'
 > {
+  const config = loadChatConfig();
   const base = resolveChatV1Context(refs);
   return {
     ...base,
     // Do not send empty content — API rejects Length(1) on "".
     content: undefined,
     summariesUrl,
-    // Flash thinks by default; leave reasoning off unless the site config opts in.
-    enableThinking: false,
+    enableThinking: config.chat.enableThinking,
     maxTokens: 4096,
-    historyMode: 'long',
+    historyMode: config.chat.historyMode,
     defaultScope: base.scope,
-    callSourcePrefix: 'chat-site',
+    callSourcePrefix: config.chat.callSourcePrefix,
     streamUrl: '/api/ai/v1/chat/stream',
     chatsBaseUrl: '/api/chats',
     chatId: chatId ?? undefined,

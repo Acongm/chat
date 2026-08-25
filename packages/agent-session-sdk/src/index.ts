@@ -85,8 +85,11 @@ export {
   CHAT_V1_TAGS,
   insertChatTag,
   deriveTagOptions,
+  stripChatTagPrefixes,
   type ChatTagKey,
 } from './chat-tags';
+
+export { normalizeComposerText } from './composer-text.ts';
 
 export {
   summaryPathVariants,
