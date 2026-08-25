@@ -1,4 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
+import {
+  applyUpstreamCallerHeaders,
+  echoRequestId,
+} from '../../../../lib/upstream-caller';
 
 const UPSTREAM =
   process.env.AI_CHATS_UPSTREAM_URL?.trim() ||
@@ -20,12 +24,13 @@ function buildUpstream(pathSegments: string[] | undefined, search: string): stri
   return `${UPSTREAM.replace(/\/$/, '')}${suffix}${search}`;
 }
 
-function responseHeaders(upstream: Headers): Headers {
+function responseHeaders(upstream: Headers, requestId: string): Headers {
   const headers = new Headers();
   const contentType = upstream.get('content-type');
   if (contentType) headers.set('content-type', contentType);
   const cacheControl = upstream.get('cache-control');
   if (cacheControl) headers.set('cache-control', cacheControl);
+  echoRequestId(headers, upstream.get('x-request-id')?.trim() || requestId);
   return headers;
 }
 
@@ -36,6 +41,7 @@ async function proxy(request: NextRequest, pathSegments?: string[]) {
     const value = request.headers.get(name);
     if (value) headers.set(name, value);
   }
+  const requestId = applyUpstreamCallerHeaders(headers, 'chat-site:bff:chats');
 
   const init: RequestInit = {
     method: request.method,
@@ -51,16 +57,19 @@ async function proxy(request: NextRequest, pathSegments?: string[]) {
     const upstream = await fetch(target, init);
     return new NextResponse(upstream.body, {
       status: upstream.status,
-      headers: responseHeaders(upstream.headers),
+      headers: responseHeaders(upstream.headers, requestId),
     });
   } catch {
+    const errorHeaders = new Headers();
+    echoRequestId(errorHeaders, requestId);
     return NextResponse.json(
       {
         ok: false,
         code: 'CHAT_UPSTREAM_UNREACHABLE',
         message: 'Chat service is temporarily unavailable.',
+        requestId,
       },
-      { status: 502 },
+      { status: 502, headers: errorHeaders },
     );
   }
 }

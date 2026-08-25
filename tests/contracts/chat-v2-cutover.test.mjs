@@ -90,6 +90,18 @@ test('Chat v2 BFF forwards bearer auth but never x-client-id', () => {
   assert.match(text, /['"]authorization['"]/);
   assert.doesNotMatch(text, /['"]x-client-id['"]/i);
   assert.match(text, /CHAT_UPSTREAM_UNREACHABLE/);
+  assert.match(text, /applyUpstreamCallerHeaders\(headers, 'chat-site:bff:chats'\)/);
+  assert.match(text, /echoRequestId/);
+  assert.doesNotMatch(text, /x-service-key/);
+});
+
+test('doc-chat and threads BFFs default an allowed call source and echo request id', () => {
+  const stream = source('apps/web/app/api/ai/v1/chat/stream/route.ts');
+  const threads = source('apps/web/app/api/chat/threads/[[...path]]/route.ts');
+  assert.match(stream, /applyUpstreamCallerHeaders\(headers, 'chat-site:doc-chat'\)/);
+  assert.match(stream, /echoRequestId/);
+  assert.match(threads, /applyUpstreamCallerHeaders\(headers, 'chat-site:threads'\)/);
+  assert.match(threads, /echoRequestId/);
 });
 
 test('User BFF proxies /api/user to api.acongm.com so getUserInfo works after login', () => {

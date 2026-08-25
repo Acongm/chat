@@ -1,4 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
+import {
+  applyUpstreamCallerHeaders,
+  echoRequestId,
+} from '../../../../../../lib/upstream-caller';
 
 const UPSTREAM =
   process.env.AI_THREADS_UPSTREAM_URL?.trim() ||
@@ -29,6 +33,7 @@ async function proxy(request: NextRequest, pathSegments?: string[]) {
     const value = request.headers.get(name);
     if (value) headers.set(name, value);
   }
+  const requestId = applyUpstreamCallerHeaders(headers, 'chat-site:threads');
 
   const init: RequestInit = {
     method: request.method,
@@ -42,17 +47,25 @@ async function proxy(request: NextRequest, pathSegments?: string[]) {
 
   try {
     const upstream = await fetch(target, init);
+    const responseHeaders = new Headers(upstream.headers);
+    echoRequestId(
+      responseHeaders,
+      upstream.headers.get('x-request-id')?.trim() || requestId,
+    );
     return new NextResponse(upstream.body, {
       status: upstream.status,
-      headers: upstream.headers,
+      headers: responseHeaders,
     });
   } catch (error) {
+    const errorHeaders = new Headers();
+    echoRequestId(errorHeaders, requestId);
     return NextResponse.json(
       {
         ok: false,
         message: error instanceof Error ? error.message : 'Threads upstream unreachable',
+        requestId,
       },
-      { status: 502 },
+      { status: 502, headers: errorHeaders },
     );
   }
 }
