@@ -4,5 +4,6 @@
   "installCommand": "pnpm install",
   "buildCommand": "pnpm --filter web build",
   "outputDirectory": "apps/web/.next",
-  "devCommand": "pnpm --filter web dev"
+  "devCommand": "pnpm --filter web dev",
+  "regions": ["hkg1"]
 }
