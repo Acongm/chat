@@ -25,7 +25,6 @@ import {
   type AuthSessionStatus,
 } from '@acongm/auth-client';
 import { useArticleIndex } from '@/lib/use-article-index';
-import { loadChatConfig } from '@/lib/chat-config';
 import { ChatSettingsSlot } from '@/components/chat-settings-slot';
 
 export type ChatWorkspaceAppProps = {
@@ -37,6 +36,11 @@ export type ChatWorkspaceAppProps = {
   summariesUrl: string;
   emptyTitle: string;
   portalBase: string;
+  chat: {
+    enableThinking: boolean;
+    historyMode: 'short' | 'long';
+    callSourcePrefix: string;
+  };
   /** @deprecated Chat v2 uses same-origin `/api/chats` BFF. */
   apiBase?: string;
   initialThreadId?: string | null;
@@ -45,23 +49,23 @@ export type ChatWorkspaceAppProps = {
 function buildDocContext(
   refs: KnowledgeRef[],
   summariesUrl: string,
+  chat: ChatWorkspaceAppProps['chat'],
   chatId?: string | null,
 ): Omit<
   DocChatContext,
   'runtimeKey' | 'ensureChat' | 'accessToken' | 'onChatPersisted'
 > {
-  const config = loadChatConfig();
   const base = resolveChatV1Context(refs);
   return {
     ...base,
     // Do not send empty content — API rejects Length(1) on "".
     content: undefined,
     summariesUrl,
-    enableThinking: config.chat.enableThinking,
+    enableThinking: chat.enableThinking,
     maxTokens: 4096,
-    historyMode: config.chat.historyMode,
+    historyMode: chat.historyMode,
     defaultScope: base.scope,
-    callSourcePrefix: config.chat.callSourcePrefix,
+    callSourcePrefix: chat.callSourcePrefix,
     streamUrl: '/api/ai/v1/chat/stream',
     chatsBaseUrl: '/api/chats',
     chatId: chatId ?? undefined,
@@ -134,6 +138,7 @@ function WorkspaceInner({
   isolation,
   summariesUrl,
   emptyTitle,
+  chat,
   initialThreadId = null,
 }: ChatWorkspaceAppProps) {
   const searchParams = useSearchParams();
@@ -239,7 +244,7 @@ function WorkspaceInner({
 
   const context = useMemo(
     (): DocChatContext => ({
-      ...buildDocContext(chips, summariesUrl, threads.activeThreadId),
+      ...buildDocContext(chips, summariesUrl, chat, threads.activeThreadId),
       runtimeKey,
       accessToken: authIdentity?.accessToken ?? null,
       ensureChat,
@@ -250,6 +255,7 @@ function WorkspaceInner({
     [
       chips,
       summariesUrl,
+      chat,
       threads.activeThreadId,
       threads.touchThread,
       runtimeKey,
