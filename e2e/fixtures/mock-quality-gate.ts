@@ -6,6 +6,7 @@ export const MOCK_USER_ID = '00000000-0000-4000-8000-000000000001';
 export const MOCK_ACCESS_TOKEN = 'mock-access-token-quality-gate';
 export const MOCK_CHAT_ID = '11111111-1111-4111-8111-111111111111';
 export const FIRST_ASSISTANT_REPLY = '你好，这是测试回复';
+export const FIRST_ASSISTANT_THINKING = '先确认用户在问什么，再给出简短回复。';
 export const RELOADED_ASSISTANT_REPLY = '这是重新生成的回复';
 export const LONG_ASSISTANT_REPLY = Array.from({ length: 48 }, (_, index) => {
   const n = index + 1;
@@ -377,6 +378,10 @@ function createChatStore(options: QualityGateMockOptions = {}) {
                 chatId,
                 messageId: `user-msg-${streamCount}`,
                 runId: `run-${streamCount}`,
+              }),
+              sseEvent('thinking', {
+                type: 'thinking',
+                content: FIRST_ASSISTANT_THINKING,
               }),
               sseEvent('delta', {
                 type: 'delta',

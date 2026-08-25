@@ -437,17 +437,19 @@ html[data-theme='dark'] .acongm-workspace[data-preset='siteFull'] {
   display: flex;
   align-items: center;
   gap: 0.15rem;
-  min-height: 1.75rem;
+  min-height: 2rem;
 }
 
 .acongm-gpt-actions.is-user {
   opacity: 0;
+  pointer-events: none;
   transition: opacity 0.15s ease;
 }
 
 .acongm-gpt-msg.is-user:hover .acongm-gpt-actions.is-user,
 .acongm-gpt-actions.is-user:focus-within {
   opacity: 1;
+  pointer-events: auto;
 }
 
 .acongm-gpt-icon-btn {

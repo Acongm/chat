@@ -10,8 +10,10 @@ export type DocChatContext = {
   streamUrl?: string;
   /** 覆盖 summaries JSON 地址 */
   summariesUrl?: string;
-  /** 默认 false：避免 DeepSeek Flash 默认思考占满输出预算导致无可见回复 */
+  /** 默认 true：请求思考流并在对话中展示 reasoning */
   enableThinking?: boolean;
+  /** 默认 true：请求联网检索，不把助手限制为离线文档问答 */
+  enableWebSearch?: boolean;
   /** 1–8192，透传模型请求 */
   maxTokens?: number;
   /** portal 文档助手默认 short；chat 站持久化对话用 long */

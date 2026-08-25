@@ -6,6 +6,7 @@ import {
   useRef,
   useState,
   type FormEvent,
+  type KeyboardEvent,
 } from 'react';
 import {
   ActionBarPrimitive,
@@ -13,6 +14,7 @@ import {
   ComposerPrimitive,
   MessagePrimitive,
   ThreadPrimitive,
+  unstable_useComposerInput,
   useMessagePartReasoning,
 } from '@assistant-ui/react';
 import { MarkdownTextPrimitive } from '@assistant-ui/react-markdown';
@@ -28,8 +30,32 @@ import {
   RefreshCw,
   Square,
 } from 'lucide-react';
+import { trimChatInput } from '@acongm/agent-session-sdk';
 import { ContextChipBar } from '../knowledge/ContextChipBar';
 import { useKnowledgeUi } from '../knowledge/KnowledgeUiContext';
+
+function useSendTrimmedComposer() {
+  const { value, setText, send } = unstable_useComposerInput();
+  return useCallback(() => {
+    const trimmed = trimChatInput(value);
+    if (!trimmed) return;
+    if (value !== trimmed) {
+      setText(trimmed);
+    }
+    send();
+  }, [send, setText, value]);
+}
+
+function onComposerEnter(
+  event: KeyboardEvent<HTMLTextAreaElement>,
+  sendTrimmed: () => void,
+) {
+  if (event.key !== 'Enter' || event.shiftKey || event.nativeEvent.isComposing) {
+    return;
+  }
+  event.preventDefault();
+  sendTrimmed();
+}
 
 function AssistantMarkdown() {
   return (
@@ -43,7 +69,7 @@ function AssistantMarkdown() {
 function ReasoningPart() {
   const part = useMessagePartReasoning();
   const running = part.status?.type === 'running';
-  const [open, setOpen] = useState(false);
+  const [open, setOpen] = useState(true);
 
   useEffect(() => {
     if (running) setOpen(true);
@@ -82,11 +108,7 @@ function UserMessage() {
       <div className="acongm-gpt-msg__bubble">
         <MessagePrimitive.Parts />
       </div>
-      <ActionBarPrimitive.Root
-        hideWhenRunning
-        autohide="always"
-        className="acongm-gpt-actions is-user"
-      >
+      <ActionBarPrimitive.Root className="acongm-gpt-actions is-user">
         <ActionBarPrimitive.Copy asChild>
           <button type="button" className="acongm-gpt-icon-btn" title="复制">
             <AuiIf condition={(s) => s.message.isCopied}>
@@ -108,14 +130,24 @@ function UserMessage() {
 }
 
 function EditComposer() {
+  const sendTrimmed = useSendTrimmedComposer();
   return (
     <ComposerPrimitive.Root className="acongm-gpt-edit">
-      <ComposerPrimitive.Input className="acongm-gpt-edit__input" />
+      <ComposerPrimitive.Input
+        className="acongm-gpt-edit__input"
+        onKeyDown={(event) => onComposerEnter(event, sendTrimmed)}
+      />
       <div className="acongm-gpt-edit__actions">
         <ComposerPrimitive.Cancel className="acongm-gpt-edit__cancel">
           取消
         </ComposerPrimitive.Cancel>
-        <ComposerPrimitive.Send className="acongm-gpt-edit__send">
+        <ComposerPrimitive.Send
+          className="acongm-gpt-edit__send"
+          onClick={(event) => {
+            event.preventDefault();
+            sendTrimmed();
+          }}
+        >
           发送
         </ComposerPrimitive.Send>
       </div>
@@ -170,6 +202,7 @@ function Composer({
     closeMention,
     mention,
   } = useKnowledgeUi();
+  const sendTrimmed = useSendTrimmedComposer();
 
   const onInputChange = (event: FormEvent<HTMLTextAreaElement>) => {
     const value = event.currentTarget.value;
@@ -208,6 +241,7 @@ function Composer({
           className="acongm-gpt-composer__input"
           disabled={disabled}
           onChange={onInputChange}
+          onKeyDown={(event) => onComposerEnter(event, sendTrimmed)}
         />
         <div className="acongm-gpt-composer__primary">
           <ThreadPrimitive.If running>
@@ -224,6 +258,10 @@ function Composer({
               className="acongm-gpt-composer__send"
               title="发送"
               disabled={disabled}
+              onClick={(event) => {
+                event.preventDefault();
+                sendTrimmed();
+              }}
             >
               <ArrowUp size={16} strokeWidth={2.25} aria-hidden />
             </ComposerPrimitive.Send>

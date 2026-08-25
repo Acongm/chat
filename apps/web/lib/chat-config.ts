@@ -22,6 +22,7 @@ export type ChatSiteConfig = {
   isolation: ChatIsolationConfig;
   chat: {
     enableThinking: boolean;
+    enableWebSearch: boolean;
     historyMode: 'short' | 'long';
     callSourcePrefix: string;
   };
@@ -44,7 +45,8 @@ const DEFAULT_CONFIG: ChatSiteConfig = {
     allowedModules: [],
   },
   chat: {
-    enableThinking: false,
+    enableThinking: true,
+    enableWebSearch: true,
     historyMode: 'long',
     callSourcePrefix: 'chat-site',
   },

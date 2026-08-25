@@ -1,6 +1,7 @@
 import { expect, test, type Locator, type Page } from '@playwright/test';
 import {
   FIRST_ASSISTANT_REPLY,
+  FIRST_ASSISTANT_THINKING,
   MOCK_CHAT_ID,
   RELOADED_ASSISTANT_REPLY,
   installQualityGateMocks,
@@ -39,6 +40,8 @@ test.describe('Platform v2 quality gate browser smoke (#37)', () => {
     await expect(page.getByText(FIRST_ASSISTANT_REPLY)).toBeVisible({
       timeout: 30_000,
     });
+    await expect(page.getByText('思考过程')).toBeVisible();
+    await expect(page.getByText(FIRST_ASSISTANT_THINKING)).toBeVisible();
     await expect(page.getByText('hello quality gate').first()).toBeVisible();
   });
 
@@ -228,9 +231,27 @@ test.describe('Platform v2 quality gate browser smoke (#37)', () => {
     });
 
     await expect(page.getByTitle('重新生成')).toBeVisible();
-    const userBubble = page.locator('.acongm-gpt-msg.is-user').first();
-    await userBubble.hover();
+    const userMessage = page.locator('.acongm-gpt-msg.is-user').first();
+    const assistantMessage = page.locator('.acongm-gpt-msg.is-assistant').first();
+    const before = await assistantMessage.boundingBox();
+    await userMessage.hover();
     await expect(page.getByTitle('编辑')).toBeVisible();
+    const after = await assistantMessage.boundingBox();
+    expect(Math.abs((after?.y ?? 0) - (before?.y ?? 0))).toBeLessThan(2);
+  });
+
+  test('trims leading and trailing blank lines before sending', async ({
+    page,
+  }) => {
+    await installQualityGateMocks(page);
+    await page.goto('/');
+    await sendPrompt(page, '\n\n  hello quality gate  \n\n');
+    await expect(page.getByText(FIRST_ASSISTANT_REPLY)).toBeVisible({
+      timeout: 30_000,
+    });
+    await expect(page.locator('.acongm-gpt-msg.is-user').first()).toHaveText(
+      'hello quality gate',
+    );
   });
 
   test('can stop an in-flight stream from the composer', async ({ page }) => {

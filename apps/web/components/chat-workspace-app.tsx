@@ -55,8 +55,8 @@ function buildDocContext(
     // Do not send empty content — API rejects Length(1) on "".
     content: undefined,
     summariesUrl,
-    // Flash thinks by default; leave reasoning off unless the site config opts in.
-    enableThinking: false,
+    enableThinking: true,
+    enableWebSearch: true,
     maxTokens: 4096,
     historyMode: 'long',
     defaultScope: base.scope,

@@ -19,6 +19,9 @@ export function insertChatTag(value: string, key: ChatTagKey): string {
   return `${tag.prefix}${current}`;
 }
 
+const WEB_SEARCH_HINT =
+  /联网检索最新资料后，|联网|天气|气温|实时/;
+
 export function deriveTagOptions(prompt: string): {
   scope: 'article' | 'module';
   enableWebSearch: boolean;
@@ -26,6 +29,6 @@ export function deriveTagOptions(prompt: string): {
   const value = String(prompt || '');
   return {
     scope: value.includes('结合本模块，') ? 'module' : 'article',
-    enableWebSearch: value.includes('联网检索最新资料后，'),
+    enableWebSearch: WEB_SEARCH_HINT.test(value),
   };
 }

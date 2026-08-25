@@ -88,6 +88,8 @@ export {
   type ChatTagKey,
 } from './chat-tags';
 
+export { trimChatInput } from './chat-input';
+
 export {
   summaryPathVariants,
   findSummaryV1ByPath,

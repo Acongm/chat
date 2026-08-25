@@ -5,6 +5,7 @@ import {
   resolveCallSource,
   streamChatMessageV2,
   streamChatV1,
+  trimChatInput,
 } from '@acongm/agent-session-sdk';
 import type { ChatUiMessage, ChatV1Context } from '@acongm/kb-types';
 import type { DocChatContext } from '../types';
@@ -112,7 +113,8 @@ export function createDocChatModelAdapter(
         tags = [],
         content,
         streamUrl,
-        enableThinking = false,
+        enableThinking = true,
+        enableWebSearch: contextEnableWebSearch = true,
         maxTokens,
         historyMode = 'short',
         chatsBaseUrl,
@@ -122,16 +124,18 @@ export function createDocChatModelAdapter(
       } = ctx;
 
       const currentUser = findLastUser(messages);
-      const question = textFromMessage(currentUser?.message).trim();
+      const question = trimChatInput(textFromMessage(currentUser?.message));
       if (!currentUser || !question) {
         yield { content: [{ type: 'text', text: '' }] };
         return;
       }
 
       const tagOptions = deriveTagOptions(question);
+      const enableWebSearch =
+        contextEnableWebSearch || tagOptions.enableWebSearch;
       const callSource = resolveCallSource(
         tagOptions.scope,
-        tagOptions.enableWebSearch,
+        enableWebSearch,
       );
 
       const requestContext = buildRequestContext(
@@ -161,7 +165,7 @@ export function createDocChatModelAdapter(
               parentMessageId: parentOfCurrentUser(messages, currentUser.index),
               assistantMessageId: unstable_assistantMessageId,
               runId: createRunId(),
-              enableWebSearch: tagOptions.enableWebSearch,
+              enableWebSearch,
               enableThinking,
               maxTokens,
               context: requestContext,
@@ -176,7 +180,7 @@ export function createDocChatModelAdapter(
             {
               messages: modelHistory(toUiMessages(messages)),
               context: requestContext,
-              enableWebSearch: tagOptions.enableWebSearch,
+              enableWebSearch,
               enableThinking,
               maxTokens,
               historyMode,
