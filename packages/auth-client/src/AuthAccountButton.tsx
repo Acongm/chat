@@ -16,7 +16,10 @@ export type AuthAccountButtonProps = {
   onSignedOut?: () => void;
   /** Override User API base (defaults to same-origin /api/user) */
   userApiBaseUrl?: string;
-  /** Chat/Portal embedded surfaces: bootstrap Supabase anonymous session. */
+  /**
+   * @deprecated No longer creates auth.users on page view.
+   * Guest auth is created on first chat send via ensureGuestAuth().
+   */
   ensureAnonymous?: boolean;
   /** Dropdown with account / settings / logout (Phase 2 user menu). */
   menu?: boolean;

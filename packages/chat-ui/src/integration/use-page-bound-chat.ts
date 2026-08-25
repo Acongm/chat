@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { ChatUiMessage, ChatV2Message } from '@acongm/kb-types';
 import {
   ChatStreamError,
@@ -18,12 +18,14 @@ export type UsePageBoundChatOptions = {
   accessToken?: string | null;
   pagePath: string;
   moduleKey?: string | null;
-  /** localStorage key for the per-user/page chat pointer */
-  pointerKey: string;
+  /** localStorage key, or builder used after first-send guest auth. */
+  pointerKey: string | ((userId: string) => string);
   chatsBaseUrl?: string;
   title?: string;
   chips?: Array<{ title?: string; pagePath?: string; moduleKey?: string }>;
   metadata?: Record<string, unknown>;
+  /** Create guest auth on first send instead of page view. */
+  prepareAuth?: () => Promise<{ userId: string; accessToken: string } | null>;
 };
 
 export type UsePageBoundChatResult = {
@@ -35,7 +37,7 @@ export type UsePageBoundChatResult = {
   loadingOlder: boolean;
   loadOlderMessages: () => Promise<void>;
   ensureChat: (input?: { title?: string }) => Promise<string>;
-  persistPointer: (nextChatId: string) => void;
+  persistPointer: (nextChatId: string, uid?: string | null) => void;
 };
 
 export function usePageBoundChat(
@@ -51,7 +53,19 @@ export function usePageBoundChat(
     title,
     chips = [],
     metadata,
+    prepareAuth,
   } = options;
+
+  const pointerKeyRef = useRef(pointerKey);
+  pointerKeyRef.current = pointerKey;
+  const prepareAuthRef = useRef(prepareAuth);
+  prepareAuthRef.current = prepareAuth;
+
+  const resolvePointerKey = useCallback((uid: string | null | undefined): string => {
+    if (!uid) return '';
+    const key = pointerKeyRef.current;
+    return typeof key === 'function' ? key(uid) : key;
+  }, []);
 
   const [chatId, setChatId] = useState<string | null>(null);
   const [rawMessages, setRawMessages] = useState<ChatV2Message[]>([]);
@@ -83,7 +97,7 @@ export function usePageBoundChat(
       return;
     }
 
-    const stored = localStorage.getItem(pointerKey)?.trim();
+    const stored = localStorage.getItem(resolvePointerKey(userId))?.trim();
     if (!stored) {
       setReady(true);
       return;
@@ -96,7 +110,7 @@ export function usePageBoundChat(
           detail.chat.userId !== userId ||
           (detail.chat.pagePath && detail.chat.pagePath !== pagePath)
         ) {
-          localStorage.removeItem(pointerKey);
+          localStorage.removeItem(resolvePointerKey(userId));
           setSeedMessages(null);
           setReady(true);
           return;
@@ -110,7 +124,7 @@ export function usePageBoundChat(
       .catch((error) => {
         if (cancelled) return;
         if (error instanceof ChatStreamError && error.status === 404) {
-          localStorage.removeItem(pointerKey);
+          localStorage.removeItem(resolvePointerKey(userId));
           setSeedMessages(null);
           setReady(true);
           return;
@@ -128,11 +142,12 @@ export function usePageBoundChat(
   }, [userId, accessToken, pagePath, pointerKey, requestOptions]);
 
   const persistPointer = useCallback(
-    (nextChatId: string) => {
-      localStorage.setItem(pointerKey, nextChatId);
+    (nextChatId: string, uid?: string | null) => {
+      const key = resolvePointerKey(uid ?? userId);
+      if (key) localStorage.setItem(key, nextChatId);
       setChatId(nextChatId);
     },
-    [pointerKey],
+    [resolvePointerKey, userId],
   );
 
   const loadOlderMessages = useCallback(async () => {
@@ -163,7 +178,15 @@ export function usePageBoundChat(
         throw new Error(`无法恢复已有会话：${restoreError}`);
       }
       if (chatId) return chatId;
-      if (!userId || !accessToken) {
+
+      let uid = userId;
+      let token = accessToken;
+      if ((!uid || !token) && prepareAuthRef.current) {
+        const prepared = await prepareAuthRef.current();
+        uid = prepared?.userId ?? uid;
+        token = prepared?.accessToken ?? token;
+      }
+      if (!uid || !token) {
         throw new Error('安全会话尚未准备完成，请稍后重试。');
       }
 
@@ -179,20 +202,23 @@ export function usePageBoundChat(
           moduleKey: primary?.moduleKey || moduleKey || undefined,
           metadata,
         },
-        requestOptions,
+        {
+          baseUrl: chatsBaseUrl,
+          accessToken: token,
+        },
       );
-      persistPointer(created.id);
+      persistPointer(created.id, uid);
       return created.id;
     },
     [
       accessToken,
       chatId,
+      chatsBaseUrl,
       chips,
       moduleKey,
       pagePath,
       persistPointer,
       metadata,
-      requestOptions,
       restoreError,
       title,
       userId,

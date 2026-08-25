@@ -13,6 +13,7 @@ import {
   resolveOAuthLoginMode,
   signOut,
 } from './client';
+import { getOrCreateClientId } from './client-id';
 import {
   clearAuthSessionCache,
   getAuthSession,
@@ -26,7 +27,11 @@ import {
 } from './session-status';
 
 export type UseSessionOptions = {
-  /** Chat/Portal: bootstrap a Supabase anonymous session when none exists. */
+  /**
+   * @deprecated No longer creates auth.users on page view.
+   * Guest auth is created on first chat send via ensureGuestAuth().
+   * Kept so existing call sites still compile.
+   */
   ensureAnonymous?: boolean;
   /** Skip network bootstrap when the caller already owns client + session. */
   skipBootstrap?: boolean;
@@ -45,6 +50,7 @@ export function useSession(options?: UseSessionOptions) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [retryNonce, setRetryNonce] = useState(0);
+  const [clientId] = useState<string | undefined>(() => getOrCreateClientId());
   const client = useMemo(
     () => (configured ? createBrowserClient() : null),
     [configured],
@@ -86,9 +92,8 @@ export function useSession(options?: UseSessionOptions) {
         }
 
         const nextClient = createBrowserClient();
-        const nextSession = ensureAnonymous
-          ? await ensureAnonymousSession(nextClient)
-          : (await nextClient.auth.getSession()).data.session;
+        getOrCreateClientId();
+        const nextSession = (await nextClient.auth.getSession()).data.session;
         if (!mounted || currentGeneration !== generation) return;
         setSession(nextSession);
         if (!nextSession) {
@@ -128,12 +133,6 @@ export function useSession(options?: UseSessionOptions) {
             }
 
             setSession(null);
-            if (ensureAnonymous && event === 'SIGNED_OUT') {
-              setLoading(true);
-              setError(null);
-              void bootstrap();
-              return;
-            }
             setLoading(false);
           },
         ).data.subscription
@@ -145,6 +144,19 @@ export function useSession(options?: UseSessionOptions) {
       subscription?.unsubscribe();
     };
   }, [client, ensureAnonymous, retryNonce, skipBootstrap]);
+
+  const ensureGuestAuth = useCallback(async () => {
+    const activeClient = client ?? (configured ? createBrowserClient() : null);
+    if (!activeClient) return null;
+    const next = await ensureAnonymousSession(activeClient);
+    if (next) {
+      setSession(next);
+      setCookieUserId(null);
+      setCookieAccessToken(null);
+      setCookieAuthenticated(false);
+    }
+    return next;
+  }, [client, configured]);
 
   const isAnonymous = session
     ? isAnonymousSession(session)
@@ -169,6 +181,8 @@ export function useSession(options?: UseSessionOptions) {
     userId: session?.user?.id ?? cookieUserId,
     accessToken: session?.access_token ?? cookieAccessToken,
     isAnonymous,
+    clientId,
+    ensureGuestAuth,
   };
 }
 

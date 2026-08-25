@@ -13,34 +13,55 @@ export type ChatAuthIdentity = {
   anonymous: boolean;
 };
 
+export type EnsureGuestAuth = () => Promise<ChatAuthIdentity | null>;
+
 export type ChatAuthSlotProps = {
   onIdentityChange?: (identity: ChatAuthIdentity | null) => void;
   onStatusChange?: (status: AuthSessionStatus) => void;
-  /** Called after signOut; useSession re-bootstraps anonymous identity. */
+  /** Called after signOut. Guest auth is created later on first send. */
   onSignedOut?: () => void;
+  /** GA-style: create the anonymous auth user only when a real action needs it. */
+  onEnsureGuestAuth?: (ensure: EnsureGuestAuth) => void;
   menuFooter?: ReactNode;
 };
 
 /**
- * Chat v2 identity bridge: Supabase session (including anonymous) is the only
- * principal. No legacy x-client-id / claimAnonymousThreads path.
+ * Chat v2 identity bridge: Supabase session is the principal when it exists.
+ * Browsing only keeps a Client ID cookie; first send calls ensureGuestAuth().
  */
 export function ChatAuthSlot({
   onIdentityChange,
   onStatusChange,
   onSignedOut,
+  onEnsureGuestAuth,
   menuFooter,
 }: ChatAuthSlotProps) {
-  const { status, error, retry, accessToken, userId, isAnonymous } =
-    useSession({ ensureAnonymous: true });
+  const { status, error, retry, accessToken, userId, isAnonymous, ensureGuestAuth } =
+    useSession();
   const onIdentityRef = useRef(onIdentityChange);
   const onStatusRef = useRef(onStatusChange);
+  const onEnsureRef = useRef(onEnsureGuestAuth);
   onIdentityRef.current = onIdentityChange;
   onStatusRef.current = onStatusChange;
+  onEnsureRef.current = onEnsureGuestAuth;
 
   useEffect(() => {
     onStatusRef.current?.(status);
   }, [status]);
+
+  useEffect(() => {
+    onEnsureRef.current?.(async () => {
+      const session = await ensureGuestAuth();
+      if (!session?.user?.id || !session.access_token) return null;
+      const identity: ChatAuthIdentity = {
+        userId: session.user.id,
+        accessToken: session.access_token,
+        anonymous: Boolean(session.user.is_anonymous),
+      };
+      onIdentityRef.current?.(identity);
+      return identity;
+    });
+  }, [ensureGuestAuth]);
 
   useEffect(() => {
     if (!accessToken || !userId) {
@@ -69,7 +90,6 @@ export function ChatAuthSlot({
   return (
     <AuthAccountButton
       variant="sidebar"
-      ensureAnonymous
       menu
       menuFooter={menuFooter}
       onSignedOut={onSignedOut}

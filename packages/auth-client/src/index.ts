@@ -20,6 +20,14 @@ export {
   signUpWithPassword,
   startOAuthFlow,
 } from './client';
+export {
+  CLIENT_ID_COOKIE,
+  CLIENT_ID_STORAGE_KEY,
+  createClientId,
+  getOrCreateClientId,
+  isClientId,
+  peekClientId,
+} from './client-id';
 export type {
   AuthPublicConfig,
   AuthClientOptions,
