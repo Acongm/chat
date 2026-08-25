@@ -251,8 +251,8 @@ test.describe('Platform v2 quality gate browser smoke (#37)', () => {
     await page.goto('/');
     await sendPrompt(page, 'this send should fail');
 
-    const assistantBubble = page.locator('.acongm-gpt-msg.is-assistant').first();
-    await assistantBubble.hover();
+    await expect(page.getByTitle('发送')).toBeEnabled({ timeout: 30_000 });
+    await page.locator('.acongm-gpt-msg.is-assistant').first().hover({ force: true });
     await expect(page.getByTitle('重新生成')).toBeVisible({ timeout: 30_000 });
     await page.getByTitle('重新生成').last().click();
     await expect(page.getByText(RELOADED_ASSISTANT_REPLY)).toBeVisible({
