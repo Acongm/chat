@@ -13,7 +13,7 @@ import {
   resolveOAuthLoginMode,
   signOut,
 } from './client';
-import { getOrCreateClientId, peekClientId } from './client-id';
+import { getOrCreateClientId } from './client-id';
 import {
   clearAuthSessionCache,
   getAuthSession,
@@ -50,6 +50,7 @@ export function useSession(options?: UseSessionOptions) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [retryNonce, setRetryNonce] = useState(0);
+  const [clientId] = useState<string | undefined>(() => getOrCreateClientId());
   const client = useMemo(
     () => (configured ? createBrowserClient() : null),
     [configured],
@@ -180,7 +181,7 @@ export function useSession(options?: UseSessionOptions) {
     userId: session?.user?.id ?? cookieUserId,
     accessToken: session?.access_token ?? cookieAccessToken,
     isAnonymous,
-    clientId: peekClientId(),
+    clientId,
     ensureGuestAuth,
   };
 }
