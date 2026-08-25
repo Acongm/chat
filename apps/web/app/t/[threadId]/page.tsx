@@ -19,6 +19,7 @@ export default async function ThreadPage({ params }: PageProps) {
         registry={registry}
         isolation={config.isolation}
         summariesUrl={config.kb.summariesUrl}
+        chat={config.chat}
         emptyTitle="我们从哪开始？"
         portalBase={config.domains.portal}
         apiBase={config.domains.api}
