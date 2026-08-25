@@ -32,7 +32,7 @@ function skillsForSave(skills: AgentSkill[]): AgentSkill[] {
 }
 
 export function ChatAgentSettings() {
-  const { accessToken } = useSession({ ensureAnonymous: true });
+  const { accessToken } = useSession();
   const [defaultPrompt, setDefaultPrompt] = useState('');
   const [skills, setSkills] = useState<AgentSkill[]>([]);
   const [busy, setBusy] = useState(false);

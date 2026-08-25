@@ -22,6 +22,8 @@ export type UseChatThreadsOptions = {
   /** Initial selection (e.g. from /t/[id]). */
   initialThreadId?: string | null;
   chatsBaseUrl?: string;
+  /** Create guest auth on first send instead of page view. */
+  prepareAuth?: () => Promise<{ userId: string; accessToken: string } | null>;
 };
 
 export type SeedStatus = 'idle' | 'loading' | 'ready';
@@ -97,6 +99,7 @@ export function useChatThreads(
     identityKey = null,
     initialThreadId = null,
     chatsBaseUrl = DEFAULT_CHATS_BASE,
+    prepareAuth,
   } = options;
   const [threads, setThreads] = useState<ChatV2Record[]>([]);
   const [nextCursor, setNextCursor] = useState<string | null>(null);
@@ -311,7 +314,14 @@ export function useChatThreads(
       pagePath?: string;
       preserveSeed?: boolean;
     } = {}) => {
-      if (!accessToken || !identityKey) {
+      let token = accessToken;
+      let key = identityKey;
+      if ((!token || !key) && prepareAuth) {
+        const prepared = await prepareAuth();
+        token = prepared?.accessToken ?? token;
+        key = prepared?.userId ?? key;
+      }
+      if (!token || !key) {
         throw new Error('正在准备安全会话身份，请稍后重试。');
       }
       const chat = await createChatV2(
@@ -320,7 +330,10 @@ export function useChatThreads(
           moduleKey: input.moduleKey,
           pagePath: input.pagePath,
         },
-        requestOptions,
+        {
+          baseUrl: chatsBaseUrl,
+          accessToken: token,
+        },
       );
       setThreads((prev) => [chat, ...prev.filter((item) => item.id !== chat.id)]);
       setActiveThreadId(chat.id);
@@ -331,7 +344,7 @@ export function useChatThreads(
       }
       return chat;
     },
-    [accessToken, identityKey, requestOptions],
+    [accessToken, chatsBaseUrl, identityKey, prepareAuth],
   );
 
   const removeThread = useCallback(

@@ -1,6 +1,7 @@
 import { createBrowserClient as createSupabaseBrowserClient } from '@supabase/ssr';
 import type { Provider, Session, User } from '@supabase/supabase-js';
 import { knownPublicConfigForHost } from './acongm-public-config';
+import { getOrCreateClientId } from './client-id';
 
 export type AuthPublicConfig = {
   supabaseUrl: string;
@@ -198,22 +199,44 @@ export function isAnonymousSession(
 }
 
 /**
- * Chat v2 requires a verified Supabase principal even for guests. Create a
- * first-class anonymous Supabase identity instead of falling back to x-client-id.
+ * Create or reuse a Supabase anonymous session for a real guest action
+ * (first chat send). Browsing must not call this — use getOrCreateClientId()
+ * like GA's _ga cookie.
  */
 export async function ensureAnonymousSession(
   client: ReturnType<typeof createBrowserClient>,
 ): Promise<Session | null> {
+  const cid = getOrCreateClientId();
   const current = await client.auth.getSession();
-  if (current.data.session) return current.data.session;
+  if (current.data.session) {
+    await stampClientId(client, current.data.session, cid);
+    return (await client.auth.getSession()).data.session ?? current.data.session;
+  }
 
-  const { data, error } = await client.auth.signInAnonymously();
+  const { data, error } = await client.auth.signInAnonymously({
+    options: cid ? { data: { cid } } : undefined,
+  });
   if (error) {
-    // Project may have anonymous sign-ins disabled. Keep the client usable
-    // so an existing logged-in cookie can still be read on the next retry.
     return null;
   }
-  return data.session;
+  if (data.session) {
+    await stampClientId(client, data.session, cid);
+  }
+  return (await client.auth.getSession()).data.session ?? data.session;
+}
+
+async function stampClientId(
+  client: ReturnType<typeof createBrowserClient>,
+  session: Session,
+  cid: string | undefined,
+): Promise<void> {
+  if (!cid || !isAnonymousSession(session)) return;
+  const existing =
+    typeof session.user.user_metadata?.cid === 'string'
+      ? session.user.user_metadata.cid
+      : undefined;
+  if (existing === cid) return;
+  await client.auth.updateUser({ data: { cid } });
 }
 
 export function isSocialAuthProvider(

@@ -7,16 +7,22 @@ function source(path) {
   return readFileSync(join(process.cwd(), path), 'utf8');
 }
 
-test('auth client bootstraps a real Supabase anonymous session for guest RLS', () => {
+test('auth client creates a real Supabase anonymous session only when asked', () => {
   const text = source('packages/auth-client/src/client.ts');
   assert.match(text, /ensureAnonymousSession/);
-  assert.match(text, /auth\.signInAnonymously\(\)/);
+  assert.match(text, /auth\.signInAnonymously\(/);
+  assert.match(text, /user_metadata\?\.cid/);
+  const cid = source('packages/auth-client/src/client-id.ts');
+  assert.match(cid, /acongm_cid/);
+  assert.match(cid, /GA1\.1\./);
 });
 
-test('session hook recreates anonymous identity after explicit sign out', () => {
+test('session hook keeps Client ID on browse and does not recreate auth users after sign out', () => {
   const text = source('packages/auth-client/src/hooks.tsx');
-  assert.match(text, /event === ['"]SIGNED_OUT['"]/);
-  assert.match(text, /void bootstrap\(\)/);
+  assert.match(text, /getOrCreateClientId\(\)/);
+  assert.match(text, /ensureGuestAuth/);
+  assert.doesNotMatch(text, /ensureAnonymousSession\(nextClient\)/);
+  assert.doesNotMatch(text, /event === ['"]SIGNED_OUT['"]/);
 });
 
 test('anonymous Supabase identity remains visually logged out', () => {

@@ -1,5 +1,9 @@
 export { ChatAuthSlot } from './chat-auth-slot';
-export type { ChatAuthIdentity, ChatAuthSlotProps } from './chat-auth-slot';
+export type {
+  ChatAuthIdentity,
+  ChatAuthSlotProps,
+  EnsureGuestAuth,
+} from './chat-auth-slot';
 
 export { useChatThreads } from './use-chat-threads';
 export type {

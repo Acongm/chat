@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useMemo, useRef, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import {
   ChatFullscreen,
@@ -18,8 +18,12 @@ import {
   type DocModulesRegistry,
   type KnowledgeRef,
 } from '@acongm/kb-catalog';
-import { ChatAuthSlot, useChatThreads, type ChatAuthIdentity } from '@acongm/chat-ui/integration';
-import type { AuthSessionStatus } from '@acongm/auth-client';
+import { ChatAuthSlot, useChatThreads, type ChatAuthIdentity, type EnsureGuestAuth } from '@acongm/chat-ui/integration';
+import {
+  createBrowserClient,
+  ensureAnonymousSession,
+  type AuthSessionStatus,
+} from '@acongm/auth-client';
 import { useArticleIndex } from '@/lib/use-article-index';
 import { ChatSettingsSlot } from '@/components/chat-settings-slot';
 
@@ -135,6 +139,34 @@ function WorkspaceInner({
   const router = useRouter();
   const [authIdentity, setAuthIdentity] = useState<ChatAuthIdentity | null>(null);
   const [authStatus, setAuthStatus] = useState<AuthSessionStatus>('unauthenticated');
+  const ensureGuestAuthRef = useRef<EnsureGuestAuth | null>(null);
+
+  const prepareAuth = useCallback(async () => {
+    if (authIdentity) {
+      return {
+        userId: authIdentity.userId,
+        accessToken: authIdentity.accessToken,
+      };
+    }
+    const fromSlot = await ensureGuestAuthRef.current?.();
+    if (fromSlot) {
+      return { userId: fromSlot.userId, accessToken: fromSlot.accessToken };
+    }
+    let session;
+    try {
+      session = await ensureAnonymousSession(createBrowserClient());
+    } catch {
+      return null;
+    }
+    if (!session?.user?.id || !session.access_token) return null;
+    const identity: ChatAuthIdentity = {
+      userId: session.user.id,
+      accessToken: session.access_token,
+      anonymous: Boolean(session.user.is_anonymous),
+    };
+    setAuthIdentity(identity);
+    return { userId: identity.userId, accessToken: identity.accessToken };
+  }, [authIdentity]);
   const [runtimeKey, setRuntimeKey] = useState(
     () =>
       initialThreadId
@@ -159,6 +191,7 @@ function WorkspaceInner({
     accessToken: authIdentity?.accessToken,
     identityKey: authIdentity?.userId,
     initialThreadId,
+    prepareAuth,
   });
 
   const navigateWithChips = useCallback(
@@ -224,11 +257,7 @@ function WorkspaceInner({
     ],
   );
 
-  const composerDisabled = useMemo(() => {
-    if (authStatus === 'restoring') return true;
-    if (!authIdentity) return true;
-    return false;
-  }, [authIdentity, authStatus]);
+  const composerDisabled = authStatus === 'restoring' || authStatus === 'error';
 
   const composerPlaceholder = useMemo(() => {
     if (authStatus === 'restoring') {
@@ -237,9 +266,6 @@ function WorkspaceInner({
     if (authStatus === 'error') {
       return '访客会话准备失败，请在侧栏重试或先登录。';
     }
-    if (!authIdentity) {
-      return '请先登录后再发送。';
-    }
     if (threads.activeThreadId && threads.seedStatus === 'loading') {
       return '正在加载会话历史…';
     }
@@ -247,7 +273,7 @@ function WorkspaceInner({
       return threads.error;
     }
     return '有什么可以帮忙的？输入 @ 引用知识…';
-  }, [authIdentity, authStatus, threads.activeThreadId, threads.error, threads.seedStatus]);
+  }, [authStatus, threads.activeThreadId, threads.error, threads.seedStatus]);
 
   const handleNewThread = () => {
     threads.clearActive();
@@ -298,6 +324,9 @@ function WorkspaceInner({
               onIdentityChange={setAuthIdentity}
               onStatusChange={setAuthStatus}
               onSignedOut={handleSignedOut}
+              onEnsureGuestAuth={(ensure) => {
+                ensureGuestAuthRef.current = ensure;
+              }}
             />
           }
           onNewThread={handleNewThread}
