@@ -347,7 +347,9 @@ test.describe('Platform v2 quality gate browser smoke (#37)', () => {
     await installQualityGateMocks(page);
     await page.goto('/');
     await sendPrompt(page, 'explain this briefly');
-    await expect(page.getByText('思考过程')).toBeVisible({ timeout: 30_000 });
+    await expect(page.getByRole('button', { name: '思考过程' })).toBeVisible({
+      timeout: 30_000,
+    });
     await expect(page.getByText('正在分析用户问题…')).toBeVisible({
       timeout: 30_000,
     });

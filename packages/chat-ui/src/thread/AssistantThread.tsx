@@ -101,7 +101,7 @@ function ReasoningPanel({
             {text ||
               (running
                 ? ''
-                : '模型未返回思考过程。若持续为空，当前模型可能未输出 reasoning / <think>。')}
+                : '模型未返回推理内容。若持续为空，当前模型可能未输出 reasoning / <think>。')}
           </pre>
         </div>
       ) : null}
