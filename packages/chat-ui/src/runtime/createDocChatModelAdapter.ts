@@ -30,13 +30,23 @@ function toUiMessages(messages: readonly ThreadMessage[]): ChatUiMessage[] {
     }));
 }
 
-function yieldParts(thinking: string, text: string) {
-  return {
-    content: [
-      ...(thinking ? [{ type: 'reasoning' as const, text: thinking }] : []),
-      ...(text ? [{ type: 'text' as const, text }] : []),
-    ],
-  };
+function yieldParts(
+  thinking: string,
+  text: string,
+  enableThinking: boolean,
+) {
+  const content: Array<
+    { type: 'reasoning'; text: string } | { type: 'text'; text: string }
+  > = [];
+
+  if (enableThinking || thinking) {
+    content.push({ type: 'reasoning', text: thinking });
+  }
+  if (text) {
+    content.push({ type: 'text', text });
+  }
+
+  return { content };
 }
 
 /** Omit empty optional strings — Nest `@IsOptional` + `@Length` rejects `""`. */
@@ -118,6 +128,7 @@ export function createDocChatModelAdapter(
         historyMode = 'short',
         chatsBaseUrl,
         accessToken,
+        callSourcePrefix = 'portal',
         ensureChat,
         onChatPersisted,
       } = ctx;
@@ -134,6 +145,7 @@ export function createDocChatModelAdapter(
       const callSource = resolveCallSource(
         tagOptions.scope,
         tagOptions.enableWebSearch,
+        callSourcePrefix,
       );
 
       const requestContext = buildRequestContext(
@@ -189,14 +201,18 @@ export function createDocChatModelAdapter(
       let thinking = '';
       let text = '';
 
+      if (enableThinking) {
+        yield yieldParts('', '', enableThinking);
+      }
+
       for await (const event of events) {
         if (event.type === 'thinking') {
           thinking += event.content || '';
-          yield yieldParts(thinking, text);
+          yield yieldParts(thinking, text, enableThinking);
         }
         if (event.type === 'delta') {
           text += event.content || '';
-          yield yieldParts(thinking, text);
+          yield yieldParts(thinking, text, enableThinking);
         }
         if (event.type === 'persisted' && 'chatId' in event && event.chatId) {
           onChatPersisted?.(event.chatId);

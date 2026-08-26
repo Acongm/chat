@@ -11,7 +11,8 @@ export type ChatTagKey = (typeof CHAT_V1_TAGS)[number]['key'];
 const WEB_SEARCH_PREFIX = CHAT_V1_TAGS.find((item) => item.key === 'web')!.prefix;
 
 /** Natural-language web-search intent, e.g. "联网查询，今天天气". */
-const WEB_SEARCH_INTENT_RE = /(?:^|[\s，,])联网(?:检索|查询|搜索)/u;
+const WEB_SEARCH_INTENT_RE =
+  /(?:^|[\s，,])联网(?:检索|查询|搜索|[，,：:\s])/u;
 
 export function insertChatTag(value: string, key: ChatTagKey): string {
   const tag = CHAT_V1_TAGS.find((item) => item.key === key);
@@ -31,7 +32,10 @@ export function stripChatTagPrefixes(prompt: string): string {
   for (const tag of CHAT_V1_TAGS) {
     text = text.split(tag.prefix).join('');
   }
-  text = text.replace(/^(?:联网(?:检索|查询|搜索)\s*[，,：:]\s*)+/iu, '');
+  text = text.replace(
+    /^(?:联网(?:检索|查询|搜索)?\s*[，,：:]\s*)+/iu,
+    '',
+  );
   return normalizeComposerText(text);
 }
 

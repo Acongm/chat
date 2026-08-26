@@ -368,6 +368,43 @@ test.describe('Platform v2 quality gate browser smoke (#37)', () => {
     });
   });
 
+  test('highlights web-search quick tag for natural-language intent', async ({
+    page,
+  }) => {
+    await installQualityGateMocks(page);
+    await page.goto('/');
+    const composer = await readyComposer(page);
+    await composer.fill('联网查询，今天深圳什么天气？');
+    await expect(page.getByRole('button', { name: '联网检索' })).toHaveClass(
+      /is-active/,
+    );
+  });
+
+  test('sends natural-language web-search query successfully', async ({
+    page,
+  }) => {
+    await installQualityGateMocks(page);
+    await page.goto('/');
+    await sendPrompt(page, '联网查询，今天深圳什么天气？');
+    await expect(page.getByText(FIRST_ASSISTANT_REPLY)).toBeVisible({
+      timeout: 30_000,
+    });
+  });
+
+  test('trims composer whitespace when sending with Enter', async ({ page }) => {
+    await installQualityGateMocks(page);
+    await page.goto('/');
+    const composer = await readyComposer(page);
+    await composer.fill('  enter trimmed  ');
+    await composer.press('Enter');
+    await expect(page.getByText('enter trimmed', { exact: true })).toBeVisible({
+      timeout: 30_000,
+    });
+    await expect(page.getByText(FIRST_ASSISTANT_REPLY)).toBeVisible({
+      timeout: 30_000,
+    });
+  });
+
   test('does not shift message layout when user actions appear on hover', async ({
     page,
   }) => {

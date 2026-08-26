@@ -22,6 +22,7 @@ import {
   saveChatHistory,
 } from '@acongm/agent-session-sdk';
 import type { DocChatContext } from '../types';
+import { DocChatConfigProvider } from './DocChatConfigContext';
 import { createDocChatModelAdapter } from './createDocChatModelAdapter';
 
 function textPartsOf(
@@ -247,7 +248,9 @@ function DocChatRuntimeInner({
 
   return (
     <AssistantRuntimeProvider runtime={runtime}>
-      {children}
+      <DocChatConfigProvider enableThinking={context.enableThinking ?? true}>
+        {children}
+      </DocChatConfigProvider>
     </AssistantRuntimeProvider>
   );
 }

@@ -6,6 +6,7 @@ import {
   useRef,
   useState,
   type FormEvent,
+  type KeyboardEvent,
 } from 'react';
 import { flushSync } from 'react-dom';
 import {
@@ -16,6 +17,7 @@ import {
   ThreadPrimitive,
   unstable_useComposerInput,
   useMessagePartReasoning,
+  useMessagePartText,
 } from '@assistant-ui/react';
 import { MarkdownTextPrimitive } from '@assistant-ui/react-markdown';
 import remarkGfm from 'remark-gfm';
@@ -32,6 +34,7 @@ import {
 } from 'lucide-react';
 import { ContextChipBar } from '../knowledge/ContextChipBar';
 import { useKnowledgeUi } from '../knowledge/KnowledgeUiContext';
+import { useDocChatConfig } from '../runtime/DocChatConfigContext';
 import { ChatQuickTags } from './ChatQuickTags';
 import { normalizeComposerText } from './composer-text';
 import { TrimmedComposerSend } from './TrimmedComposerSend';
@@ -45,10 +48,16 @@ function AssistantMarkdown() {
   );
 }
 
+function UserText() {
+  const part = useMessagePartText();
+  return <>{normalizeComposerText(part.text)}</>;
+}
+
 function ReasoningPart() {
   const part = useMessagePartReasoning();
+  const { enableThinking } = useDocChatConfig();
   const running = part.status?.type === 'running';
-  const [open, setOpen] = useState(() => part.text.length > 0);
+  const [open, setOpen] = useState(() => enableThinking || part.text.length > 0);
 
   useEffect(() => {
     if (running) setOpen(true);
@@ -57,6 +66,8 @@ function ReasoningPart() {
   useEffect(() => {
     if (part.text.length > 0) setOpen(true);
   }, [part.text.length]);
+
+  if (!enableThinking && !part.text && !running) return null;
 
   const shown = running || open;
 
@@ -89,12 +100,11 @@ function UserMessage() {
   return (
     <MessagePrimitive.Root className="acongm-gpt-msg is-user">
       <div className="acongm-gpt-msg__bubble">
-        <MessagePrimitive.Parts />
+        <MessagePrimitive.Parts components={{ Text: UserText }} />
       </div>
       <ActionBarPrimitive.Root
         hideWhenRunning
-        autohide="always"
-        autohideFloat="always"
+        autohide="never"
         className="acongm-gpt-actions is-user"
       >
         <ActionBarPrimitive.Copy asChild>
@@ -148,8 +158,7 @@ function AssistantMessage() {
       </div>
       <ActionBarPrimitive.Root
         hideWhenRunning
-        autohide="always"
-        autohideFloat="always"
+        autohide="never"
         className="acongm-gpt-actions is-assistant"
       >
         <ActionBarPrimitive.Copy asChild>
@@ -175,13 +184,19 @@ function AssistantMessage() {
 function useTrimComposerBeforeSend() {
   const { value, setText } = unstable_useComposerInput();
 
-  return useCallback(() => {
-    const normalized = normalizeComposerText(value);
-    if (!normalized) return;
-    if (normalized !== value) {
-      flushSync(() => setText(normalized));
-    }
-  }, [value, setText]);
+  return useCallback(
+    (event?: FormEvent) => {
+      const normalized = normalizeComposerText(value);
+      if (!normalized) {
+        event?.preventDefault();
+        return;
+      }
+      if (normalized !== value) {
+        flushSync(() => setText(normalized));
+      }
+    },
+    [value, setText],
+  );
 }
 
 function Composer({
@@ -200,7 +215,24 @@ function Composer({
     mention,
   } = useKnowledgeUi();
 
+  const { value, setText, send } = unstable_useComposerInput({ disabled });
   const trimBeforeSend = useTrimComposerBeforeSend();
+
+  const onKeyDown = (event: KeyboardEvent<HTMLTextAreaElement>) => {
+    if (event.key !== 'Enter' || event.shiftKey || event.nativeEvent.isComposing) {
+      return;
+    }
+    const normalized = normalizeComposerText(value);
+    if (!normalized) {
+      event.preventDefault();
+      return;
+    }
+    if (normalized !== value) {
+      event.preventDefault();
+      flushSync(() => setText(normalized));
+      send();
+    }
+  };
 
   const onInputChange = (event: FormEvent<HTMLTextAreaElement>) => {
     const value = event.currentTarget.value;
@@ -241,6 +273,7 @@ function Composer({
           className="acongm-gpt-composer__input"
           disabled={disabled}
           onChange={onInputChange}
+          onKeyDown={onKeyDown}
         />
         <div className="acongm-gpt-composer__primary">
           <ThreadPrimitive.If running>

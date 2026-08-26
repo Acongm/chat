@@ -34,14 +34,14 @@ export function getConversationId(pagePath: string): string {
 export function resolveCallSource(
   scope: 'article' | 'module',
   enableWebSearch = false,
+  prefix = 'portal',
 ): string {
-  const isModule = scope === 'module';
+  const base = prefix.replace(/:+$/, '');
+  const panel = scope === 'module' ? 'module-panel' : 'article-panel';
   if (enableWebSearch) {
-    return isModule
-      ? CALL_SOURCES.MODULE_PANEL_WEB
-      : CALL_SOURCES.ARTICLE_PANEL_WEB;
+    return `${base}:${panel}:web`;
   }
-  return isModule ? CALL_SOURCES.MODULE_PANEL : CALL_SOURCES.ARTICLE_PANEL;
+  return `${base}:${panel}`;
 }
 
 export function buildChatHeaders(options: {
