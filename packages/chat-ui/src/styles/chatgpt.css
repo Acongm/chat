@@ -433,6 +433,15 @@ html[data-theme='dark'] .acongm-workspace[data-preset='siteFull'] {
   line-height: 1.7;
 }
 
+.acongm-gpt-actions-slot {
+  box-sizing: border-box;
+  width: 100%;
+  height: 2rem;
+  min-height: 2rem;
+  max-height: 2rem;
+  margin: 0.15rem 0 0;
+}
+
 .acongm-gpt-actions {
   display: flex;
   align-items: center;
@@ -441,7 +450,8 @@ html[data-theme='dark'] .acongm-workspace[data-preset='siteFull'] {
   width: 100%;
   height: 2rem;
   min-height: 2rem;
-  margin: 0.15rem 0 0;
+  max-height: 2rem;
+  margin: 0;
   opacity: 0;
   pointer-events: none;
   transition: opacity 0.15s ease;

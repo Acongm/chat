@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import {
   applyUpstreamCallerHeaders,
   echoRequestId,
-} from '../../../../../../lib/upstream-caller';
+} from '../../../../../lib/upstream-caller';
 
 const UPSTREAM =
   process.env.AI_THREADS_UPSTREAM_URL?.trim() ||

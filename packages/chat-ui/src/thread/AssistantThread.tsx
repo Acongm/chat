@@ -53,21 +53,29 @@ function UserText() {
   return <>{normalizeComposerText(part.text)}</>;
 }
 
-function ReasoningPart() {
-  const part = useMessagePartReasoning();
+function hasReasoningPart(parts: ReadonlyArray<{ type: string }>): boolean {
+  return parts.some((part) => part.type === 'reasoning');
+}
+
+function ReasoningPanel({
+  text,
+  running,
+}: {
+  text: string;
+  running: boolean;
+}) {
   const { enableThinking } = useDocChatConfig();
-  const running = part.status?.type === 'running';
-  const [open, setOpen] = useState(() => enableThinking || part.text.length > 0);
+  const [open, setOpen] = useState(() => enableThinking || text.length > 0);
 
   useEffect(() => {
     if (running) setOpen(true);
   }, [running]);
 
   useEffect(() => {
-    if (part.text.length > 0) setOpen(true);
-  }, [part.text.length]);
+    if (text.length > 0) setOpen(true);
+  }, [text.length]);
 
-  if (!enableThinking && !part.text && !running) return null;
+  if (!enableThinking && !text && !running) return null;
 
   const shown = running || open;
 
@@ -90,7 +98,7 @@ function ReasoningPart() {
       {shown ? (
         <div className="acongm-gpt-reasoning__body" aria-busy={running}>
           <pre className="acongm-gpt-reasoning__text">
-            {part.text ||
+            {text ||
               (running
                 ? ''
                 : '模型未返回思考过程。若持续为空，当前模型可能未输出 reasoning / <think>。')}
@@ -101,32 +109,48 @@ function ReasoningPart() {
   );
 }
 
+function ReasoningPart() {
+  const part = useMessagePartReasoning();
+  return (
+    <ReasoningPanel
+      text={part.text}
+      running={part.status?.type === 'running'}
+    />
+  );
+}
+
+function ReasoningFallback() {
+  return <ReasoningPanel text="" running={false} />;
+}
+
 function UserMessage() {
   return (
     <MessagePrimitive.Root className="acongm-gpt-msg is-user">
       <div className="acongm-gpt-msg__bubble">
         <MessagePrimitive.Parts components={{ Text: UserText }} />
       </div>
-      <ActionBarPrimitive.Root
-        autohide="never"
-        className="acongm-gpt-actions is-user"
-      >
-        <ActionBarPrimitive.Copy asChild>
-          <button type="button" className="acongm-gpt-icon-btn" title="复制">
-            <AuiIf condition={(s) => s.message.isCopied}>
-              <Check size={14} aria-hidden />
-            </AuiIf>
-            <AuiIf condition={(s) => !s.message.isCopied}>
-              <Copy size={14} aria-hidden />
-            </AuiIf>
-          </button>
-        </ActionBarPrimitive.Copy>
-        <ActionBarPrimitive.Edit asChild>
-          <button type="button" className="acongm-gpt-icon-btn" title="编辑">
-            <Pencil size={14} aria-hidden />
-          </button>
-        </ActionBarPrimitive.Edit>
-      </ActionBarPrimitive.Root>
+      <div className="acongm-gpt-actions-slot">
+        <ActionBarPrimitive.Root
+          autohide="never"
+          className="acongm-gpt-actions is-user"
+        >
+          <ActionBarPrimitive.Copy asChild>
+            <button type="button" className="acongm-gpt-icon-btn" title="复制">
+              <AuiIf condition={(s) => s.message.isCopied}>
+                <Check size={14} aria-hidden />
+              </AuiIf>
+              <AuiIf condition={(s) => !s.message.isCopied}>
+                <Copy size={14} aria-hidden />
+              </AuiIf>
+            </button>
+          </ActionBarPrimitive.Copy>
+          <ActionBarPrimitive.Edit asChild>
+            <button type="button" className="acongm-gpt-icon-btn" title="编辑">
+              <Pencil size={14} aria-hidden />
+            </button>
+          </ActionBarPrimitive.Edit>
+        </ActionBarPrimitive.Root>
+      </div>
     </MessagePrimitive.Root>
   );
 }
@@ -159,27 +183,32 @@ function AssistantMessage() {
             Reasoning: ReasoningPart,
           }}
         />
+        <AuiIf condition={(s) => !hasReasoningPart(s.message.parts)}>
+          <ReasoningFallback />
+        </AuiIf>
       </div>
-      <ActionBarPrimitive.Root
-        autohide="never"
-        className="acongm-gpt-actions is-assistant"
-      >
-        <ActionBarPrimitive.Copy asChild>
-          <button type="button" className="acongm-gpt-icon-btn" title="复制">
-            <AuiIf condition={(s) => s.message.isCopied}>
-              <Check size={14} aria-hidden />
-            </AuiIf>
-            <AuiIf condition={(s) => !s.message.isCopied}>
-              <Copy size={14} aria-hidden />
-            </AuiIf>
-          </button>
-        </ActionBarPrimitive.Copy>
-        <ActionBarPrimitive.Reload asChild>
-          <button type="button" className="acongm-gpt-icon-btn" title="重新生成">
-            <RefreshCw size={14} aria-hidden />
-          </button>
-        </ActionBarPrimitive.Reload>
-      </ActionBarPrimitive.Root>
+      <div className="acongm-gpt-actions-slot">
+        <ActionBarPrimitive.Root
+          autohide="never"
+          className="acongm-gpt-actions is-assistant"
+        >
+          <ActionBarPrimitive.Copy asChild>
+            <button type="button" className="acongm-gpt-icon-btn" title="复制">
+              <AuiIf condition={(s) => s.message.isCopied}>
+                <Check size={14} aria-hidden />
+              </AuiIf>
+              <AuiIf condition={(s) => !s.message.isCopied}>
+                <Copy size={14} aria-hidden />
+              </AuiIf>
+            </button>
+          </ActionBarPrimitive.Copy>
+          <ActionBarPrimitive.Reload asChild>
+            <button type="button" className="acongm-gpt-icon-btn" title="重新生成">
+              <RefreshCw size={14} aria-hidden />
+            </button>
+          </ActionBarPrimitive.Reload>
+        </ActionBarPrimitive.Root>
+      </div>
     </MessagePrimitive.Root>
   );
 }

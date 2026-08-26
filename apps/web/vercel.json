@@ -3,5 +3,6 @@
   "installCommand": "cd ../.. && pnpm install",
   "buildCommand": "cd ../.. && pnpm build",
   "devCommand": "pnpm dev",
-  "regions": ["hkg1"]
+  "regions": ["hkg1"],
+  "ignoreCommand": "exit 1"
 }

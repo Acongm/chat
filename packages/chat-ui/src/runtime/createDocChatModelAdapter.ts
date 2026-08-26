@@ -145,9 +145,10 @@ export function createDocChatModelAdapter(
 
       const tagOptions = deriveTagOptions(question);
       const apiQuestion = tagOptions.promptForApi || question;
+      const enableWebSearch = true;
       const callSource = resolveCallSource(
         tagOptions.scope,
-        tagOptions.enableWebSearch,
+        enableWebSearch,
         callSourcePrefix,
       );
 
@@ -178,7 +179,7 @@ export function createDocChatModelAdapter(
               parentMessageId: parentOfCurrentUser(messages, currentUser.index),
               assistantMessageId: unstable_assistantMessageId,
               runId: createRunId(),
-              enableWebSearch: tagOptions.enableWebSearch,
+              enableWebSearch,
               enableThinking,
               maxTokens,
               context: requestContext,
@@ -193,7 +194,7 @@ export function createDocChatModelAdapter(
             {
               messages: modelHistory(toUiMessages(messages)),
               context: requestContext,
-              enableWebSearch: tagOptions.enableWebSearch,
+              enableWebSearch,
               enableThinking,
               maxTokens,
               historyMode,
