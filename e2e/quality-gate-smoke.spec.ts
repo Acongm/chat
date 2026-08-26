@@ -251,8 +251,13 @@ test.describe('Platform v2 quality gate browser smoke (#37)', () => {
     await page.goto('/');
     await sendPrompt(page, 'this send should fail');
 
-    await expect(page.getByTitle('发送')).toBeEnabled({ timeout: 30_000 });
-    await page.locator('.acongm-gpt-msg.is-assistant').first().hover({ force: true });
+    // After send the composer is empty, so 发送 stays disabled even at rest.
+    // Idle means the stop control is gone and the failed assistant turn exists.
+    await expect(page.getByTitle('停止')).toHaveCount(0);
+    await expect(page.getByTitle('发送')).toBeVisible({ timeout: 30_000 });
+    const failedThread = page.locator('.acongm-gpt-msg.is-assistant').first();
+    await expect(failedThread).toBeVisible({ timeout: 30_000 });
+    await failedThread.hover({ force: true });
     await expect(page.getByTitle('重新生成')).toBeVisible({ timeout: 30_000 });
     await page.getByTitle('重新生成').last().click();
     await expect(page.getByText(RELOADED_ASSISTANT_REPLY)).toBeVisible({

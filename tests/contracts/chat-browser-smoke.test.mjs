@@ -14,4 +14,16 @@ test('browser quality gate smoke spec exists for #37', () => {
   assert.match(body, /停止/);
   assert.match(body, /重新生成/);
   assert.match(body, /acongm-gpt-sidebar__item-title/);
+
+  const retrySection = body.split('retries a failed assistant run via reload')[1] ?? '';
+  assert.match(
+    retrySection,
+    /getByTitle\('发送'\)\)\.toBeVisible/,
+    'failed-run retry must wait for idle send visibility, not an empty composer',
+  );
+  assert.equal(
+    /getByTitle\('发送'\)\)\.toBeEnabled/.test(retrySection),
+    false,
+    'empty composer keeps 发送 disabled after a finished failed run',
+  );
 });
