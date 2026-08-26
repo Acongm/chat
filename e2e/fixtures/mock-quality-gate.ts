@@ -320,9 +320,13 @@ function createChatStore(options: QualityGateMockOptions = {}) {
       if (!chat) {
         return json(route, 404, { message: 'chat not found' });
       }
+      const rows = [...(messages.get(chat.id) ?? [])];
+      if (url.searchParams.get('order') === 'desc') {
+        rows.reverse();
+      }
       return json(route, 200, {
         chat,
-        messages: messages.get(chat.id) ?? [],
+        messages: rows,
         nextCursor: null,
         prevCursor: null,
       });

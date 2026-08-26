@@ -31,30 +31,35 @@ function skillsForSave(skills: AgentSkill[]): AgentSkill[] {
     .filter((skill) => skill.name);
 }
 
+async function resolveAccessToken(
+  accessToken: string | null | undefined,
+  ensureGuestAuth: () => Promise<{ access_token?: string } | null>,
+): Promise<string | null> {
+  if (accessToken) return accessToken;
+  const session = await ensureGuestAuth();
+  return session?.access_token ?? null;
+}
+
 export function ChatAgentSettings() {
-  const { accessToken } = useSession();
+  const { accessToken, ensureGuestAuth } = useSession();
   const [defaultPrompt, setDefaultPrompt] = useState('');
   const [skills, setSkills] = useState<AgentSkill[]>([]);
   const [busy, setBusy] = useState(false);
-  const [ready, setReady] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
 
   useEffect(() => {
     if (!accessToken) return;
     let cancelled = false;
-    setReady(false);
     void getUserSettings({ accessToken })
       .then((settings) => {
         if (cancelled) return;
         setDefaultPrompt(settings.chat?.defaultPrompt ?? '');
         setSkills(settings.chat?.skills ?? []);
-        setReady(true);
       })
       .catch((cause) => {
         if (!cancelled) {
           setError(cause instanceof Error ? cause.message : 'Agent 配置加载失败。');
-          setReady(true);
         }
       });
     return () => {
@@ -63,7 +68,11 @@ export function ChatAgentSettings() {
   }, [accessToken]);
 
   async function saveAgentConfig() {
-    if (!accessToken) return;
+    const token = await resolveAccessToken(accessToken, ensureGuestAuth);
+    if (!token) {
+      setError('无法准备访客会话。');
+      return;
+    }
     setBusy(true);
     setSaved(false);
     setError(null);
@@ -74,7 +83,7 @@ export function ChatAgentSettings() {
           defaultPrompt: defaultPrompt.trim() ? defaultPrompt.trim() : null,
           skills: nextSkills.length ? nextSkills : null,
         },
-        { accessToken },
+        { accessToken: token },
       );
       setDefaultPrompt(result.settings.chat?.defaultPrompt ?? '');
       setSkills(result.settings.chat?.skills ?? []);
@@ -99,10 +108,6 @@ export function ChatAgentSettings() {
       <summary className="cursor-pointer text-sm text-muted-foreground hover:text-accent-foreground">
         Agent 配置
       </summary>
-      {!ready ? (
-        <p className="pt-1 text-xs text-muted-foreground">加载中…</p>
-      ) : null}
-      {ready ? (
       <div className="space-y-3 pt-1">
         <label className="block space-y-1 text-xs">
           <span className="font-medium text-foreground">默认系统提示词</span>
@@ -149,7 +154,7 @@ export function ChatAgentSettings() {
           type="button"
           size="sm"
           className="w-full"
-          disabled={busy || !accessToken}
+          disabled={busy}
           onClick={() => void saveAgentConfig()}
         >
           {busy ? '保存中…' : '保存 Agent 配置'}
@@ -157,7 +162,6 @@ export function ChatAgentSettings() {
         {error ? <p className="text-xs text-destructive">{error}</p> : null}
         {saved ? <p className="text-xs text-muted-foreground">已保存。</p> : null}
       </div>
-      ) : null}
     </details>
   );
 }

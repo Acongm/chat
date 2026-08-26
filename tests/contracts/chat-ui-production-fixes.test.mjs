@@ -51,3 +51,18 @@ test('chat site homepage is not statically prerendered for a week', () => {
   const combined = `${layout}\n${home}`;
   assert.match(combined, /export const dynamic = ['"]force-dynamic['"]/);
 });
+
+test('opening a thread URL prepares guest auth so history can load', () => {
+  const workspace = source('apps/web/components/chat-workspace-app.tsx');
+  const threads = source('packages/chat-ui/src/integration/use-chat-threads.ts');
+  assert.match(workspace, /if \(!initialThreadId\) return;/);
+  assert.match(workspace, /void prepareAuth\(\);/);
+  assert.match(threads, /if \(prepareAuth\) void prepareAuth\(\);/);
+});
+
+test('Agent 配置 shows the form without waiting for a prior send', () => {
+  const settings = source('apps/web/components/chat-agent-settings.tsx');
+  assert.match(settings, /ensureGuestAuth/);
+  assert.match(settings, /id="chat-default-prompt"/);
+  assert.doesNotMatch(settings, /\{ready \?/);
+});

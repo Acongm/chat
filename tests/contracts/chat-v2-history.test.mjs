@@ -50,3 +50,30 @@ test('guards accidental parent cycles', () => {
     ['u1', 'a1'],
   );
 });
+
+test('uses the leaf when user and assistant share a timestamp', () => {
+  const stamp = '2026-08-08T00:00:00Z';
+  const rows = [
+    message('assistant-msg-seed', 'assistant', 'user-msg-seed', stamp),
+    message('user-msg-seed', 'user', undefined, stamp),
+  ];
+
+  assert.deepEqual(
+    selectActiveChatBranch(rows).map((item) => item.id),
+    ['user-msg-seed', 'assistant-msg-seed'],
+  );
+});
+
+test('picks the newest persisted head when the API page is newest-first', () => {
+  const rows = [
+    message('u2', 'user', 'a-new', '2026-08-08T00:00:03Z'),
+    message('a-new', 'assistant', 'u1', '2026-08-08T00:00:02Z'),
+    message('a-old', 'assistant', 'u1', '2026-08-08T00:00:01Z'),
+    message('u1', 'user', undefined, '2026-08-08T00:00:00Z'),
+  ];
+
+  assert.deepEqual(
+    selectActiveChatBranch(rows).map((item) => item.id),
+    ['u1', 'a-new', 'u2'],
+  );
+});

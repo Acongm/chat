@@ -1,5 +1,25 @@
 import type { ChatV2Message } from '@acongm/kb-types';
 
+function latestPersistedMessage(
+  messages: readonly ChatV2Message[],
+): ChatV2Message | undefined {
+  if (messages.length === 0) return undefined;
+  const parentIds = new Set(
+    messages
+      .map((message) => message.parentMessageId)
+      .filter((id): id is string => Boolean(id)),
+  );
+  const leaves = messages.filter((message) => !parentIds.has(message.id));
+  const pool = leaves.length > 0 ? leaves : messages;
+  return pool.reduce((latest, message) => {
+    if (message.createdAt > latest.createdAt) return message;
+    if (message.createdAt === latest.createdAt && message.id > latest.id) {
+      return message;
+    }
+    return latest;
+  });
+}
+
 /**
  * Backend message pages contain all durable sibling branches. LocalRuntime seed
  * must receive one active linear branch, not a createdAt-flattened transcript.
@@ -15,7 +35,7 @@ export function selectActiveChatBranch(
   const byId = new Map(messages.map((message) => [message.id, message]));
   const head = headMessageId
     ? byId.get(headMessageId)
-    : messages[messages.length - 1];
+    : latestPersistedMessage(messages);
   if (!head) return [];
 
   const branch: ChatV2Message[] = [];

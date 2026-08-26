@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import {
   ChatFullscreen,
@@ -199,6 +199,11 @@ function WorkspaceInner({
     initialThreadId,
     prepareAuth,
   });
+
+  useEffect(() => {
+    if (!initialThreadId) return;
+    void prepareAuth();
+  }, [initialThreadId, prepareAuth]);
 
   const navigateWithChips = useCallback(
     (path: string, nextChips: KnowledgeRef[]) => {

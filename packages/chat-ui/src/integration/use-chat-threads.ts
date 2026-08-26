@@ -303,9 +303,13 @@ export function useChatThreads(
   );
 
   useEffect(() => {
-    if (!initialThreadId || !accessToken || !identityKey) return;
+    if (!initialThreadId) return;
+    if (!accessToken || !identityKey) {
+      if (prepareAuth) void prepareAuth();
+      return;
+    }
     void selectThread(initialThreadId);
-  }, [accessToken, identityKey, initialThreadId, selectThread]);
+  }, [accessToken, identityKey, initialThreadId, prepareAuth, selectThread]);
 
   const createThread = useCallback(
     async (input: {
