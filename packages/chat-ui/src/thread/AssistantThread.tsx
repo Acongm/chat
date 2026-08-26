@@ -89,7 +89,12 @@ function ReasoningPart() {
       </button>
       {shown ? (
         <div className="acongm-gpt-reasoning__body" aria-busy={running}>
-          <pre className="acongm-gpt-reasoning__text">{part.text}</pre>
+          <pre className="acongm-gpt-reasoning__text">
+            {part.text ||
+              (running
+                ? ''
+                : '模型未返回思考过程。若持续为空，当前模型可能未输出 reasoning / <think>。')}
+          </pre>
         </div>
       ) : null}
     </div>
@@ -103,7 +108,6 @@ function UserMessage() {
         <MessagePrimitive.Parts components={{ Text: UserText }} />
       </div>
       <ActionBarPrimitive.Root
-        hideWhenRunning
         autohide="never"
         className="acongm-gpt-actions is-user"
       >
@@ -157,7 +161,6 @@ function AssistantMessage() {
         />
       </div>
       <ActionBarPrimitive.Root
-        hideWhenRunning
         autohide="never"
         className="acongm-gpt-actions is-assistant"
       >

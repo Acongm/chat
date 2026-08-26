@@ -85,9 +85,17 @@ export {
   CHAT_V1_TAGS,
   insertChatTag,
   deriveTagOptions,
+  inferWebSearchIntent,
   stripChatTagPrefixes,
   type ChatTagKey,
 } from './chat-tags';
+
+export {
+  createThinkSplitState,
+  extractThinkFromText,
+  flushThinkSplit,
+  splitThinkDelta,
+} from './think-text';
 
 export { normalizeComposerText } from './composer-text';
 

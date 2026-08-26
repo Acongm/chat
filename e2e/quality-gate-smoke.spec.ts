@@ -391,6 +391,18 @@ test.describe('Platform v2 quality gate browser smoke (#37)', () => {
     });
   });
 
+  test('highlights web-search for weather questions without 联网 prefix', async ({
+    page,
+  }) => {
+    await installQualityGateMocks(page);
+    await page.goto('/');
+    const composer = await readyComposer(page);
+    await composer.fill('今天深圳什么天气');
+    await expect(page.getByRole('button', { name: '联网检索' })).toHaveClass(
+      /is-active/,
+    );
+  });
+
   test('trims composer whitespace when sending with Enter', async ({ page }) => {
     await installQualityGateMocks(page);
     await page.goto('/');

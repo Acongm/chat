@@ -1,9 +1,12 @@
 import type { ChatModelAdapter, ThreadMessage } from '@assistant-ui/react';
 import {
+  createThinkSplitState,
   deriveTagOptions,
+  flushThinkSplit,
   modelHistory,
   normalizeComposerText,
   resolveCallSource,
+  splitThinkDelta,
   streamChatMessageV2,
   streamChatV1,
 } from '@acongm/agent-session-sdk';
@@ -200,6 +203,7 @@ export function createDocChatModelAdapter(
 
       let thinking = '';
       let text = '';
+      const thinkState = createThinkSplitState();
 
       if (enableThinking) {
         yield yieldParts('', '', enableThinking);
@@ -211,7 +215,9 @@ export function createDocChatModelAdapter(
           yield yieldParts(thinking, text, enableThinking);
         }
         if (event.type === 'delta') {
-          text += event.content || '';
+          const split = splitThinkDelta(event.content || '', thinkState);
+          thinking += split.thinking;
+          text += split.text;
           yield yieldParts(thinking, text, enableThinking);
         }
         if (event.type === 'persisted' && 'chatId' in event && event.chatId) {
@@ -222,6 +228,13 @@ export function createDocChatModelAdapter(
           if ('code' in event && event.code) error.name = event.code;
           throw error;
         }
+      }
+
+      const leftover = flushThinkSplit(thinkState);
+      thinking += leftover.thinking;
+      text += leftover.text;
+      if (leftover.thinking || leftover.text) {
+        yield yieldParts(thinking, text, enableThinking);
       }
 
       if (!text) {

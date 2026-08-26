@@ -405,7 +405,7 @@ html[data-theme='dark'] .acongm-workspace[data-preset='siteFull'] {
   width: 100%;
   max-width: 48rem;
   margin: 0 auto;
-  gap: 0.35rem;
+  gap: 0;
 }
 
 .acongm-gpt-msg.is-user {
@@ -437,24 +437,22 @@ html[data-theme='dark'] .acongm-workspace[data-preset='siteFull'] {
   display: flex;
   align-items: center;
   gap: 0.15rem;
-  position: absolute;
-  z-index: 2;
+  box-sizing: border-box;
+  width: 100%;
+  height: 2rem;
+  min-height: 2rem;
+  margin: 0.15rem 0 0;
   opacity: 0;
   pointer-events: none;
   transition: opacity 0.15s ease;
 }
 
-/* Beside the bubble — never below (translateY expands bounding box on hover). */
 .acongm-gpt-msg.is-user .acongm-gpt-actions {
-  right: 100%;
-  bottom: 0.2rem;
-  margin-right: 0.3rem;
+  justify-content: flex-end;
 }
 
 .acongm-gpt-msg.is-assistant .acongm-gpt-actions {
-  left: 100%;
-  bottom: 0.2rem;
-  margin-left: 0.3rem;
+  justify-content: flex-start;
 }
 
 .acongm-gpt-msg:hover .acongm-gpt-actions,

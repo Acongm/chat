@@ -23,6 +23,12 @@ test('deriveTagOptions detects natural web-search intent', () => {
   assert.equal(result.promptForApi, '今天深圳什么天气？');
 });
 
+test('deriveTagOptions detects weather questions without 联网 prefix', () => {
+  const result = deriveTagOptions('今天深圳什么天气');
+  assert.equal(result.enableWebSearch, true);
+  assert.equal(result.promptForApi, '今天深圳什么天气');
+});
+
 test('deriveTagOptions keeps module scope from tag prefix', () => {
   const result = deriveTagOptions('结合本模块，解释一下');
   assert.equal(result.scope, 'module');
