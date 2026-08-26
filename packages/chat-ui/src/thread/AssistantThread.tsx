@@ -7,6 +7,7 @@ import {
   useState,
   type FormEvent,
 } from 'react';
+import { flushSync } from 'react-dom';
 import {
   ActionBarPrimitive,
   AuiIf,
@@ -177,7 +178,9 @@ function useTrimComposerBeforeSend() {
   return useCallback(() => {
     const normalized = normalizeComposerText(value);
     if (!normalized) return;
-    if (normalized !== value) setText(normalized);
+    if (normalized !== value) {
+      flushSync(() => setText(normalized));
+    }
   }, [value, setText]);
 }
 

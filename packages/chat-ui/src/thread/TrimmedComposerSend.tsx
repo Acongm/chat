@@ -1,6 +1,7 @@
 'use client';
 
 import { useCallback, type ReactNode } from 'react';
+import { flushSync } from 'react-dom';
 import { unstable_useComposerInput } from '@assistant-ui/react';
 import { normalizeComposerText } from './composer-text';
 
@@ -26,7 +27,9 @@ export function TrimmedComposerSend({
 
   const handleClick = useCallback(() => {
     if (!isSendable) return;
-    if (normalized !== value) setText(normalized);
+    if (normalized !== value) {
+      flushSync(() => setText(normalized));
+    }
     send();
   }, [isSendable, normalized, value, setText, send]);
 

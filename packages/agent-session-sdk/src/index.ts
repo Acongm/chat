@@ -89,7 +89,7 @@ export {
   type ChatTagKey,
 } from './chat-tags';
 
-export { normalizeComposerText } from './composer-text.ts';
+export { normalizeComposerText } from './composer-text';
 
 export {
   summaryPathVariants,

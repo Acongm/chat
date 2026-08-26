@@ -2,6 +2,7 @@ import type { ChatModelAdapter, ThreadMessage } from '@assistant-ui/react';
 import {
   deriveTagOptions,
   modelHistory,
+  normalizeComposerText,
   resolveCallSource,
   streamChatMessageV2,
   streamChatV1,
@@ -112,7 +113,7 @@ export function createDocChatModelAdapter(
         tags = [],
         content,
         streamUrl,
-        enableThinking = false,
+        enableThinking = true,
         maxTokens,
         historyMode = 'short',
         chatsBaseUrl,
@@ -122,7 +123,7 @@ export function createDocChatModelAdapter(
       } = ctx;
 
       const currentUser = findLastUser(messages);
-      const question = textFromMessage(currentUser?.message).trim();
+      const question = normalizeComposerText(textFromMessage(currentUser?.message));
       if (!currentUser || !question) {
         yield { content: [{ type: 'text', text: '' }] };
         return;

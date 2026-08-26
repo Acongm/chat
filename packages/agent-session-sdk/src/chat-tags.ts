@@ -1,4 +1,4 @@
-import { normalizeComposerText } from './composer-text.ts';
+import { normalizeComposerText } from './composer-text';
 
 export const CHAT_V1_TAGS = [
   { key: 'article', label: '当前文章', prefix: '结合当前文章，' },
