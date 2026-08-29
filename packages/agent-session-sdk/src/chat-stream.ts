@@ -4,6 +4,9 @@ import type {
   ChatV1StreamEvent,
 } from '@acongm/kb-types';
 import { buildChatHeaders, getConversationId } from './chat-client';
+import { parseSseStream } from './parse-sse-stream';
+
+export { parseSseStream };
 
 /** 同源代理路径（Next.js route 或其它 BFF） */
 export const DEFAULT_CHAT_STREAM_PROXY = '/api/ai/v1/chat/stream';
@@ -51,35 +54,6 @@ export function resolveChatStreamUrl(configured?: string): string {
   if (value.startsWith('/')) return value;
   if (/\/api\/ai\/v1\/chat\/stream\/?$/.test(value)) return value;
   return value.replace(/\/api\/ai\/chat\/?$/, '/api/ai/v1/chat/stream');
-}
-
-export async function* parseSseStream<TEvent = ChatV1StreamEvent>(
-  stream: ReadableStream<Uint8Array>,
-): AsyncGenerator<TEvent> {
-  const reader = stream.getReader();
-  const decoder = new TextDecoder();
-  let buffer = '';
-
-  while (true) {
-    const { value, done } = await reader.read();
-    buffer += decoder.decode(value, { stream: !done });
-    const frames = buffer.split(/\r?\n\r?\n/);
-    buffer = frames.pop() || '';
-    for (const frame of frames) {
-      const data = frame
-        .split(/\r?\n/)
-        .filter((line) => line.startsWith('data:'))
-        .map((line) => line.slice(5).trimStart())
-        .join('\n');
-      if (!data) continue;
-      try {
-        yield JSON.parse(data) as TEvent;
-      } catch {
-        // ignore malformed frames
-      }
-    }
-    if (done) break;
-  }
 }
 
 function formatRateLimitMessage(body: ChatRateLimitErrorBody): string {

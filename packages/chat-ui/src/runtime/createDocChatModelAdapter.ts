@@ -12,6 +12,7 @@ import {
 } from '@acongm/agent-session-sdk';
 import type { ChatUiMessage, ChatV1Context } from '@acongm/kb-types';
 import type { DocChatContext } from '../types';
+import { assistantStreamParts } from './assistant-stream-parts';
 
 function textFromMessage(message: ThreadMessage | undefined): string {
   if (!message) return '';
@@ -37,19 +38,11 @@ function yieldParts(
   thinking: string,
   text: string,
   enableThinking: boolean,
+  streaming: boolean,
 ) {
-  const content: Array<
-    { type: 'reasoning'; text: string } | { type: 'text'; text: string }
-  > = [];
-
-  if (enableThinking || thinking) {
-    content.push({ type: 'reasoning', text: thinking });
-  }
-  if (text) {
-    content.push({ type: 'text', text });
-  }
-
-  return { content };
+  return {
+    content: assistantStreamParts(thinking, text, { enableThinking, streaming }),
+  };
 }
 
 /** Omit empty optional strings — Nest `@IsOptional` + `@Length` rejects `""`. */
@@ -207,19 +200,19 @@ export function createDocChatModelAdapter(
       const thinkState = createThinkSplitState();
 
       if (enableThinking) {
-        yield yieldParts('', '', enableThinking);
+        yield yieldParts('', '', enableThinking, true);
       }
 
       for await (const event of events) {
         if (event.type === 'thinking') {
           thinking += event.content || '';
-          yield yieldParts(thinking, text, enableThinking);
+          yield yieldParts(thinking, text, enableThinking, true);
         }
         if (event.type === 'delta') {
           const split = splitThinkDelta(event.content || '', thinkState);
           thinking += split.thinking;
           text += split.text;
-          yield yieldParts(thinking, text, enableThinking);
+          yield yieldParts(thinking, text, enableThinking, true);
         }
         if (event.type === 'persisted' && 'chatId' in event && event.chatId) {
           onChatPersisted?.(event.chatId);
@@ -234,9 +227,7 @@ export function createDocChatModelAdapter(
       const leftover = flushThinkSplit(thinkState);
       thinking += leftover.thinking;
       text += leftover.text;
-      if (leftover.thinking || leftover.text) {
-        yield yieldParts(thinking, text, enableThinking);
-      }
+      yield yieldParts(thinking, text, enableThinking, false);
 
       if (!text) {
         throw new Error('模型没有返回内容，请重试。');

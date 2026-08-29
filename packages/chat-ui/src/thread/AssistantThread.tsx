@@ -34,7 +34,6 @@ import {
 } from 'lucide-react';
 import { ContextChipBar } from '../knowledge/ContextChipBar';
 import { useKnowledgeUi } from '../knowledge/KnowledgeUiContext';
-import { useDocChatConfig } from '../runtime/DocChatConfigContext';
 import { ChatQuickTags } from './ChatQuickTags';
 import { normalizeComposerText } from './composer-text';
 import { TrimmedComposerSend } from './TrimmedComposerSend';
@@ -53,10 +52,6 @@ function UserText() {
   return <>{normalizeComposerText(part.text)}</>;
 }
 
-function hasReasoningPart(parts: ReadonlyArray<{ type: string }>): boolean {
-  return parts.some((part) => part.type === 'reasoning');
-}
-
 function ReasoningPanel({
   text,
   running,
@@ -64,8 +59,7 @@ function ReasoningPanel({
   text: string;
   running: boolean;
 }) {
-  const { enableThinking } = useDocChatConfig();
-  const [open, setOpen] = useState(() => enableThinking || text.length > 0);
+  const [open, setOpen] = useState(() => running || text.length > 0);
 
   useEffect(() => {
     if (running) setOpen(true);
@@ -75,7 +69,7 @@ function ReasoningPanel({
     if (text.length > 0) setOpen(true);
   }, [text.length]);
 
-  if (!enableThinking && !text && !running) return null;
+  if (!text && !running) return null;
 
   const shown = running || open;
 
@@ -97,12 +91,7 @@ function ReasoningPanel({
       </button>
       {shown ? (
         <div className="acongm-gpt-reasoning__body" aria-busy={running}>
-          <pre className="acongm-gpt-reasoning__text">
-            {text ||
-              (running
-                ? ''
-                : '模型未返回推理内容。若持续为空，当前模型可能未输出 reasoning / <think>。')}
-          </pre>
+          <pre className="acongm-gpt-reasoning__text">{text}</pre>
         </div>
       ) : null}
     </div>
@@ -117,10 +106,6 @@ function ReasoningPart() {
       running={part.status?.type === 'running'}
     />
   );
-}
-
-function ReasoningFallback() {
-  return <ReasoningPanel text="" running={false} />;
 }
 
 function UserMessage() {
@@ -183,9 +168,6 @@ function AssistantMessage() {
             Reasoning: ReasoningPart,
           }}
         />
-        <AuiIf condition={(s) => !hasReasoningPart(s.message.parts)}>
-          <ReasoningFallback />
-        </AuiIf>
       </div>
       <div className="acongm-gpt-actions-slot">
         <ActionBarPrimitive.Root
