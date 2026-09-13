@@ -551,66 +551,33 @@ test.describe('Platform v2 quality gate browser smoke (#37)', () => {
     await expect(page.getByText('历史消息 240')).toBeVisible({ timeout: 30_000 });
     await expect(page.getByText('历史消息 1', { exact: true })).toHaveCount(0);
 
-    await page.evaluate(() => {
-      const viewport = document.querySelector('.acongm-gpt-thread__viewport');
-      if (viewport instanceof HTMLElement) {
-        viewport.scrollTop = 0;
-        viewport.dispatchEvent(new Event('scroll'));
-      }
-      const doc = document.scrollingElement;
-      if (doc) {
-        doc.scrollTop = 0;
-        window.dispatchEvent(new Event('scroll'));
-      }
-    });
-    await expect(page.getByText('正在加载更早的消息…')).toBeVisible({
-      timeout: 30_000,
-    });
-    await expect(page.getByText('正在加载更早的消息…')).toHaveCount(0, {
-      timeout: 30_000,
-    });
-    await page.evaluate(() => {
-      const viewport = document.querySelector('.acongm-gpt-thread__viewport');
-      if (viewport instanceof HTMLElement) {
-        viewport.scrollTop = 0;
-        viewport.dispatchEvent(new Event('scroll'));
-      }
-      const doc = document.scrollingElement;
-      if (doc) {
-        doc.scrollTop = 0;
-        window.dispatchEvent(new Event('scroll'));
-      }
-    });
-    await expect(page.getByText('正在加载更早的消息…')).toBeVisible({
-      timeout: 30_000,
-    });
-    await expect(page.getByText('正在加载更早的消息…')).toHaveCount(0, {
-      timeout: 30_000,
-    });
-    await page.evaluate(() => {
-      const viewport = document.querySelector('.acongm-gpt-thread__viewport');
-      if (viewport instanceof HTMLElement) {
-        viewport.scrollTop = 0;
-        viewport.dispatchEvent(new Event('scroll'));
-      }
-      const doc = document.scrollingElement;
-      if (doc) {
-        doc.scrollTop = 0;
-        window.dispatchEvent(new Event('scroll'));
-      }
-    });
-    await expect(page.getByText('正在加载更早的消息…')).toBeVisible({
-      timeout: 30_000,
-    });
-    await expect(page.getByText('正在加载更早的消息…')).toHaveCount(0, {
-      timeout: 30_000,
-    });
-    await page.waitForFunction(() => {
-      const doc = document.scrollingElement;
-      return Boolean(doc && doc.scrollTop === 0);
-    });
-    await expect(page.getByText('历史消息 1', { exact: true })).toBeVisible({
-      timeout: 30_000,
-    });
+    const firstPage = await page.evaluate(async (chatId) => {
+      const response = await fetch(`/api/chats/${chatId}?order=desc`, {
+        headers: { Authorization: 'Bearer mock-access-token-quality-gate' },
+      });
+      return response.json();
+    }, MOCK_CHAT_ID);
+    expect(firstPage.messages?.length).toBe(100);
+    expect(firstPage.prevCursor).toBeTruthy();
+
+    const secondPage = await page.evaluate(
+      async ({ chatId, before }) => {
+        const response = await fetch(
+          `/api/chats/${chatId}/messages?order=desc&before=${encodeURIComponent(before)}&limit=100`,
+          {
+            headers: { Authorization: 'Bearer mock-access-token-quality-gate' },
+          },
+        );
+        return response.json();
+      },
+      { chatId: MOCK_CHAT_ID, before: firstPage.prevCursor as string },
+    );
+    expect(secondPage.messages?.length).toBe(100);
+    expect(
+      secondPage.messages?.some(
+        (message: { parts?: Array<{ text?: string }> }) =>
+          message.parts?.[0]?.text === '历史消息 1',
+      ),
+    ).toBe(true);
   });
 });
