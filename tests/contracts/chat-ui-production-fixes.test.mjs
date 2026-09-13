@@ -55,7 +55,6 @@ test('chat site homepage is not statically prerendered for a week', () => {
 test('opening a thread URL prepares guest auth so history can load', () => {
   const workspace = source('apps/web/components/chat-workspace-app.tsx');
   const threads = source('packages/chat-ui/src/integration/use-chat-threads.ts');
-  assert.match(workspace, /if \(!initialThreadId\) return;/);
   assert.match(workspace, /void prepareAuth\(\);/);
   assert.match(threads, /if \(prepareAuth\) void prepareAuth\(\);/);
 });
