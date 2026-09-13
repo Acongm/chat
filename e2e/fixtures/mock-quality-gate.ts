@@ -236,10 +236,10 @@ function createChatStore(options: QualityGateMockOptions = {}) {
   let streamCount = 0;
   let sidebarListFailures = 0;
   const sidebarListFailBudget =
-    typeof options.failSidebarList === 'number'
-      ? options.failSidebarList
-      : options.failSidebarList
-        ? 1
+    options.failSidebarList === true
+      ? Number.MAX_SAFE_INTEGER
+      : typeof options.failSidebarList === 'number'
+        ? options.failSidebarList
         : 0;
 
   function chatsFor(userId: string) {
@@ -452,7 +452,7 @@ function createChatStore(options: QualityGateMockOptions = {}) {
           : 0;
         const pageItems = ordered.slice(startIndex, startIndex + limit);
         const nextOlder = ordered[startIndex + limit];
-        const responseRows = orderDesc ? pageItems : pageItems;
+        const responseRows = orderDesc ? [...pageItems].reverse() : pageItems;
         return json(route, 200, {
           chat,
           messages: responseRows,
@@ -494,8 +494,9 @@ function createChatStore(options: QualityGateMockOptions = {}) {
         : 0;
       const pageItems = ordered.slice(startIndex, startIndex + limit);
       const nextOlder = ordered[startIndex + limit];
+      const responseRows = orderDesc ? [...pageItems].reverse() : pageItems;
       return json(route, 200, {
-        messages: pageItems,
+        messages: responseRows,
         prevCursor: nextOlder?.id ?? null,
         nextCursor: null,
       });

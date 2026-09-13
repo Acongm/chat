@@ -38,7 +38,7 @@ test('conversation hook uses tail-first restore and scroll-up older pages', () =
   assert.match(hook, /threadSeedCache/);
   assert.match(
     hook,
-    /catch \(err\) \{[\s\S]*?setSeedStatus\('ready'\);[\s\S]*?setError\(/,
+    /catch \(err\) \{[\s\S]*?setSeedStatus\('ready'\);[\s\S]*?setHistoryError\(/,
   );
   assert.doesNotMatch(hook, /loadChatV2HistoryProgressive/);
   assert.match(hook, /touchThread/);

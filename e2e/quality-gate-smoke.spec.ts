@@ -479,6 +479,10 @@ test.describe('Platform v2 quality gate browser smoke (#37)', () => {
     await installQualityGateMocks(page, { paginatedChats: true });
     await page.goto('/');
     await readyComposer(page);
+    await expect(page.locator('.acongm-gpt-sidebar__hint', { hasText: '加载会话' })).toHaveCount(
+      0,
+      { timeout: 30_000 },
+    );
 
     await expect(
       page.locator('.acongm-gpt-sidebar__item-title', { hasText: '分页会话 1' }),
@@ -545,7 +549,7 @@ test.describe('Platform v2 quality gate browser smoke (#37)', () => {
     await page.goto(`/t/${MOCK_CHAT_ID}`);
 
     await expect(page.getByText('历史消息 240')).toBeVisible({ timeout: 30_000 });
-    await expect(page.getByText('历史消息 1')).toHaveCount(0);
+    await expect(page.getByText('历史消息 1', { exact: true })).toHaveCount(0);
 
     await page.evaluate(() => {
       const doc = document.scrollingElement;
@@ -554,6 +558,8 @@ test.describe('Platform v2 quality gate browser smoke (#37)', () => {
     await expect(page.getByText('正在加载更早的消息…')).toBeVisible({
       timeout: 30_000,
     });
-    await expect(page.getByText('历史消息 1')).toBeVisible({ timeout: 30_000 });
+    await expect(page.getByText('历史消息 1', { exact: true })).toBeVisible({
+      timeout: 30_000,
+    });
   });
 });
