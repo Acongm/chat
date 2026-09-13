@@ -451,4 +451,109 @@ test.describe('Platform v2 quality gate browser smoke (#37)', () => {
     expect(Math.abs(afterUser - beforeUser)).toBeLessThan(2);
     expect(Math.abs(afterAssistant - beforeAssistant)).toBeLessThan(2);
   });
+
+  test('send, stream done, and hard refresh restore durable history', async ({
+    page,
+  }) => {
+    await installQualityGateMocks(page);
+    await page.goto('/');
+    await sendPrompt(page, 'durable refresh probe');
+    await expect(page.getByText(FIRST_ASSISTANT_REPLY)).toBeVisible({
+      timeout: 30_000,
+    });
+    await expect(page.getByTitle('发送')).toBeVisible({ timeout: 30_000 });
+    await expect(page.getByTitle('停止')).toHaveCount(0);
+
+    await page.reload();
+    const composer = await readyComposer(page);
+    await expect(composer).toBeEnabled();
+    await expect(page.getByText('durable refresh probe').first()).toBeVisible({
+      timeout: 30_000,
+    });
+    await expect(page.getByText(FIRST_ASSISTANT_REPLY)).toBeVisible({
+      timeout: 30_000,
+    });
+  });
+
+  test('lazy-loads sidebar chat pages 2 and 3 via cursor', async ({ page }) => {
+    await installQualityGateMocks(page, { paginatedChats: true });
+    await page.goto('/');
+    await readyComposer(page);
+
+    await expect(
+      page.locator('.acongm-gpt-sidebar__item-title', { hasText: '分页会话 1' }),
+    ).toBeVisible({ timeout: 30_000 });
+    await expect(
+      page.locator('.acongm-gpt-sidebar__item-title', { hasText: '分页会话 51' }),
+    ).toHaveCount(0);
+
+    await page.locator('.acongm-gpt-sidebar__new[data-action="load-more"]').click();
+    await expect(
+      page.locator('.acongm-gpt-sidebar__item-title', { hasText: '分页会话 51' }),
+    ).toBeVisible({ timeout: 30_000 });
+
+    await page.locator('.acongm-gpt-sidebar__new[data-action="load-more"]').click();
+    await expect(
+      page.locator('.acongm-gpt-sidebar__item-title', { hasText: '分页会话 101' }),
+    ).toBeVisible({ timeout: 30_000 });
+  });
+
+  test('sidebar list failure does not block composer send', async ({ page }) => {
+    await installQualityGateMocks(page, { failSidebarList: 1 });
+    await page.goto('/');
+
+    await expect(page.locator('.acongm-gpt-sidebar__hint.is-error')).toBeVisible({
+      timeout: 30_000,
+    });
+    const composer = await readyComposer(page);
+    await expect(composer).toBeEnabled();
+    await sendPrompt(page, 'sidebar failed but composer works');
+    await expect(page.getByText(FIRST_ASSISTANT_REPLY)).toBeVisible({
+      timeout: 30_000,
+    });
+  });
+
+  test('logout switches UID without leaking prior user sidebar data', async ({
+    page,
+  }) => {
+    const mocks = await installQualityGateMocks(page);
+    await page.goto('/');
+    await sendPrompt(page, 'User A secret sidebar title');
+    await expect(page.getByText(FIRST_ASSISTANT_REPLY)).toBeVisible({
+      timeout: 30_000,
+    });
+    await expect(
+      page.locator('.acongm-gpt-sidebar__item-title', {
+        hasText: 'User A secret sidebar title',
+      }),
+    ).toBeVisible();
+
+    mocks.switchToUserB();
+    await page.reload();
+    await readyComposer(page);
+    await expect(
+      page.locator('.acongm-gpt-sidebar__item-title', {
+        hasText: 'User A secret sidebar title',
+      }),
+    ).toHaveCount(0);
+  });
+
+  test('lazy-loads older transcript pages for restored threads', async ({
+    page,
+  }) => {
+    await installQualityGateMocks(page, { paginatedMessages: true });
+    await page.goto(`/t/${MOCK_CHAT_ID}`);
+
+    await expect(page.getByText('历史消息 240')).toBeVisible({ timeout: 30_000 });
+    await expect(page.getByText('历史消息 1')).toHaveCount(0);
+
+    await page.evaluate(() => {
+      const doc = document.scrollingElement;
+      if (doc) doc.scrollTop = 0;
+    });
+    await expect(page.getByText('正在加载更早的消息…')).toBeVisible({
+      timeout: 30_000,
+    });
+    await expect(page.getByText('历史消息 1')).toBeVisible({ timeout: 30_000 });
+  });
 });
