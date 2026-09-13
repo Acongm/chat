@@ -111,6 +111,27 @@ test('User BFF proxies /api/user to api.acongm.com so getUserInfo works after lo
   assert.match(text, /USER_UPSTREAM_UNREACHABLE/);
 });
 
+test('thread hook keeps sidebar and history errors independent', () => {
+  const hook = source('packages/chat-ui/src/integration/use-chat-threads.ts');
+  assert.match(hook, /sidebarError/);
+  assert.match(hook, /historyError/);
+  assert.match(hook, /setSidebarError\(/);
+  assert.match(hook, /setHistoryError\(/);
+  assert.match(hook, /identitySnapshots/);
+});
+
+test('workspace keeps composer non-blocking during auth bootstrap', () => {
+  const workspace = source('apps/web/components/chat-workspace-app.tsx');
+  assert.match(workspace, /warmIdentityRef/);
+  assert.match(workspace, /AUTH_BOOTSTRAP_TIMEOUT_MS/);
+  assert.match(workspace, /sidebarError/);
+  assert.match(workspace, /historyError/);
+  assert.doesNotMatch(
+    workspace,
+    /composerDisabled\s*=\s*authStatus === 'restoring'/,
+  );
+});
+
 test('page-bound history restore does not wipe transcript with an empty seed on failure', () => {
   const hook = source('packages/chat-ui/src/integration/use-page-bound-chat.ts');
   assert.match(hook, /setRestoreError\(/);

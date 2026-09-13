@@ -3,7 +3,11 @@ import type { Page, Route } from '@playwright/test';
 export const MOCK_SUPABASE_URL = 'http://mock-supabase.test';
 export const MOCK_ANON_KEY = 'mock-anon-key';
 export const MOCK_USER_ID = '00000000-0000-4000-8000-000000000001';
+export const MOCK_USER_ID_B = '00000000-0000-4000-8000-000000000002';
+export const MOCK_USER_ID_PAGINATED = '00000000-0000-4000-8000-0000000099';
 export const MOCK_ACCESS_TOKEN = 'mock-access-token-quality-gate';
+export const MOCK_ACCESS_TOKEN_B = 'mock-access-token-quality-gate-b';
+export const MOCK_ACCESS_TOKEN_PAGINATED = 'mock-access-token-quality-gate-paginated';
 export const MOCK_CHAT_ID = '11111111-1111-4111-8111-111111111111';
 export const FIRST_ASSISTANT_REPLY = '你好，这是测试回复';
 export const RELOADED_ASSISTANT_REPLY = '这是重新生成的回复';
@@ -20,6 +24,9 @@ export const LONG_ASSISTANT_REPLY = Array.from({ length: 48 }, (_, index) => {
     '',
   ].join('\n');
 }).join('\n');
+
+const CHAT_PAGE_SIZE = 50;
+const MESSAGE_HISTORY_PAGE_SIZE = 100;
 
 type ChatRow = {
   id: string;
@@ -49,28 +56,38 @@ export type QualityGateMockOptions = {
   failFirstStream?: boolean;
   longFirstReply?: boolean;
   seedLongThread?: boolean;
+  /** Fail sidebar list fetch without blocking stream/composer routes. */
+  failSidebarList?: boolean | number;
+  /** Paginate GET /api/chats across multiple cursor pages. */
+  paginatedChats?: boolean;
+  /** Paginate thread history via prevCursor on GET /api/chats/:id. */
+  paginatedMessages?: boolean;
 };
 
-const MOCK_SESSION = {
-  access_token: MOCK_ACCESS_TOKEN,
-  token_type: 'bearer',
-  expires_in: 3600,
-  expires_at: Math.floor(Date.now() / 1000) + 3600,
-  refresh_token: 'mock-refresh-token',
-  user: {
-    id: MOCK_USER_ID,
-    aud: 'authenticated',
-    role: 'authenticated',
-    email: '',
-    phone: '',
-    is_anonymous: true,
-    app_metadata: { provider: 'anonymous' },
-    user_metadata: {},
-    identities: [],
-    created_at: new Date().toISOString(),
-    updated_at: new Date().toISOString(),
-  },
-};
+const MOCK_SESSION = buildMockSession(MOCK_USER_ID, MOCK_ACCESS_TOKEN);
+
+function buildMockSession(userId: string, accessToken: string) {
+  return {
+    access_token: accessToken,
+    token_type: 'bearer',
+    expires_in: 3600,
+    expires_at: Math.floor(Date.now() / 1000) + 3600,
+    refresh_token: 'mock-refresh-token',
+    user: {
+      id: userId,
+      aud: 'authenticated',
+      role: 'authenticated',
+      email: '',
+      phone: '',
+      is_anonymous: true,
+      app_metadata: { provider: 'anonymous' },
+      user_metadata: {},
+      identities: [],
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    },
+  };
+}
 
 function json(route: Route, status: number, body: unknown) {
   return route.fulfill({
@@ -101,26 +118,56 @@ function nowIso(): string {
   return new Date().toISOString();
 }
 
-function fulfillSupabaseAuth(route: Route) {
+function fulfillAuthSession(route: Route, session: ReturnType<typeof buildMockSession>) {
+  return json(route, 200, {
+    authenticated: true,
+    configured: true,
+    anonymous: Boolean(session.user.is_anonymous),
+    isAnonymous: Boolean(session.user.is_anonymous),
+    user: {
+      id: session.user.id,
+      is_anonymous: Boolean(session.user.is_anonymous),
+    },
+    userInfo: {
+      id: session.user.id,
+      displayName: session.user.is_anonymous ? '访客' : 'Quality Gate',
+      avatarUrl: null,
+      isAnonymous: Boolean(session.user.is_anonymous),
+    },
+    accessToken: session.access_token,
+  });
+}
+
+function fulfillSupabaseAuth(route: Route, session = MOCK_SESSION) {
   const url = route.request().url();
   const method = route.request().method();
 
   if (url.includes('/auth/v1/signup') && method === 'POST') {
-    return json(route, 200, MOCK_SESSION);
+    return json(route, 200, session);
   }
   if (url.includes('/auth/v1/token') && method === 'POST') {
-    return json(route, 200, MOCK_SESSION);
+    return json(route, 200, session);
   }
   if (url.includes('/auth/v1/user') && method === 'GET') {
-    return json(route, 200, MOCK_SESSION.user);
+    return json(route, 200, session.user);
   }
   if (url.includes('/auth/v1/session') && method === 'GET') {
-    return json(route, 200, { session: MOCK_SESSION });
+    return json(route, 200, { session });
   }
   return json(route, 200, {});
 }
 
-function createUserSettings() {
+function resolveMockUser(accessToken: string | null) {
+  if (accessToken === MOCK_ACCESS_TOKEN_B) {
+    return { id: MOCK_USER_ID_B, token: MOCK_ACCESS_TOKEN_B };
+  }
+  if (accessToken === MOCK_ACCESS_TOKEN_PAGINATED) {
+    return { id: MOCK_USER_ID_PAGINATED, token: MOCK_ACCESS_TOKEN_PAGINATED };
+  }
+  return { id: MOCK_USER_ID, token: MOCK_ACCESS_TOKEN };
+}
+
+function createUserSettings(_userId: string) {
   return {
     language: 'zh-CN',
     theme: 'system',
@@ -155,11 +202,11 @@ function createUserSettings() {
   };
 }
 
-function fulfillUser(route: Route, settings: ReturnType<typeof createUserSettings>) {
+function fulfillUser(route: Route, settings: ReturnType<typeof createUserSettings>, userId: string) {
   const pathname = new URL(route.request().url()).pathname.replace(/\/$/, '');
   const method = route.request().method();
   const userInfo = {
-    id: MOCK_USER_ID,
+    id: userId,
     displayName: '访客',
     avatarUrl: null,
     email: null,
@@ -176,7 +223,7 @@ function fulfillUser(route: Route, settings: ReturnType<typeof createUserSetting
 
   if ((pathname === '/api/user/me' || pathname === '/api/user/settings') && method === 'GET') {
     return json(route, 200, {
-      id: MOCK_USER_ID,
+      id: userId,
       isAnonymous: true,
       userInfo,
       settings,
@@ -209,13 +256,94 @@ function fulfillUser(route: Route, settings: ReturnType<typeof createUserSetting
 }
 
 function createChatStore(options: QualityGateMockOptions = {}) {
-  const chats = new Map<string, ChatRow>();
-  const messages = new Map<string, MessageRow[]>();
+  const chatsByUser = new Map<string, Map<string, ChatRow>>();
+  const messagesByUser = new Map<string, Map<string, MessageRow[]>>();
   let streamCount = 0;
+  let sidebarListFailures = 0;
+  const sidebarListFailBudget =
+    options.failSidebarList === true
+      ? Number.MAX_SAFE_INTEGER
+      : typeof options.failSidebarList === 'number'
+        ? options.failSidebarList
+        : 0;
+
+  function chatsFor(userId: string) {
+    let store = chatsByUser.get(userId);
+    if (!store) {
+      store = new Map();
+      chatsByUser.set(userId, store);
+    }
+    return store;
+  }
+
+  function messagesFor(userId: string) {
+    let store = messagesByUser.get(userId);
+    if (!store) {
+      store = new Map();
+      messagesByUser.set(userId, store);
+    }
+    return store;
+  }
+
+  function resolveUserId(route: Route): string {
+    const auth = route.request().headers()['authorization'] ?? '';
+    const token = auth.replace(/^Bearer\s+/i, '').trim();
+    return resolveMockUser(token || MOCK_ACCESS_TOKEN).id;
+  }
+
+  if (options.paginatedChats) {
+    const userId = MOCK_USER_ID_PAGINATED;
+    const chats = chatsFor(userId);
+    for (let index = 0; index < 120; index += 1) {
+      const id = `22222222-2222-4222-8222-${String(index).padStart(12, '0')}`;
+      const stamp = new Date(Date.now() - index * 1_000).toISOString();
+      chats.set(id, {
+        id,
+        user_id: userId,
+        title: `分页会话 ${index + 1}`,
+        page_path: null,
+        module_key: null,
+        metadata: {},
+        created_at: stamp,
+        updated_at: stamp,
+      });
+    }
+  }
+
+  if (options.paginatedMessages) {
+    const userId = MOCK_USER_ID;
+    const stamp = nowIso();
+    chatsFor(userId).set(MOCK_CHAT_ID, {
+      id: MOCK_CHAT_ID,
+      user_id: userId,
+      title: '分页历史会话',
+      page_path: null,
+      module_key: null,
+      metadata: {},
+      created_at: stamp,
+      updated_at: stamp,
+    });
+    const rows: MessageRow[] = [];
+    for (let index = 0; index < 240; index += 1) {
+      rows.push({
+        id: `history-msg-${index}`,
+        chat_id: MOCK_CHAT_ID,
+        user_id: userId,
+        client_message_id: null,
+        parent_message_id: index > 0 ? `history-msg-${index - 1}` : null,
+        role: index % 2 === 0 ? 'user' : 'assistant',
+        parts: [{ type: 'text', text: `历史消息 ${index + 1}` }],
+        metadata: {},
+        created_at: stamp,
+      });
+    }
+    messagesFor(userId).set(MOCK_CHAT_ID, rows);
+  }
 
   if (options.seedLongThread) {
     const stamp = nowIso();
-    chats.set(MOCK_CHAT_ID, {
+    const userId = MOCK_USER_ID;
+    chatsFor(userId).set(MOCK_CHAT_ID, {
       id: MOCK_CHAT_ID,
       user_id: MOCK_USER_ID,
       title: '继续',
@@ -225,7 +353,7 @@ function createChatStore(options: QualityGateMockOptions = {}) {
       created_at: stamp,
       updated_at: stamp,
     });
-    messages.set(MOCK_CHAT_ID, [
+    messagesFor(userId).set(MOCK_CHAT_ID, [
       {
         id: 'user-msg-seed',
         chat_id: MOCK_CHAT_ID,
@@ -251,18 +379,18 @@ function createChatStore(options: QualityGateMockOptions = {}) {
     ]);
   }
 
-  function rememberMessage(row: MessageRow) {
-    const rows = messages.get(row.chat_id) ?? [];
+  function rememberMessage(userId: string, row: MessageRow) {
+    const rows = messagesFor(userId).get(row.chat_id) ?? [];
     rows.push(row);
-    messages.set(row.chat_id, rows);
+    messagesFor(userId).set(row.chat_id, rows);
   }
 
-  function persistTurn(chatId: string, content: string, reply: string) {
+  function persistTurn(userId: string, chatId: string, content: string, reply: string) {
     const stamp = nowIso();
-    rememberMessage({
+    rememberMessage(userId, {
       id: `user-msg-${streamCount}`,
       chat_id: chatId,
-      user_id: MOCK_USER_ID,
+      user_id: userId,
       client_message_id: null,
       parent_message_id: null,
       role: 'user',
@@ -270,10 +398,10 @@ function createChatStore(options: QualityGateMockOptions = {}) {
       metadata: {},
       created_at: stamp,
     });
-    rememberMessage({
+    rememberMessage(userId, {
       id: `assistant-msg-${streamCount}`,
       chat_id: chatId,
-      user_id: MOCK_USER_ID,
+      user_id: userId,
       client_message_id: null,
       parent_message_id: `user-msg-${streamCount}`,
       role: 'assistant',
@@ -283,15 +411,33 @@ function createChatStore(options: QualityGateMockOptions = {}) {
     });
   }
 
-  async function fulfillChats(route: Route, options: QualityGateMockOptions) {
+  async function fulfillChats(route: Route, routeOptions: QualityGateMockOptions) {
     const url = new URL(route.request().url());
     const method = route.request().method();
     const pathname = url.pathname.replace(/\/$/, '');
+    const userId = resolveUserId(route);
+    const chats = chatsFor(userId);
+    const messages = messagesFor(userId);
 
     if (pathname === '/api/chats' && method === 'GET') {
+      if (sidebarListFailures < sidebarListFailBudget) {
+        sidebarListFailures += 1;
+        return json(route, 503, { message: 'sidebar list temporarily unavailable' });
+      }
+      const allChats = [...chats.values()].sort((a, b) =>
+        b.updated_at.localeCompare(a.updated_at),
+      );
+      const after = url.searchParams.get('after');
+      const limit = Number(url.searchParams.get('limit') || CHAT_PAGE_SIZE);
+      const startIndex = after
+        ? allChats.findIndex((chat) => chat.id === after) + 1
+        : 0;
+      const pageItems = allChats.slice(startIndex, startIndex + limit);
+      const hasMore = startIndex + limit < allChats.length;
+      const nextCursor = hasMore ? pageItems[pageItems.length - 1]?.id ?? null : null;
       return json(route, 200, {
-        chats: [...chats.values()],
-        nextCursor: null,
+        chats: pageItems,
+        nextCursor,
       });
     }
 
@@ -299,7 +445,7 @@ function createChatStore(options: QualityGateMockOptions = {}) {
       const body = readJsonBody(route);
       const created: ChatRow = {
         id: MOCK_CHAT_ID,
-        user_id: MOCK_USER_ID,
+        user_id: userId,
         title: asString(body.title) || 'Quality gate chat',
         page_path: asString(body.pagePath) || asString(body.page_path),
         module_key: asString(body.moduleKey) || asString(body.module_key),
@@ -321,7 +467,27 @@ function createChatStore(options: QualityGateMockOptions = {}) {
         return json(route, 404, { message: 'chat not found' });
       }
       const rows = [...(messages.get(chat.id) ?? [])];
-      if (url.searchParams.get('order') === 'desc') {
+      const orderDesc = url.searchParams.get('order') === 'desc';
+      const before = url.searchParams.get('before');
+      const limit = Number(url.searchParams.get('limit') || MESSAGE_HISTORY_PAGE_SIZE);
+
+      if (routeOptions.paginatedMessages && rows.length > 2) {
+        const ordered = orderDesc ? [...rows].reverse() : [...rows];
+        const startIndex = before
+          ? ordered.findIndex((row) => row.id === before) + 1
+          : 0;
+        const pageItems = ordered.slice(startIndex, startIndex + limit);
+        const hasMore = startIndex + limit < ordered.length;
+        const responseRows = orderDesc ? [...pageItems].reverse() : pageItems;
+        return json(route, 200, {
+          chat,
+          messages: responseRows,
+          nextCursor: null,
+          prevCursor: hasMore ? pageItems[pageItems.length - 1]?.id ?? null : null,
+        });
+      }
+
+      if (orderDesc) {
         rows.reverse();
       }
       return json(route, 200, {
@@ -338,11 +504,35 @@ function createChatStore(options: QualityGateMockOptions = {}) {
       return json(route, 204, {});
     }
 
+    const messagesMatch = pathname.match(/^\/api\/chats\/([^/]+)\/messages$/);
+    if (messagesMatch && method === 'GET') {
+      const chat = chats.get(messagesMatch[1]);
+      if (!chat) {
+        return json(route, 404, { message: 'chat not found' });
+      }
+      const rows = [...(messages.get(chat.id) ?? [])];
+      const orderDesc = url.searchParams.get('order') === 'desc';
+      const before = url.searchParams.get('before');
+      const limit = Number(url.searchParams.get('limit') || MESSAGE_HISTORY_PAGE_SIZE);
+      const ordered = orderDesc ? [...rows].reverse() : [...rows];
+      const startIndex = before
+        ? ordered.findIndex((row) => row.id === before) + 1
+        : 0;
+      const pageItems = ordered.slice(startIndex, startIndex + limit);
+      const hasMore = startIndex + limit < ordered.length;
+      const responseRows = orderDesc ? [...pageItems].reverse() : pageItems;
+      return json(route, 200, {
+        messages: responseRows,
+        prevCursor: hasMore ? pageItems[pageItems.length - 1]?.id ?? null : null,
+        nextCursor: null,
+      });
+    }
+
     const streamMatch = pathname.match(/^\/api\/chats\/([^/]+)\/messages\/stream$/);
     if (streamMatch && method === 'POST') {
       try {
-        if (options.streamDelayMs) {
-          await new Promise((resolve) => setTimeout(resolve, options.streamDelayMs));
+        if (routeOptions.streamDelayMs) {
+          await new Promise((resolve) => setTimeout(resolve, routeOptions.streamDelayMs));
         }
 
         streamCount += 1;
@@ -351,16 +541,16 @@ function createChatStore(options: QualityGateMockOptions = {}) {
         const content = asString(body.content) || 'hello quality gate';
         const enableThinking = Boolean(body.enableThinking);
         const enableWebSearch = Boolean(body.enableWebSearch);
-        const failThisStream = Boolean(options.failFirstStream && streamCount === 1);
+        const failThisStream = Boolean(routeOptions.failFirstStream && streamCount === 1);
         const reply =
-          options.longFirstReply && streamCount === 1
+          routeOptions.longFirstReply && streamCount === 1
             ? LONG_ASSISTANT_REPLY
             : streamCount === 1
               ? FIRST_ASSISTANT_REPLY
               : RELOADED_ASSISTANT_REPLY;
 
         if (!failThisStream) {
-          persistTurn(chatId, content, reply);
+          persistTurn(userId, chatId, content, reply);
         }
 
         const chunks = failThisStream
@@ -437,17 +627,50 @@ function createChatStore(options: QualityGateMockOptions = {}) {
   return { fulfillChats };
 }
 
+export type QualityGateMockControls = {
+  switchToUserB: () => void;
+};
+
 /** Intercept same-origin BFF routes and Supabase auth for local #37 browser smoke. */
 export async function installQualityGateMocks(
   page: Page,
   options: QualityGateMockOptions = {},
-) {
+): Promise<QualityGateMockControls> {
   const store = createChatStore(options);
-  const settings = createUserSettings();
-  await page.route(`${MOCK_SUPABASE_URL}/**`, fulfillSupabaseAuth);
+  const settingsByUser = new Map([
+    [MOCK_USER_ID, createUserSettings(MOCK_USER_ID)],
+    [MOCK_USER_ID_B, createUserSettings(MOCK_USER_ID_B)],
+    [MOCK_USER_ID_PAGINATED, createUserSettings(MOCK_USER_ID_PAGINATED)],
+  ]);
+  let activeSession = options.paginatedChats
+    ? buildMockSession(MOCK_USER_ID_PAGINATED, MOCK_ACCESS_TOKEN_PAGINATED)
+    : buildMockSession(MOCK_USER_ID, MOCK_ACCESS_TOKEN);
+
+  await page.unroute(`${MOCK_SUPABASE_URL}/**`).catch(() => undefined);
+  await page.unroute('**/api/auth/session').catch(() => undefined);
+  await page.unroute('**/api/chats**').catch(() => undefined);
+  await page.unroute('**/api/user/**').catch(() => undefined);
+  await page.unroute('**/summaries-v1.json').catch(() => undefined);
+  await page.route(`${MOCK_SUPABASE_URL}/**`, (route) =>
+    fulfillSupabaseAuth(route, activeSession),
+  );
+  await page.route('**/api/auth/session', (route) =>
+    fulfillAuthSession(route, activeSession),
+  );
   await page.route('**/api/chats**', (route) => store.fulfillChats(route, options));
-  await page.route('**/api/user/**', (route) => fulfillUser(route, settings));
+  await page.route('**/api/user/**', (route) => {
+    const auth = route.request().headers()['authorization'] ?? '';
+    const token = auth.replace(/^Bearer\s+/i, '').trim();
+    const userId = resolveMockUser(token || activeSession.access_token).id;
+    fulfillUser(route, settingsByUser.get(userId) ?? createUserSettings(userId), userId);
+  });
   await page.route('**/summaries-v1.json', (route) =>
     json(route, 200, { version: 1, files: {} }),
   );
+
+  return {
+    switchToUserB() {
+      activeSession = buildMockSession(MOCK_USER_ID_B, MOCK_ACCESS_TOKEN_B);
+    },
+  };
 }

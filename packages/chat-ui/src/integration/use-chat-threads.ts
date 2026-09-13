@@ -35,6 +35,12 @@ type ThreadSeedCacheEntry = {
   complete: boolean;
 };
 
+type IdentitySnapshot = {
+  threads: ChatV2Record[];
+  nextCursor: string | null;
+  seedCache: Map<string, ThreadSeedCacheEntry>;
+};
+
 export type UseChatThreadsResult = {
   threads: ChatV2Record[];
   activeThreadId: string | null;
@@ -48,8 +54,13 @@ export type UseChatThreadsResult = {
   refreshing: boolean;
   loadingMore: boolean;
   hasMore: boolean;
+  /** Sidebar list fetch failures — does not block composer. */
+  sidebarError: string | null;
+  /** Active thread history failures — shown in composer area. */
+  historyError: string | null;
+  /** @deprecated Use sidebarError. */
   error: string | null;
-  refresh: () => Promise<void>;
+  refresh: (options?: { background?: boolean }) => Promise<void>;
   loadMore: () => Promise<void>;
   loadOlderMessages: () => Promise<void>;
   createThread: (input?: {
@@ -115,12 +126,14 @@ export function useChatThreads(
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [loadingMore, setLoadingMore] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [sidebarError, setSidebarError] = useState<string | null>(null);
+  const [historyError, setHistoryError] = useState<string | null>(null);
 
   const refreshGen = useRef(0);
   const selectGen = useRef(0);
   const previousIdentity = useRef<string | null>(null);
   const threadSeedCache = useRef(new Map<string, ThreadSeedCacheEntry>());
+  const identitySnapshots = useRef(new Map<string, IdentitySnapshot>());
 
   const requestOptions = useMemo(
     () => ({
@@ -139,10 +152,58 @@ export function useChatThreads(
 
   useEffect(() => {
     if (previousIdentity.current === identityKey) return;
+
     previousIdentity.current = identityKey;
     refreshGen.current += 1;
     selectGen.current += 1;
-    threadSeedCache.current.clear();
+
+    if (!identityKey) {
+      threadSeedCache.current = new Map();
+      setThreads([]);
+      setNextCursor(null);
+      setActiveThreadId(initialThreadId);
+      setSeedMessages(null);
+      setSeedStatus(initialThreadId ? 'loading' : 'idle');
+      setHistorySyncing(false);
+      setLoadingOlder(false);
+      setSidebarError(null);
+      setHistoryError(null);
+      setLoading(false);
+      setRefreshing(false);
+      setLoadingMore(false);
+      return;
+    }
+
+    const restored = identitySnapshots.current.get(identityKey);
+    if (restored && (restored.threads.length > 0 || restored.seedCache.size > 0)) {
+      threadSeedCache.current = restored.seedCache;
+      setThreads(restored.threads);
+      setNextCursor(restored.nextCursor);
+      setActiveThreadId(initialThreadId);
+      if (initialThreadId) {
+        const cached = restored.seedCache.get(initialThreadId);
+        if (cached) {
+          setSeedMessages(cached.messages);
+          setSeedStatus('ready');
+        } else {
+          setSeedMessages(null);
+          setSeedStatus('loading');
+        }
+      } else {
+        setSeedMessages(null);
+        setSeedStatus('idle');
+      }
+      setHistorySyncing(false);
+      setLoadingOlder(false);
+      setSidebarError(null);
+      setHistoryError(null);
+      setLoading(false);
+      setRefreshing(false);
+      setLoadingMore(false);
+      return;
+    }
+
+    threadSeedCache.current = new Map();
     setThreads([]);
     setNextCursor(null);
     setActiveThreadId(initialThreadId);
@@ -150,31 +211,40 @@ export function useChatThreads(
     setSeedStatus(initialThreadId ? 'loading' : 'idle');
     setHistorySyncing(false);
     setLoadingOlder(false);
-    setError(null);
+    setSidebarError(null);
+    setHistoryError(null);
     setLoading(true);
     setRefreshing(false);
     setLoadingMore(false);
   }, [identityKey, initialThreadId]);
 
-  const refresh = useCallback(async () => {
+  const refresh = useCallback(async (options?: { background?: boolean }) => {
+    const background = options?.background ?? false;
     if (!accessToken || !identityKey) {
-      setLoading(false);
-      setRefreshing(false);
+      if (!background) {
+        setLoading(false);
+        setRefreshing(false);
+      }
       return;
     }
     const gen = ++refreshGen.current;
-    setError(null);
-    setRefreshing(true);
+    if (!background) {
+      setSidebarError(null);
+      setRefreshing(true);
+    }
     try {
       const page = await listChatsV2({ limit: CHAT_PAGE_SIZE }, requestOptions);
       if (gen !== refreshGen.current) return;
       setThreads(page.items);
       setNextCursor(page.nextCursor || null);
+      if (background) {
+        setSidebarError(null);
+      }
     } catch (err) {
       if (gen !== refreshGen.current) return;
-      setError(err instanceof Error ? err.message : '加载会话失败');
+      setSidebarError(err instanceof Error ? err.message : '加载会话失败');
     } finally {
-      if (gen === refreshGen.current) {
+      if (gen === refreshGen.current && !background) {
         setRefreshing(false);
         setLoading(false);
       }
@@ -186,7 +256,8 @@ export function useChatThreads(
       setLoading(false);
       return;
     }
-    void refresh();
+    const restored = identitySnapshots.current.get(identityKey);
+    void refresh({ background: Boolean(restored) });
   }, [accessToken, identityKey, refresh]);
 
   useEffect(() => {
@@ -194,6 +265,7 @@ export function useChatThreads(
     if (!initialThreadId) {
       setSeedMessages(null);
       setSeedStatus('idle');
+      setHistoryError(null);
     }
   }, [initialThreadId]);
 
@@ -201,7 +273,7 @@ export function useChatThreads(
     if (!accessToken || !identityKey || !nextCursor || loadingMore) return;
     const gen = refreshGen.current;
     setLoadingMore(true);
-    setError(null);
+    setSidebarError(null);
     try {
       const page = await listChatsV2(
         { limit: CHAT_PAGE_SIZE, after: nextCursor },
@@ -212,7 +284,7 @@ export function useChatThreads(
       setNextCursor(page.nextCursor || null);
     } catch (err) {
       if (gen !== refreshGen.current) return;
-      setError(err instanceof Error ? err.message : '加载更多会话失败');
+      setSidebarError(err instanceof Error ? err.message : '加载更多会话失败');
     } finally {
       if (gen === refreshGen.current) {
         setLoadingMore(false);
@@ -226,7 +298,7 @@ export function useChatThreads(
     if (!cached || cached.complete || !cached.prevCursor) return;
 
     setLoadingOlder(true);
-    setError(null);
+    setHistoryError(null);
     try {
       const page = await listChatMessagesV2(
         activeThreadId,
@@ -244,29 +316,57 @@ export function useChatThreads(
       threadSeedCache.current.set(activeThreadId, entry);
       setSeedMessages(entry.messages);
     } catch (err) {
-      setError(err instanceof Error ? err.message : '加载更早消息失败');
+      setHistoryError(err instanceof Error ? err.message : '加载更早消息失败');
     } finally {
       setLoadingOlder(false);
     }
   }, [accessToken, activeThreadId, identityKey, loadingOlder, requestOptions]);
 
+  const revalidateThread = useCallback(
+    async (id: string, gen: number) => {
+      if (!accessToken || !identityKey) return;
+      try {
+        const detail = await getChatV2(id, requestOptions);
+        if (gen !== selectGen.current) return;
+        const entry = toCacheEntry(detail.messages, detail.prevCursor);
+        threadSeedCache.current.set(id, entry);
+        if (gen === selectGen.current) {
+          setSeedMessages(entry.messages);
+        }
+        setThreads((prev) => {
+          const exists = prev.some((chat) => chat.id === id);
+          if (exists) {
+            return prev.map((chat) =>
+              chat.id === id ? { ...chat, ...detail.chat } : chat,
+            );
+          }
+          return [detail.chat, ...prev];
+        });
+      } catch {
+        // Background revalidate keeps cached transcript on failure.
+      }
+    },
+    [accessToken, identityKey, requestOptions],
+  );
+
   const selectThread = useCallback(
     async (id: string) => {
       if (!accessToken || !identityKey) {
-        setError('正在准备安全会话身份，请稍后重试。');
+        setHistoryError('正在准备安全会话身份，请稍后重试。');
         setHistorySyncing(false);
         setSeedStatus((status) => (status === 'loading' ? 'idle' : status));
         return;
       }
       const gen = ++selectGen.current;
       setActiveThreadId(id);
-      setError(null);
+      setHistoryError(null);
 
       const cached = threadSeedCache.current.get(id);
       if (cached) {
         setSeedMessages(cached.messages);
         setSeedStatus('ready');
         setHistorySyncing(false);
+        void revalidateThread(id, gen);
         return;
       }
 
@@ -296,10 +396,10 @@ export function useChatThreads(
         if (gen !== selectGen.current) return;
         setHistorySyncing(false);
         setSeedStatus('ready');
-        setError(err instanceof Error ? err.message : '加载会话详情失败');
+        setHistoryError(err instanceof Error ? err.message : '加载会话详情失败');
       }
     },
-    [accessToken, identityKey, requestOptions],
+    [accessToken, identityKey, revalidateThread, requestOptions],
   );
 
   useEffect(() => {
@@ -364,6 +464,7 @@ export function useChatThreads(
         setActiveThreadId(null);
         setSeedMessages(null);
         setSeedStatus('idle');
+        setHistoryError(null);
       }
     },
     [accessToken, activeThreadId, identityKey, requestOptions],
@@ -374,6 +475,7 @@ export function useChatThreads(
     setActiveThreadId(null);
     setSeedMessages(null);
     setSeedStatus('idle');
+    setHistoryError(null);
   }, []);
 
   const touchThread = useCallback(
@@ -403,6 +505,15 @@ export function useChatThreads(
     [identityKey],
   );
 
+  useEffect(() => {
+    if (!identityKey) return;
+    identitySnapshots.current.set(identityKey, {
+      threads,
+      nextCursor,
+      seedCache: threadSeedCache.current,
+    });
+  }, [identityKey, nextCursor, threads]);
+
   const activeThread =
     threads.find((chat) => chat.id === activeThreadId) ?? null;
 
@@ -419,7 +530,9 @@ export function useChatThreads(
     refreshing,
     loadingMore,
     hasMore: Boolean(nextCursor),
-    error,
+    sidebarError,
+    historyError,
+    error: sidebarError,
     refresh,
     loadMore,
     loadOlderMessages,

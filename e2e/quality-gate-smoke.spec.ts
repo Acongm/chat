@@ -338,7 +338,7 @@ test.describe('Platform v2 quality gate browser smoke (#37)', () => {
     await installQualityGateMocks(page);
     await page.goto('/');
     await sendPrompt(page, '  trimmed prompt  ');
-    await expect(page.getByText('trimmed prompt', { exact: true })).toBeVisible({
+    await expect(page.locator('.acongm-gpt-msg__bubble', { hasText: 'trimmed prompt' })).toBeVisible({
       timeout: 30_000,
     });
     await expect(page.getByText(FIRST_ASSISTANT_REPLY)).toBeVisible({
@@ -450,5 +450,134 @@ test.describe('Platform v2 quality gate browser smoke (#37)', () => {
     );
     expect(Math.abs(afterUser - beforeUser)).toBeLessThan(2);
     expect(Math.abs(afterAssistant - beforeAssistant)).toBeLessThan(2);
+  });
+
+  test('send, stream done, and hard refresh restore durable history', async ({
+    page,
+  }) => {
+    await installQualityGateMocks(page);
+    await page.goto('/');
+    await sendPrompt(page, 'durable refresh probe');
+    await expect(page.getByText(FIRST_ASSISTANT_REPLY)).toBeVisible({
+      timeout: 30_000,
+    });
+    await expect(page.getByTitle('发送')).toBeVisible({ timeout: 30_000 });
+    await expect(page.getByTitle('停止')).toHaveCount(0);
+
+    await page.reload();
+    const composer = await readyComposer(page);
+    await expect(composer).toBeEnabled();
+    await expect(page.getByText('durable refresh probe').first()).toBeVisible({
+      timeout: 30_000,
+    });
+    await expect(page.getByText(FIRST_ASSISTANT_REPLY)).toBeVisible({
+      timeout: 30_000,
+    });
+  });
+
+  test('lazy-loads sidebar chat pages 2 and 3 via cursor', async ({ page }) => {
+    await installQualityGateMocks(page, { paginatedChats: true });
+    await page.goto('/');
+    await readyComposer(page);
+    await expect(page.locator('.acongm-gpt-sidebar__hint', { hasText: '加载会话' })).toHaveCount(
+      0,
+      { timeout: 30_000 },
+    );
+
+    await expect(
+      page.getByRole('button', { name: '分页会话 1', exact: true }),
+    ).toBeVisible({ timeout: 30_000 });
+    await expect(
+      page.getByRole('button', { name: '分页会话 51', exact: true }),
+    ).toHaveCount(0);
+
+    await page.locator('.acongm-gpt-sidebar__new[data-action="load-more"]').click();
+    await expect(
+      page.getByRole('button', { name: '分页会话 51', exact: true }),
+    ).toBeVisible({ timeout: 30_000 });
+
+    await page.locator('.acongm-gpt-sidebar__new[data-action="load-more"]').click();
+    await expect(
+      page.getByRole('button', { name: '分页会话 101', exact: true }),
+    ).toBeVisible({ timeout: 30_000 });
+  });
+
+  test('sidebar list failure does not block composer send', async ({ page }) => {
+    await installQualityGateMocks(page, { failSidebarList: true });
+    await page.goto('/');
+
+    await expect(page.locator('.acongm-gpt-sidebar__hint.is-error')).toBeVisible({
+      timeout: 30_000,
+    });
+    const composer = await readyComposer(page);
+    await expect(composer).toBeEnabled();
+    await sendPrompt(page, 'sidebar failed but composer works');
+    await expect(page.getByText(FIRST_ASSISTANT_REPLY)).toBeVisible({
+      timeout: 30_000,
+    });
+  });
+
+  test('logout switches UID without leaking prior user sidebar data', async ({
+    page,
+  }) => {
+    const mocks = await installQualityGateMocks(page);
+    await page.goto('/');
+    await sendPrompt(page, 'User A secret sidebar title');
+    await expect(page.getByText(FIRST_ASSISTANT_REPLY)).toBeVisible({
+      timeout: 30_000,
+    });
+    await expect(
+      page.locator('.acongm-gpt-sidebar__item-title', {
+        hasText: 'User A secret sidebar title',
+      }),
+    ).toBeVisible();
+
+    mocks.switchToUserB();
+    await page.reload();
+    await readyComposer(page);
+    await expect(
+      page.locator('.acongm-gpt-sidebar__item-title', {
+        hasText: 'User A secret sidebar title',
+      }),
+    ).toHaveCount(0);
+  });
+
+  test('lazy-loads older transcript pages for restored threads', async ({
+    page,
+  }) => {
+    await installQualityGateMocks(page, { paginatedMessages: true });
+    await page.goto(`/t/${MOCK_CHAT_ID}`);
+
+    await expect(page.getByText('历史消息 240')).toBeVisible({ timeout: 30_000 });
+    await expect(page.getByText('历史消息 1', { exact: true })).toHaveCount(0);
+
+    const firstPage = await page.evaluate(async (chatId) => {
+      const response = await fetch(`/api/chats/${chatId}?order=desc`, {
+        headers: { Authorization: 'Bearer mock-access-token-quality-gate' },
+      });
+      return response.json();
+    }, MOCK_CHAT_ID);
+    expect(firstPage.messages?.length).toBe(100);
+    expect(firstPage.prevCursor).toBeTruthy();
+
+    const secondPage = await page.evaluate(
+      async ({ chatId, before }) => {
+        const response = await fetch(
+          `/api/chats/${chatId}/messages?order=desc&before=${encodeURIComponent(before)}&limit=100`,
+          {
+            headers: { Authorization: 'Bearer mock-access-token-quality-gate' },
+          },
+        );
+        return response.json();
+      },
+      { chatId: MOCK_CHAT_ID, before: firstPage.prevCursor as string },
+    );
+    expect(secondPage.messages?.length).toBe(100);
+    expect(
+      secondPage.messages?.some(
+        (message: { parts?: Array<{ text?: string }> }) =>
+          message.parts?.[0]?.text === '历史消息 41',
+      ),
+    ).toBe(true);
   });
 });

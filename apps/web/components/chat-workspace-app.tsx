@@ -133,6 +133,8 @@ function MentionOverlay({
   );
 }
 
+const AUTH_BOOTSTRAP_TIMEOUT_MS = 12_000;
+
 function WorkspaceInner({
   registry,
   isolation,
@@ -145,13 +147,34 @@ function WorkspaceInner({
   const router = useRouter();
   const [authIdentity, setAuthIdentity] = useState<ChatAuthIdentity | null>(null);
   const [authStatus, setAuthStatus] = useState<AuthSessionStatus>('unauthenticated');
+  const [authBootstrapTimedOut, setAuthBootstrapTimedOut] = useState(false);
   const ensureGuestAuthRef = useRef<EnsureGuestAuth | null>(null);
+  const warmIdentityRef = useRef<ChatAuthIdentity | null>(null);
+
+  useEffect(() => {
+    if (authIdentity) {
+      warmIdentityRef.current = authIdentity;
+    }
+  }, [authIdentity]);
+
+  useEffect(() => {
+    if (authStatus !== 'restoring') {
+      setAuthBootstrapTimedOut(false);
+      return;
+    }
+    const timer = window.setTimeout(() => {
+      setAuthBootstrapTimedOut(true);
+      void ensureGuestAuthRef.current?.();
+    }, AUTH_BOOTSTRAP_TIMEOUT_MS);
+    return () => window.clearTimeout(timer);
+  }, [authStatus]);
 
   const prepareAuth = useCallback(async () => {
-    if (authIdentity) {
+    const warm = authIdentity ?? warmIdentityRef.current;
+    if (warm) {
       return {
-        userId: authIdentity.userId,
-        accessToken: authIdentity.accessToken,
+        userId: warm.userId,
+        accessToken: warm.accessToken,
       };
     }
     const fromSlot = await ensureGuestAuthRef.current?.();
@@ -201,9 +224,8 @@ function WorkspaceInner({
   });
 
   useEffect(() => {
-    if (!initialThreadId) return;
     void prepareAuth();
-  }, [initialThreadId, prepareAuth]);
+  }, [prepareAuth]);
 
   const navigateWithChips = useCallback(
     (path: string, nextChips: KnowledgeRef[]) => {
@@ -269,11 +291,14 @@ function WorkspaceInner({
     ],
   );
 
-  const composerDisabled = authStatus === 'restoring' || authStatus === 'error';
+  const composerDisabled = authStatus === 'error';
 
   const composerPlaceholder = useMemo(() => {
-    if (authStatus === 'restoring') {
+    if (authStatus === 'restoring' && !authBootstrapTimedOut) {
       return '正在准备安全会话…';
+    }
+    if (authStatus === 'restoring' && authBootstrapTimedOut) {
+      return '会话准备较慢，可直接输入；发送时会重试。';
     }
     if (authStatus === 'error') {
       return '访客会话准备失败，请在侧栏重试或先登录。';
@@ -281,11 +306,17 @@ function WorkspaceInner({
     if (threads.activeThreadId && threads.seedStatus === 'loading') {
       return '正在加载会话历史…';
     }
-    if (threads.error) {
-      return threads.error;
+    if (threads.historyError) {
+      return threads.historyError;
     }
     return '有什么可以帮忙的？输入 @ 引用知识…';
-  }, [authStatus, threads.activeThreadId, threads.error, threads.seedStatus]);
+  }, [
+    authBootstrapTimedOut,
+    authStatus,
+    threads.activeThreadId,
+    threads.historyError,
+    threads.seedStatus,
+  ]);
 
   const handleNewThread = () => {
     threads.clearActive();
@@ -309,6 +340,7 @@ function WorkspaceInner({
   };
 
   const handleSignedOut = useCallback(() => {
+    warmIdentityRef.current = null;
     setAuthIdentity(null);
     threads.clearActive();
     setRuntimeKey(`draft-${Date.now()}`);
@@ -329,7 +361,7 @@ function WorkspaceInner({
           refreshing={threads.refreshing}
           loadingMore={threads.loadingMore}
           hasMore={threads.hasMore}
-          error={threads.error}
+          error={threads.sidebarError}
           settingsSlot={<ChatSettingsSlot />}
           authSlot={
             <ChatAuthSlot
