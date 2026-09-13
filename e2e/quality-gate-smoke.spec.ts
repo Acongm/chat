@@ -503,7 +503,7 @@ test.describe('Platform v2 quality gate browser smoke (#37)', () => {
   });
 
   test('sidebar list failure does not block composer send', async ({ page }) => {
-    await installQualityGateMocks(page, { failSidebarList: 1 });
+    await installQualityGateMocks(page, { failSidebarList: true });
     await page.goto('/');
 
     await expect(page.locator('.acongm-gpt-sidebar__hint.is-error')).toBeVisible({
@@ -557,6 +557,10 @@ test.describe('Platform v2 quality gate browser smoke (#37)', () => {
     });
     await expect(page.getByText('正在加载更早的消息…')).toBeVisible({
       timeout: 30_000,
+    });
+    await page.waitForFunction(() => {
+      const doc = document.scrollingElement;
+      return Boolean(doc && doc.scrollTop === 0);
     });
     await expect(page.getByText('历史消息 1', { exact: true })).toBeVisible({
       timeout: 30_000,

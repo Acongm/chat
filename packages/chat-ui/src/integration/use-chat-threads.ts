@@ -175,7 +175,7 @@ export function useChatThreads(
     }
 
     const restored = identitySnapshots.current.get(identityKey);
-    if (restored) {
+    if (restored && (restored.threads.length > 0 || restored.seedCache.size > 0)) {
       threadSeedCache.current = restored.seedCache;
       setThreads(restored.threads);
       setNextCursor(restored.nextCursor);

@@ -4,7 +4,10 @@ export const MOCK_SUPABASE_URL = 'http://mock-supabase.test';
 export const MOCK_ANON_KEY = 'mock-anon-key';
 export const MOCK_USER_ID = '00000000-0000-4000-8000-000000000001';
 export const MOCK_USER_ID_B = '00000000-0000-4000-8000-000000000002';
+export const MOCK_USER_ID_PAGINATED = '00000000-0000-4000-8000-0000000099';
 export const MOCK_ACCESS_TOKEN = 'mock-access-token-quality-gate';
+export const MOCK_ACCESS_TOKEN_B = 'mock-access-token-quality-gate-b';
+export const MOCK_ACCESS_TOKEN_PAGINATED = 'mock-access-token-quality-gate-paginated';
 export const MOCK_ACCESS_TOKEN_B = 'mock-access-token-quality-gate-b';
 export const MOCK_CHAT_ID = '11111111-1111-4111-8111-111111111111';
 export const FIRST_ASSISTANT_REPLY = '你好，这是测试回复';
@@ -139,6 +142,9 @@ function resolveMockUser(accessToken: string | null) {
   if (accessToken === MOCK_ACCESS_TOKEN_B) {
     return { id: MOCK_USER_ID_B, token: MOCK_ACCESS_TOKEN_B };
   }
+  if (accessToken === MOCK_ACCESS_TOKEN_PAGINATED) {
+    return { id: MOCK_USER_ID_PAGINATED, token: MOCK_ACCESS_TOKEN_PAGINATED };
+  }
   return { id: MOCK_USER_ID, token: MOCK_ACCESS_TOKEN };
 }
 
@@ -267,7 +273,7 @@ function createChatStore(options: QualityGateMockOptions = {}) {
   }
 
   if (options.paginatedChats) {
-    const userId = MOCK_USER_ID;
+    const userId = MOCK_USER_ID_PAGINATED;
     const chats = chatsFor(userId);
     for (let index = 0; index < 120; index += 1) {
       const id = `22222222-2222-4222-8222-${String(index).padStart(12, '0')}`;
@@ -615,7 +621,9 @@ export async function installQualityGateMocks(
     [MOCK_USER_ID, createUserSettings(MOCK_USER_ID)],
     [MOCK_USER_ID_B, createUserSettings(MOCK_USER_ID_B)],
   ]);
-  let activeSession = buildMockSession(MOCK_USER_ID, MOCK_ACCESS_TOKEN);
+  let activeSession = options.paginatedChats
+    ? buildMockSession(MOCK_USER_ID_PAGINATED, MOCK_ACCESS_TOKEN_PAGINATED)
+    : buildMockSession(MOCK_USER_ID, MOCK_ACCESS_TOKEN);
 
   await page.route(`${MOCK_SUPABASE_URL}/**`, (route) =>
     fulfillSupabaseAuth(route, activeSession),
