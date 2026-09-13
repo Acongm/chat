@@ -553,7 +553,10 @@ test.describe('Platform v2 quality gate browser smoke (#37)', () => {
 
     await page.evaluate(() => {
       const doc = document.scrollingElement;
-      if (doc) doc.scrollTop = 0;
+      if (doc) {
+        doc.scrollTop = 0;
+        window.dispatchEvent(new Event('scroll'));
+      }
     });
     await expect(page.getByText('正在加载更早的消息…')).toBeVisible({
       timeout: 30_000,

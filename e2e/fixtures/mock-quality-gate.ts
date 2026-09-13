@@ -118,6 +118,26 @@ function nowIso(): string {
   return new Date().toISOString();
 }
 
+function fulfillAuthSession(route: Route, session: ReturnType<typeof buildMockSession>) {
+  return json(route, 200, {
+    authenticated: true,
+    configured: true,
+    anonymous: Boolean(session.user.is_anonymous),
+    isAnonymous: Boolean(session.user.is_anonymous),
+    user: {
+      id: session.user.id,
+      is_anonymous: Boolean(session.user.is_anonymous),
+    },
+    userInfo: {
+      id: session.user.id,
+      displayName: session.user.is_anonymous ? '访客' : 'Quality Gate',
+      avatarUrl: null,
+      isAnonymous: Boolean(session.user.is_anonymous),
+    },
+    accessToken: session.access_token,
+  });
+}
+
 function fulfillSupabaseAuth(route: Route, session = MOCK_SESSION) {
   const url = route.request().url();
   const method = route.request().method();
@@ -619,13 +639,22 @@ export async function installQualityGateMocks(
   const settingsByUser = new Map([
     [MOCK_USER_ID, createUserSettings(MOCK_USER_ID)],
     [MOCK_USER_ID_B, createUserSettings(MOCK_USER_ID_B)],
+    [MOCK_USER_ID_PAGINATED, createUserSettings(MOCK_USER_ID_PAGINATED)],
   ]);
   let activeSession = options.paginatedChats
     ? buildMockSession(MOCK_USER_ID_PAGINATED, MOCK_ACCESS_TOKEN_PAGINATED)
     : buildMockSession(MOCK_USER_ID, MOCK_ACCESS_TOKEN);
 
+  await page.unroute(`${MOCK_SUPABASE_URL}/**`).catch(() => undefined);
+  await page.unroute('**/api/auth/session').catch(() => undefined);
+  await page.unroute('**/api/chats**').catch(() => undefined);
+  await page.unroute('**/api/user/**').catch(() => undefined);
+  await page.unroute('**/summaries-v1.json').catch(() => undefined);
   await page.route(`${MOCK_SUPABASE_URL}/**`, (route) =>
     fulfillSupabaseAuth(route, activeSession),
+  );
+  await page.route('**/api/auth/session', (route) =>
+    fulfillAuthSession(route, activeSession),
   );
   await page.route('**/api/chats**', (route) => store.fulfillChats(route, options));
   await page.route('**/api/user/**', (route) => {
