@@ -552,6 +552,11 @@ test.describe('Platform v2 quality gate browser smoke (#37)', () => {
     await expect(page.getByText('历史消息 1', { exact: true })).toHaveCount(0);
 
     await page.evaluate(() => {
+      const viewport = document.querySelector('.acongm-gpt-thread__viewport');
+      if (viewport instanceof HTMLElement) {
+        viewport.scrollTop = 0;
+        viewport.dispatchEvent(new Event('scroll'));
+      }
       const doc = document.scrollingElement;
       if (doc) {
         doc.scrollTop = 0;
@@ -565,6 +570,11 @@ test.describe('Platform v2 quality gate browser smoke (#37)', () => {
       timeout: 30_000,
     });
     await page.evaluate(() => {
+      const viewport = document.querySelector('.acongm-gpt-thread__viewport');
+      if (viewport instanceof HTMLElement) {
+        viewport.scrollTop = 0;
+        viewport.dispatchEvent(new Event('scroll'));
+      }
       const doc = document.scrollingElement;
       if (doc) {
         doc.scrollTop = 0;
@@ -578,6 +588,11 @@ test.describe('Platform v2 quality gate browser smoke (#37)', () => {
       timeout: 30_000,
     });
     await page.evaluate(() => {
+      const viewport = document.querySelector('.acongm-gpt-thread__viewport');
+      if (viewport instanceof HTMLElement) {
+        viewport.scrollTop = 0;
+        viewport.dispatchEvent(new Event('scroll'));
+      }
       const doc = document.scrollingElement;
       if (doc) {
         doc.scrollTop = 0;
