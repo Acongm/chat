@@ -485,32 +485,20 @@ test.describe('Platform v2 quality gate browser smoke (#37)', () => {
     );
 
     await expect(
-      page.locator('.acongm-gpt-sidebar__item-title', {
-        hasText: '分页会话 1',
-        exact: true,
-      }),
+      page.getByRole('button', { name: '分页会话 1', exact: true }),
     ).toBeVisible({ timeout: 30_000 });
     await expect(
-      page.locator('.acongm-gpt-sidebar__item-title', {
-        hasText: '分页会话 51',
-        exact: true,
-      }),
+      page.getByRole('button', { name: '分页会话 51', exact: true }),
     ).toHaveCount(0);
 
     await page.locator('.acongm-gpt-sidebar__new[data-action="load-more"]').click();
     await expect(
-      page.locator('.acongm-gpt-sidebar__item-title', {
-        hasText: '分页会话 51',
-        exact: true,
-      }),
+      page.getByRole('button', { name: '分页会话 51', exact: true }),
     ).toBeVisible({ timeout: 30_000 });
 
     await page.locator('.acongm-gpt-sidebar__new[data-action="load-more"]').click();
     await expect(
-      page.locator('.acongm-gpt-sidebar__item-title', {
-        hasText: '分页会话 101',
-        exact: true,
-      }),
+      page.getByRole('button', { name: '分页会话 101', exact: true }),
     ).toBeVisible({ timeout: 30_000 });
   });
 
@@ -563,6 +551,19 @@ test.describe('Platform v2 quality gate browser smoke (#37)', () => {
     await expect(page.getByText('历史消息 240')).toBeVisible({ timeout: 30_000 });
     await expect(page.getByText('历史消息 1', { exact: true })).toHaveCount(0);
 
+    await page.evaluate(() => {
+      const doc = document.scrollingElement;
+      if (doc) {
+        doc.scrollTop = 0;
+        window.dispatchEvent(new Event('scroll'));
+      }
+    });
+    await expect(page.getByText('正在加载更早的消息…')).toBeVisible({
+      timeout: 30_000,
+    });
+    await expect(page.getByText('正在加载更早的消息…')).toHaveCount(0, {
+      timeout: 30_000,
+    });
     await page.evaluate(() => {
       const doc = document.scrollingElement;
       if (doc) {
