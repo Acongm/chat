@@ -576,7 +576,7 @@ test.describe('Platform v2 quality gate browser smoke (#37)', () => {
     expect(
       secondPage.messages?.some(
         (message: { parts?: Array<{ text?: string }> }) =>
-          message.parts?.[0]?.text === '历史消息 1',
+          message.parts?.[0]?.text === '历史消息 41',
       ),
     ).toBe(true);
   });
