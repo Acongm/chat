@@ -224,9 +224,8 @@ function WorkspaceInner({
   });
 
   useEffect(() => {
-    if (!initialThreadId) return;
     void prepareAuth();
-  }, [initialThreadId, prepareAuth]);
+  }, [prepareAuth]);
 
   const navigateWithChips = useCallback(
     (path: string, nextChips: KnowledgeRef[]) => {
