@@ -8,7 +8,6 @@ export const MOCK_USER_ID_PAGINATED = '00000000-0000-4000-8000-0000000099';
 export const MOCK_ACCESS_TOKEN = 'mock-access-token-quality-gate';
 export const MOCK_ACCESS_TOKEN_B = 'mock-access-token-quality-gate-b';
 export const MOCK_ACCESS_TOKEN_PAGINATED = 'mock-access-token-quality-gate-paginated';
-export const MOCK_ACCESS_TOKEN_B = 'mock-access-token-quality-gate-b';
 export const MOCK_CHAT_ID = '11111111-1111-4111-8111-111111111111';
 export const FIRST_ASSISTANT_REPLY = '你好，这是测试回复';
 export const RELOADED_ASSISTANT_REPLY = '这是重新生成的回复';
