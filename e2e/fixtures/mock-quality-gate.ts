@@ -433,10 +433,11 @@ function createChatStore(options: QualityGateMockOptions = {}) {
         ? allChats.findIndex((chat) => chat.id === after) + 1
         : 0;
       const pageItems = allChats.slice(startIndex, startIndex + limit);
-      const nextItem = allChats[startIndex + limit];
+      const hasMore = startIndex + limit < allChats.length;
+      const nextCursor = hasMore ? pageItems[pageItems.length - 1]?.id ?? null : null;
       return json(route, 200, {
         chats: pageItems,
-        nextCursor: nextItem?.id ?? null,
+        nextCursor,
       });
     }
 
@@ -476,13 +477,13 @@ function createChatStore(options: QualityGateMockOptions = {}) {
           ? ordered.findIndex((row) => row.id === before) + 1
           : 0;
         const pageItems = ordered.slice(startIndex, startIndex + limit);
-        const nextOlder = ordered[startIndex + limit];
+        const hasMore = startIndex + limit < ordered.length;
         const responseRows = orderDesc ? [...pageItems].reverse() : pageItems;
         return json(route, 200, {
           chat,
           messages: responseRows,
           nextCursor: null,
-          prevCursor: nextOlder?.id ?? null,
+          prevCursor: hasMore ? pageItems[pageItems.length - 1]?.id ?? null : null,
         });
       }
 
@@ -518,11 +519,11 @@ function createChatStore(options: QualityGateMockOptions = {}) {
         ? ordered.findIndex((row) => row.id === before) + 1
         : 0;
       const pageItems = ordered.slice(startIndex, startIndex + limit);
-      const nextOlder = ordered[startIndex + limit];
+      const hasMore = startIndex + limit < ordered.length;
       const responseRows = orderDesc ? [...pageItems].reverse() : pageItems;
       return json(route, 200, {
         messages: responseRows,
-        prevCursor: nextOlder?.id ?? null,
+        prevCursor: hasMore ? pageItems[pageItems.length - 1]?.id ?? null : null,
         nextCursor: null,
       });
     }
